@@ -64,6 +64,8 @@ feel locked to one agent UI?"
 - Added active GitHub Actions CI under `.github/workflows/ci.yml`.
 - Added protocol, install workflow, gate engine, and evidence spine design docs.
 - Added `examples/technical-whitepaper/` as a public tutorial fixture.
+- Added initial deterministic protocol validation, evidence-spine commands, and
+  section/citation/manuscript gate commands.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
 ## Release Decisions
@@ -96,10 +98,11 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
 
 - Implement the install-anywhere `init` command described in
   `docs/INSTALL_WORKFLOW.md`.
-- Implement protocol validation/migration for the draft protocol in
-  `docs/FILE_PROTOCOL.md`.
-- Implement the gate engine described in `docs/GATE_ENGINE.md`.
-- Implement claim/source commands from `docs/EVIDENCE_SPINE.md`.
+- Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
+- Broaden the gate engine from the initial deterministic gates into the full
+  profile/override/export model described in `docs/GATE_ENGINE.md`.
+- Broaden evidence commands from deterministic Markdown registers into richer
+  claim/source records and issue integration from `docs/EVIDENCE_SPINE.md`.
 - Better distinction between optional agent integrations and portable npm usage.
 - Installed-package end-to-end test once npm publishing is enabled.
 

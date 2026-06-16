@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added `mlab validate` / `npm run validate` for deterministic file-protocol
+  discovery and validation across template-first and config-first workspaces.
+- Added deterministic evidence commands for listing unsupported claims, checking
+  citation markers, reporting evidence state, and adding local source records.
+- Added `mlab gate` / `npm run gate` for initial section, citation, and
+  manuscript readiness gates with optional JSON artifacts.
+- Expanded CI fresh-project smoke coverage for validate, evidence, citations,
+  and gate commands.
+
 ## 0.2.0 - 2026-06-16
 
 - Added product strategy documentation for the "local CI for prose" direction.

@@ -54,6 +54,7 @@ docs, pass a neutral section kind such as `document.section`.
 
 ```bash
 npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
+npm run validate
 npm run status
 npm run check -- --static-only
 npm run doctor
@@ -63,6 +64,7 @@ Or use the local wrapper:
 
 ```bash
 node bin/manuscript-lab.mjs init --title "My Project" --slug my-project --sections 4 --kind document.section
+node bin/manuscript-lab.mjs validate
 node bin/manuscript-lab.mjs status
 ```
 
@@ -90,10 +92,33 @@ Draft or revise in `draft/01-opening.md`, then run:
 
 ```bash
 npm run check -- draft/01-opening.md
+npm run gate -- draft/01-opening.md
 npm run done:no-export
 ```
 
 Use `npm run done` when you expect reader exports.
+
+## Evidence And Gates
+
+Use the deterministic evidence spine for nonfiction, research, technical docs,
+and any project with source-sensitive claims:
+
+```bash
+npm run claims -- list --unsupported
+npm run citations -- check draft/01-opening.md
+npm run evidence -- report
+npm run sources -- add sources/my-source.md
+```
+
+Use the first gate command for repeatable readiness checks:
+
+```bash
+npm run gate -- draft/01-opening.md
+npm run gate -- citation
+npm run gate -- manuscript --json --write
+```
+
+Gate artifacts written with `--write` land under `state/gates/`.
 
 ## Reviews And Revisions
 
@@ -182,6 +207,13 @@ Run reusable script tests:
 
 ```bash
 npm test
+```
+
+Validate the file protocol and current workspace discovery:
+
+```bash
+npm run validate
+node bin/manuscript-lab.mjs validate --json
 ```
 
 Inspect local setup and release-health basics:

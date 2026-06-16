@@ -41,7 +41,11 @@ jobs:
       - name: Run fresh project smoke test
         run: |
           node bin/manuscript-lab.mjs init --title "CI Smoke" --slug ci-smoke --sections 1 --kind document.section
+          node bin/manuscript-lab.mjs validate
           node bin/manuscript-lab.mjs status
+          node bin/manuscript-lab.mjs claims list --json
+          node bin/manuscript-lab.mjs citations check --json
+          node bin/manuscript-lab.mjs gate draft/01-opening.md --json
           node bin/manuscript-lab.mjs check --static-only
           node bin/manuscript-lab.mjs done:no-export
 

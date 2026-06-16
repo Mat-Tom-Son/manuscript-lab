@@ -65,6 +65,17 @@ npm run status
 
 Shows section status, word counts, runtime packet freshness, issue counts, exports, and the next likely command.
 
+### Validate
+
+```bash
+npm run validate
+node bin/manuscript-lab.mjs validate --json
+```
+
+Validates the Manuscript Lab file protocol for the current workspace. It accepts
+current template-first repositories and config-first workspaces with
+`manuscript-lab.config.json`.
+
 ### Compose
 
 ```bash
@@ -116,6 +127,34 @@ npm run check:model -- draft/<section>.md
 ```
 
 Runs mechanical checks, contract validation, safety scans, and optional model-backed semantic checks.
+
+### Evidence
+
+```bash
+npm run claims -- list --unsupported
+npm run citations -- check draft/<section>.md
+npm run evidence -- report
+npm run sources -- add sources/<source-file>
+```
+
+Reads `state/claims.md`, `sources/index.md`, and citation markers in drafts.
+The first implementation is deterministic: it lists unsupported claims, checks
+`[citation-needed]` and `[cite:<id>]` markers, reports evidence counts, and adds
+local source files without inventing support.
+
+### Gate
+
+```bash
+npm run gate -- draft/<section>.md
+npm run gate -- citation
+npm run gate -- manuscript --json --write
+```
+
+Runs deterministic readiness gates. `section-ready` checks contract validity,
+status sync, runtime freshness, static section issues, issue blockers, and latest
+review errors. `citation-ready` checks claims and sources. `manuscript-ready`
+aggregates active sections, citation readiness, runtime packets, issues, and
+review errors. `--write` stores gate artifacts under `state/gates/`.
 
 ### Review
 
