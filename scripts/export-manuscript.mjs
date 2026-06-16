@@ -37,12 +37,14 @@ if (formats.has("md")) outputs.push(writeMarkdown(manuscript, path.join(outDir, 
 if (formats.has("html")) outputs.push(writeHtml(manuscript, path.join(outDir, `${slug}.html`)));
 if (formats.has("epub")) outputs.push(writeEpub(manuscript, path.join(outDir, `${slug}.epub`), slug));
 if (formats.has("pdf")) outputs.push(writePdf(manuscript, path.join(outDir, `${slug}.pdf`), slug));
+const manifest = writeExportManifest(manuscript, { slug, outputs, outDir });
 
 if (options.json) {
-  console.log(JSON.stringify({ outputs, title: manuscript.title, chapters: manuscript.chapters.length }, null, 2));
+  console.log(JSON.stringify({ outputs, manifest, title: manuscript.title, chapters: manuscript.chapters.length }, null, 2));
 } else {
   console.log(`Exported ${manuscript.title} (${manuscript.chapters.length} chapter(s))`);
   for (const output of outputs) console.log(`- ${output.format}: ${output.file}`);
+  console.log(`- manifest: ${manifest.file}`);
 }
 
 function collectManuscript() {
@@ -112,7 +114,7 @@ function writeMarkdown(manuscript, file) {
   }
 
   fs.writeFileSync(file, `${lines.join("\n").replace(/\n{4,}/g, "\n\n\n").trim()}\n`);
-  return { format: "md", file: displayPath(file) };
+  return exportOutput("md", file);
 }
 
 function writeHtml(manuscript, file) {
@@ -148,7 +150,7 @@ function writeHtml(manuscript, file) {
 `;
 
   fs.writeFileSync(file, html);
-  return { format: "html", file: displayPath(file) };
+  return exportOutput("html", file);
 }
 
 function writeEpub(manuscript, file, slug) {
@@ -188,7 +190,7 @@ function writeEpub(manuscript, file, slug) {
   execFileSync(zip, ["-X0", file, "mimetype"], { cwd: tmp, stdio: options.quiet ? "ignore" : "ignore" });
   execFileSync(zip, ["-Xr9D", file, "META-INF", "OEBPS"], { cwd: tmp, stdio: options.quiet ? "ignore" : "ignore" });
   fs.rmSync(tmp, { recursive: true, force: true });
-  return { format: "epub", file: displayPath(file) };
+  return exportOutput("epub", file);
 }
 
 function writePdf(manuscript, file, slug) {
@@ -202,7 +204,103 @@ function writePdf(manuscript, file, slug) {
   const renderer = packageAbs("scripts/render-pdf.py");
   execFileSync(python, [renderer, dataFile, file], { cwd: root, stdio: options.quiet ? "ignore" : "inherit" });
   fs.rmSync(tmpDir, { recursive: true, force: true });
-  return { format: "pdf", file: displayPath(file) };
+  return exportOutput("pdf", file);
+}
+
+function writeExportManifest(manuscript, { slug, outputs, outDir }) {
+  const file = path.join(outDir, "manifest.json");
+  const manifest = {
+    schema_version: "manuscript-lab.export-manifest.v1",
+    export_id: `export-${manuscript.generated_at.replace(/[:.]/g, "-")}-${slug}`,
+    created_at: manuscript.generated_at,
+    title: manuscript.title,
+    subtitle: manuscript.subtitle,
+    author: manuscript.author,
+    slug,
+    profile: discovery.config?.profile ?? "generic",
+    mode: discovery.mode,
+    source_commit: gitCommit(),
+    source_dirty: gitDirty(),
+    gate_enforced: false,
+    options: {
+      formats: [...formats].sort(),
+      include_todo: Boolean(options.includeTodo),
+      output_dir: displayPath(outDir),
+    },
+    chapters: manuscript.chapters.map((chapter) => ({
+      id: chapter.id,
+      file: chapter.file,
+      title: chapter.title,
+      status: chapter.status,
+      sha256: sha256File(abs(chapter.file)),
+    })),
+    input_hashes: inputHashes(manuscript),
+    outputs,
+    output_summary: {
+      count: outputs.length,
+      formats: outputs.map((output) => output.format),
+      bytes: outputs.reduce((sum, output) => sum + Number(output.size ?? 0), 0),
+    },
+  };
+  fs.writeFileSync(file, `${JSON.stringify(manifest, null, 2)}\n`, "utf8");
+  return {
+    file: displayPath(file),
+    export_id: manifest.export_id,
+    schema_version: manifest.schema_version,
+    outputs: outputs.length,
+  };
+}
+
+function exportOutput(format, file) {
+  const stat = fs.statSync(file);
+  return {
+    format,
+    file: displayPath(file),
+    size: stat.size,
+    sha256: sha256File(file),
+  };
+}
+
+function inputHashes(manuscript) {
+  const candidates = [
+    "PROJECT.md",
+    "brief.md",
+    "outline.md",
+    "style.md",
+    "state/status.md",
+    "state/claims.md",
+    "sources/index.md",
+    ...manuscript.chapters.map((chapter) => chapter.file),
+  ];
+  const seen = new Set();
+  const hashes = {};
+  for (const rel of candidates) {
+    if (!rel || seen.has(rel)) continue;
+    seen.add(rel);
+    const file = abs(rel);
+    if (fs.existsSync(file)) hashes[rel] = sha256File(file);
+  }
+  return hashes;
+}
+
+function sha256File(file) {
+  return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function gitCommit() {
+  try {
+    return execFileSync("git", ["rev-parse", "--verify", "HEAD"], { cwd: discovery.workspaceRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim();
+  } catch {
+    return "";
+  }
+}
+
+function gitDirty() {
+  try {
+    return execFileSync("git", ["status", "--porcelain"], { cwd: discovery.workspaceRoot, encoding: "utf8", stdio: ["ignore", "pipe", "ignore"] }).trim().length > 0;
+  } catch {
+    return null;
+  }
 }
 
 function xhtmlPage(manuscript, chapter, html) {
@@ -614,5 +712,9 @@ Options:
   --json                      Print machine-readable output.
   --quiet                     Suppress child tool output.
   --help, -h                  Show this help.
+
+Every successful export writes exports/manifest.json with input/output hashes,
+file sizes, formats, chapter metadata, source commit when available, and git
+dirty state.
 `);
 }

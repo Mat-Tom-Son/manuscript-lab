@@ -28,7 +28,7 @@ repo keeps them in files:
 - compiled runtime packets in `state/runtime/`
 - typed review findings in `state/issues/`
 - candidate revisions in `state/candidates/`
-- exports in `exports/`
+- exports and export manifests in `exports/`
 - readiness reports in `reports/`
 
 The `.pi/` directory adds optional Pi slash commands and skills. The npm scripts
@@ -294,6 +294,9 @@ For all formats, including EPUB and PDF:
 ```bash
 npm run export -- --slug my-project
 ```
+
+Each successful export writes `exports/manifest.json` with input hashes, output
+hashes, file sizes, formats, source commit when available, and git dirty state.
 
 ## License
 

@@ -46,6 +46,7 @@ function buildReport() {
   const reviewRun = runJsonCommand("scripts/review-report.mjs", ["--json"]);
   const modelCalls = readModelCalls();
   const revisionTrail = buildRevisionTrail(statusRun.data?.candidate_runs ?? []);
+  const exportManifest = readExportManifest();
   const status = statusRun.data ?? {};
   const evidence = evidenceRun.data ?? null;
   const gate = gateRun.data ?? null;
@@ -130,6 +131,7 @@ function buildReport() {
     candidate_runs: status.candidate_runs ?? [],
     model_calls: modelCalls,
     exports: status.exports ?? [],
+    export_manifest: exportManifest,
     suggested_next: status.suggested_next ?? [],
     command_runs: [statusRun, evidenceRun, gateRun, reviewRun].map(publicCommandRun),
     artifacts: {},
@@ -324,6 +326,22 @@ function collectJsonFiles(dir, out) {
   }
 }
 
+function readExportManifest() {
+  const file = paths.exportsAbs("manifest.json");
+  const manifest = readJsonIfExists(file, null);
+  if (!manifest) return null;
+  return {
+    file: displayPath(file),
+    schema_version: manifest.schema_version ?? "",
+    export_id: manifest.export_id ?? "",
+    created_at: manifest.created_at ?? "",
+    source_commit: manifest.source_commit ?? "",
+    source_dirty: manifest.source_dirty ?? null,
+    output_summary: manifest.output_summary ?? {},
+    outputs: manifest.outputs ?? [],
+  };
+}
+
 function readModelCalls() {
   const ledger = modelLedgerPath();
   if (!ledger || !fs.existsSync(ledger)) {
@@ -424,6 +442,7 @@ function printText(report) {
   console.log(`- revision trail: ${report.summary.revision_trail.accepted_issues} accepted issue(s), ${report.summary.revision_trail.candidate_runs} candidate run(s), ${report.summary.revision_trail.audits} audit(s)`);
   console.log(`- model calls: ${report.summary.model_calls}`);
   console.log(`- exports: ${report.summary.exports}`);
+  if (report.export_manifest?.file) console.log(`- export manifest: ${report.export_manifest.file}`);
   if (report.artifacts?.html) console.log(`- html report: ${report.artifacts.html}`);
   if (report.artifacts?.json) console.log(`- json report: ${report.artifacts.json}`);
 
@@ -459,6 +478,9 @@ function renderHtml(report) {
   const exportRows = report.exports.length
     ? report.exports.map((item) => `<li>${escapeHtml(item.file)} (${formatBytes(item.size)})</li>`).join("\n")
     : "<li>None</li>";
+  const exportManifest = report.export_manifest?.file
+    ? `<p>Manifest: <code>${escapeHtml(report.export_manifest.file)}</code>${report.export_manifest.export_id ? ` (${escapeHtml(report.export_manifest.export_id)})` : ""}</p>`
+    : "<p>Manifest: none</p>";
   const issueRows = report.revision_trail.accepted_issues.length
     ? report.revision_trail.accepted_issues
         .map((issue) => `<tr><td>${escapeHtml(issue.id)}</td><td>${escapeHtml(issue.target)}</td><td>${escapeHtml(issue.summary)}</td></tr>`)
@@ -543,6 +565,7 @@ function renderHtml(report) {
     </table>
 
     <h2>Exports</h2>
+    ${exportManifest}
     <ul>${exportRows}</ul>
   </main>
 </body>

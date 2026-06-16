@@ -219,20 +219,37 @@ function assertInstalledCommandSurface(workspace, runner) {
     exported.outputs.map((output) => output.file).sort(),
     ["exports/packed.html", "exports/packed.md"],
   );
+  assert.equal(exported.manifest.file, "exports/manifest.json");
+  assert.equal(exported.manifest.schema_version, "manuscript-lab.export-manifest.v1");
   assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.md")));
   assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.html")));
+  const exportManifestFile = path.join(manuscriptRoot, "exports", "manifest.json");
+  assert(fs.existsSync(exportManifestFile));
+  const exportManifest = JSON.parse(fs.readFileSync(exportManifestFile, "utf8"));
+  assert.equal(exportManifest.schema_version, "manuscript-lab.export-manifest.v1");
+  assert("source_dirty" in exportManifest);
+  assert.deepEqual(exportManifest.output_summary.formats.sort(), ["html", "md"]);
+  assert.equal(exportManifest.outputs.length, 2);
+  for (const output of exportManifest.outputs) {
+    assert.equal(typeof output.sha256, "string");
+    assert.equal(output.sha256.length, 64);
+    assert(output.size > 0);
+  }
 
   const writtenReport = assertJsonCommand(runner, ["report", "--write", "--json"], { cwd: workspace });
   assert.equal(writtenReport.artifacts.json, "reports/latest.json");
   assert.equal(writtenReport.artifacts.html, "reports/latest.html");
+  assert.equal(writtenReport.export_manifest.file, "exports/manifest.json");
   assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.json")));
   assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.html")));
   assert(fs.existsSync(path.join(manuscriptRoot, "state", "runtime", "01-opening", "context.json")));
   assert.equal(fs.existsSync(path.join(workspace, "state")), false, "commands should not write state at workspace root");
   assert.equal(fs.existsSync(path.join(workspace, "reports")), false, "commands should not write reports at workspace root");
+  assert.equal(fs.existsSync(path.join(workspace, "exports")), false, "commands should not write exports at workspace root");
   assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "commands should not write state under draft/");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "commands should not write state under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "reports")), false, "commands should not write reports under the package");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "exports")), false, "commands should not write exports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
 }
 

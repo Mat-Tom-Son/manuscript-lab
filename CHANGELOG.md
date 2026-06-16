@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Added `exports/manifest.json` generation to `mlab export` / `npm run export`,
+  including export ID, source commit when available, input hashes, output
+  hashes, file sizes, formats, git dirty state, and chapter metadata.
+- Added installed-mode smoke coverage to ensure export manifests stay under the
+  configured manuscript root and appear in `mlab report`.
 - Added `mlab report` / `npm run report` for text, JSON, and HTML readiness
   summaries that combine status, evidence, gates, review runs, revision trails,
   model-call counts, exports, blockers, and suggested next steps.

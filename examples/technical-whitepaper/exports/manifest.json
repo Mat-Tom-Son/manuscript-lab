@@ -1,0 +1,63 @@
+{
+  "schema_version": "manuscript-lab.export-manifest.v1",
+  "export_id": "export-2026-06-16T23-05-04-362Z-technical-whitepaper",
+  "created_at": "2026-06-16T23:05:04.362Z",
+  "title": "Technical Whitepaper Tutorial",
+  "subtitle": "A compact public fixture for Manuscript Lab.",
+  "author": "",
+  "slug": "technical-whitepaper",
+  "profile": "whitepaper",
+  "mode": "installed",
+  "source_commit": "ef1684bfaa256ec0ae7d1a440761636be118655c",
+  "source_dirty": true,
+  "gate_enforced": false,
+  "options": {
+    "formats": [
+      "html",
+      "md"
+    ],
+    "include_todo": false,
+    "output_dir": "exports"
+  },
+  "chapters": [
+    {
+      "id": "01-opening",
+      "file": "draft/01-opening.md",
+      "title": "Executive Summary",
+      "status": "draft",
+      "sha256": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868"
+    }
+  ],
+  "input_hashes": {
+    "PROJECT.md": "fa276a3b19324f1e243015bcbe6c342faeadbc79f63f85b413ed2bfa954612b1",
+    "brief.md": "65cc10033d14e4da929d20c509d5e173ed0fe5a5c225a1791d59d4dbd9c3ced4",
+    "outline.md": "72dfe711919fcc5b046d5a9232aa85981a368c09fd19ecb769b6f5edad50fae2",
+    "style.md": "a58d8524776c0e1d2a4c574b08bc131fb44d80ddc472cf5ec16a31e2b6de48a5",
+    "state/status.md": "50d584fa8170e0dad6b4700a98e03e261ddbce379611dc5e127eb49e8806f891",
+    "state/claims.md": "a657f80d29d40504af6113c874bfda233a784940ae6920fac96f99d27c8852ba",
+    "sources/index.md": "fd0404f4b43856bf211aec83aa4079e26ec5d03e07b967c4146c72083639585b",
+    "draft/01-opening.md": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868"
+  },
+  "outputs": [
+    {
+      "format": "md",
+      "file": "exports/technical-whitepaper.md",
+      "size": 2540,
+      "sha256": "e33bc7fe147f1c39211e352429b4256d30049310d155f4a58958af7e144a3164"
+    },
+    {
+      "format": "html",
+      "file": "exports/technical-whitepaper.html",
+      "size": 4501,
+      "sha256": "02cf6945230efc88ff47b6dea496354ad965a60eda654434e6d296327d571a3f"
+    }
+  ],
+  "output_summary": {
+    "count": 2,
+    "formats": [
+      "md",
+      "html"
+    ],
+    "bytes": 7041
+  }
+}

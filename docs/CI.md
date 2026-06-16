@@ -57,8 +57,8 @@ jobs:
 `npm test` includes the protocol/gate/evidence unit tests, the packlist
 assertion, and an installed-tarball smoke test for init, validate, evidence,
 gates, report generation, status, compose, static check, review reporting,
-`done:no-export`, and Markdown/HTML export from workspace, manuscript, and
-nested draft directories.
+`done:no-export`, and Markdown/HTML export with manifests from workspace,
+manuscript, and nested draft directories.
 
 Changing this workflow requires a GitHub token with `workflow` scope. Normal
 code and docs pushes do not need that extra scope.

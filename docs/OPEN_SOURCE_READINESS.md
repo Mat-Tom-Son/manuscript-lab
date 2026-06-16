@@ -76,6 +76,9 @@ feel locked to one agent UI?"
 - Added `mlab report` / `npm run report` for text, JSON, and HTML readiness
   summaries across status, evidence, gates, review runs, revision trails, model
   calls, and exports.
+- Added export manifests so every successful export has input/output hashes,
+  file sizes, formats, source commit when available, git dirty state, and
+  chapter metadata.
 - Made the technical-whitepaper fixture a config-first project so the demo can
   be inspected without mounting it as the active template project.
 - Updated `.gitignore` so user writing work does not accidentally become public.
