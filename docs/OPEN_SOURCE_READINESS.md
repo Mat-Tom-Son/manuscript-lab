@@ -60,6 +60,7 @@ feel locked to one agent UI?"
 - Rewrote `README.md` as a quick public entry point.
 - Added `docs/GETTING_STARTED.md`.
 - Added `docs/ARCHITECTURE.md`.
+- Added a repo-shipped Codex skill adapter under `skills/codex/`.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
 ## Release Decisions
@@ -97,7 +98,7 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
 - Public sample project or tutorial fixture.
 - Active GitHub Actions CI once a GitHub token with `workflow` scope is used.
 - Changelog/release process.
-- Better distinction between optional Pi integration and portable npm usage.
+- Better distinction between optional agent integrations and portable npm usage.
 - Installed-package end-to-end test once npm publishing is enabled.
 
 ### Nice To Have

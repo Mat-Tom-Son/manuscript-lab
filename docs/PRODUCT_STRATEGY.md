@@ -382,6 +382,12 @@ citation placeholders, missing bibliography entries, and stale source mappings.
 
 Goal: let agents use the protocol without becoming the protocol.
 
+Initial Codex adapter:
+
+```text
+skills/codex/manuscript-lab/
+```
+
 Target package shape:
 
 ```text

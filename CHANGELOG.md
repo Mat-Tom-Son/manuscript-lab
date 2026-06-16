@@ -3,6 +3,7 @@
 ## Unreleased
 
 - Added product strategy documentation for the "local CI for prose" direction.
+- Added a Codex skill adapter, validator, and installer for Manuscript Lab shipping work.
 
 ## 0.1.1
 

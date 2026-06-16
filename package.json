@@ -31,6 +31,7 @@
     "evals/",
     "reviews/",
     "scripts/",
+    "skills/",
     "templates/",
     ".pi/",
     ".env.example"
@@ -46,6 +47,8 @@
     "check:static": "node scripts/doccheck.mjs --static-only",
     "compose": "node scripts/compose-context.mjs",
     "context:audit": "node scripts/context-audit.mjs",
+    "codex:install-skill": "node scripts/install-codex-skill.mjs",
+    "codex:validate-skill": "node scripts/validate-codex-skill.mjs",
     "doccheck": "node scripts/doccheck.mjs",
     "doctor": "node scripts/doctor.mjs",
     "done": "node scripts/done-gate.mjs",

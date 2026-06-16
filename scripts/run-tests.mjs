@@ -6,6 +6,8 @@ const alwaysRun = [
   "scripts/model-json.test.mjs",
   "scripts/model-provider-response.test.mjs",
   "scripts/doctor.test.mjs",
+  "scripts/install-codex-skill.test.mjs",
+  "scripts/validate-codex-skill.mjs",
   "scripts/word-usage.test.mjs",
   "scripts/style-calibration.test.mjs",
   "scripts/taste-arbiter.test.mjs",

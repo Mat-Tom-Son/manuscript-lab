@@ -1,0 +1,4 @@
+interface:
+  display_name: "Manuscript Lab"
+  short_description: "Ship work in Manuscript Lab"
+  default_prompt: "Use $manuscript-lab to make and verify a Manuscript Lab change."

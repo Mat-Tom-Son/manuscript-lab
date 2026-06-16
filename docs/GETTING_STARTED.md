@@ -95,6 +95,22 @@ npm run done:no-export
 
 Use `npm run done` when you need reader exports.
 
+## Optional: Install The Codex Skill
+
+If you use Codex, install the Manuscript Lab skill so future sessions can enter
+the repo with the right workflow:
+
+```bash
+npm run codex:install-skill -- --dry-run
+npm run codex:install-skill
+```
+
+Then start a new Codex session and ask:
+
+```text
+Use $manuscript-lab to work on this project.
+```
+
 ## 6. Add Model Reviews Later
 
 Model review is optional. Without keys, you can still use static checks,

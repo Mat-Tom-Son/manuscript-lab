@@ -33,6 +33,12 @@ repo keeps them in files:
 The `.pi/` directory adds optional Pi slash commands and skills. The npm scripts
 are the portable core.
 
+Codex users can install the repo's Codex skill with:
+
+```bash
+npm run codex:install-skill
+```
+
 ## Quick Start
 
 Requirements:
@@ -141,6 +147,7 @@ them.
 - `scripts/`: harness commands
 - `checks/`: model-backed semantic checks and prompts
 - `reviews/`: typed review passes and model panels
+- `skills/codex/`: optional Codex skill adapter
 - `.pi/prompts/`: optional slash-command templates
 - `.pi/skills/`: optional local skills for long-form writing workflows
 - `docs/`: operating guides and architecture notes
@@ -152,6 +159,7 @@ are ignored by default so the public repo stays reusable.
 ## Important Docs
 
 - `docs/GETTING_STARTED.md`: first-project walkthrough
+- `docs/CODEX_SKILLS.md`: installing and using the Codex skill
 - `docs/PRODUCT_STRATEGY.md`: positioning and product roadmap
 - `docs/ARCHITECTURE.md`: layers and file boundaries
 - `docs/OPEN_SOURCE_READINESS.md`: current public-readiness gap list

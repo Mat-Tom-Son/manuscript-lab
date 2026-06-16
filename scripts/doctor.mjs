@@ -45,9 +45,12 @@ function checkRequiredHarnessFiles() {
     "package.json",
     "scripts/story-workspace.mjs",
     "scripts/doccheck.mjs",
+    "scripts/install-codex-skill.mjs",
+    "scripts/validate-codex-skill.mjs",
     "checks/suite.json",
     "reviews/suite.json",
     "templates/section-contract.md",
+    "skills/codex/manuscript-lab/SKILL.md",
     ".pi/skills/longform-writing/SKILL.md",
   ];
   const missing = required.filter((file) => !fs.existsSync(abs(file)));
