@@ -55,12 +55,13 @@ feel locked to one agent UI?"
 - Renamed package metadata from `doc-repo-agent` to `manuscript-lab`.
 - Added a small local wrapper: `manuscript-lab` / `mlab`.
 - Chose MIT license.
-- Documented the intended CI workflow in `docs/CI.md`.
+- Added the active CI workflow and documented it in `docs/CI.md`.
 - Added contribution, security, issue, and pull-request templates.
 - Rewrote `README.md` as a quick public entry point.
 - Added `docs/GETTING_STARTED.md`.
 - Added `docs/ARCHITECTURE.md`.
 - Added a repo-shipped Codex skill adapter under `skills/codex/`.
+- Added active GitHub Actions CI under `.github/workflows/ci.yml`.
 - Added protocol, install workflow, gate engine, and evidence spine design docs.
 - Added `examples/technical-whitepaper/` as a public tutorial fixture.
 - Updated `.gitignore` so user writing work does not accidentally become public.
@@ -99,7 +100,6 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
   `docs/FILE_PROTOCOL.md`.
 - Implement the gate engine described in `docs/GATE_ENGINE.md`.
 - Implement claim/source commands from `docs/EVIDENCE_SPINE.md`.
-- Active GitHub Actions CI once a GitHub token with `workflow` scope is used.
 - Better distinction between optional agent integrations and portable npm usage.
 - Installed-package end-to-end test once npm publishing is enabled.
 
