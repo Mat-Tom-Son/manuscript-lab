@@ -5,6 +5,7 @@ import { spawnSync } from "node:child_process";
 const alwaysRun = [
   "scripts/model-json.test.mjs",
   "scripts/model-provider-response.test.mjs",
+  "scripts/doctor.test.mjs",
   "scripts/word-usage.test.mjs",
   "scripts/style-calibration.test.mjs",
   "scripts/taste-arbiter.test.mjs",

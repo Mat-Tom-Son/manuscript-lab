@@ -88,6 +88,7 @@ Use `[citation-needed]` instead of inventing support.
 ## 5. Check
 
 ```bash
+npm run doctor
 npm run check -- draft/01-opening.md
 npm run done:no-export
 ```

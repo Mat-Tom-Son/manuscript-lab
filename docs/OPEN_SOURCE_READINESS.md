@@ -52,7 +52,7 @@ feel locked to one agent UI?"
 - Copied reusable harness files only.
 - Excluded active manuscripts, archives, exports, model logs, generated state,
   `.env`, and private project work.
-- Renamed package metadata from `manuscript-lab` to `manuscript-lab`.
+- Renamed package metadata from `doc-repo-agent` to `manuscript-lab`.
 - Added a small local wrapper: `manuscript-lab` / `mlab`.
 - Chose MIT license.
 - Documented the intended CI workflow in `docs/CI.md`.
@@ -86,7 +86,6 @@ feel locked to one agent UI?"
 
 ### Nice To Have
 
-- `manuscript-lab doctor` for environment checks.
 - `manuscript-lab quickstart` for guided setup.
 - A public docs site.
 - A fixture-based end-to-end test that initializes a project, composes context,

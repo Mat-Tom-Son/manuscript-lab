@@ -46,6 +46,7 @@ docs, pass a neutral section kind such as `document.section`.
 npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
 npm run status
 npm run check -- --static-only
+npm run doctor
 ```
 
 Or use the local wrapper:
@@ -162,6 +163,13 @@ Run reusable script tests:
 
 ```bash
 npm test
+```
+
+Inspect local setup and release-health basics:
+
+```bash
+npm run doctor
+npm run doctor -- --json
 ```
 
 Run public-template hygiene checks:

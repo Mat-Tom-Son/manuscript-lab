@@ -33,6 +33,9 @@ jobs:
       - name: Run context audit
         run: npm run context:audit -- --strict
 
+      - name: Run doctor
+        run: npm run doctor -- --no-network
+
       - name: Run fresh project smoke test
         run: |
           node bin/manuscript-lab.mjs init --title "CI Smoke" --slug ci-smoke --sections 1 --kind document.section
@@ -46,4 +49,3 @@ jobs:
 
 Enable it by saving this as `.github/workflows/ci.yml` after pushing with a
 GitHub token that has `workflow` scope.
-

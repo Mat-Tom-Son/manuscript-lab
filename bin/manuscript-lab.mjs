@@ -15,6 +15,7 @@ const commands = {
   "compose": ["scripts/compose-context.mjs"],
   "context:audit": ["scripts/context-audit.mjs"],
   "diff:audit": ["scripts/revision-diff-audit.mjs"],
+  "doctor": ["scripts/doctor.mjs"],
   "done": ["scripts/done-gate.mjs"],
   "done:no-export": ["scripts/done-gate.mjs", "--skip-exports"],
   "export": ["scripts/export-manuscript.mjs"],
@@ -77,6 +78,7 @@ Common commands:
   status
   compose -- draft/<section>.md
   check --static-only
+  doctor
   review:run -- --dry-run --panel prose.clean draft/<section>.md
   issues -- list
   words -- draft/<section>.md

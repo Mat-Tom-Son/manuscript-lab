@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.1
+
+- Added `npm run doctor` and `manuscript-lab doctor` for environment and release-health diagnostics.
+- Documented doctor in onboarding and CI guidance.
+- Updated public-readiness notes now that the doctor gap is closed.
+
 ## 0.1.0
 
 Initial public-ready release candidate.

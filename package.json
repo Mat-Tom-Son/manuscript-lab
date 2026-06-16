@@ -1,6 +1,6 @@
 {
   "name": "manuscript-lab",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "private": true,
   "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
   "license": "MIT",
@@ -47,6 +47,7 @@
     "compose": "node scripts/compose-context.mjs",
     "context:audit": "node scripts/context-audit.mjs",
     "doccheck": "node scripts/doccheck.mjs",
+    "doctor": "node scripts/doctor.mjs",
     "done": "node scripts/done-gate.mjs",
     "done:json": "node scripts/done-gate.mjs --json",
     "done:no-export": "node scripts/done-gate.mjs --skip-exports",
