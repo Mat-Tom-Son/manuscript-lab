@@ -11,6 +11,10 @@ only in chat.
 brief -> outline -> section contract -> compose -> draft -> check -> review -> triage -> revise -> verify -> export
 ```
 
+It is deliberately not an AI book generator. The product direction is local CI
+for prose: contracts, checks, issues, revision trails, evidence gates, and
+release workflow for serious writing.
+
 The harness is not a final judge. It is an evaluation lab for controlled writing
 experiments.
 
@@ -148,6 +152,7 @@ are ignored by default so the public repo stays reusable.
 ## Important Docs
 
 - `docs/GETTING_STARTED.md`: first-project walkthrough
+- `docs/PRODUCT_STRATEGY.md`: positioning and product roadmap
 - `docs/ARCHITECTURE.md`: layers and file boundaries
 - `docs/OPEN_SOURCE_READINESS.md`: current public-readiness gap list
 - `docs/CI.md`: intended GitHub Actions workflow

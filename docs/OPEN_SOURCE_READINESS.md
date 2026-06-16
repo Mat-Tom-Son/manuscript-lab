@@ -72,12 +72,28 @@ feel locked to one agent UI?"
   installed-package workflow can initialize or locate a full harness cleanly.
 - User project files: ignored by default so the public repo contains the harness,
   not someone's manuscript.
+- Product lane: local CI for prose, not an AI book generator. See
+  `docs/PRODUCT_STRATEGY.md`.
+
+## Strategy Fit
+
+The product strategy fits the current GitHub repo. The v0.1 public repo already
+has the core primitives: section contracts, runtime packets, typed reviews,
+issue ledger, candidate revisions, comparison, taste gate, diff audit, model
+routing, exports, done gate, optional agent adapters, and local diagnostics.
+
+The main mismatch is packaging maturity. Today the repo is template-first; the
+target product should also work as an install-anywhere CLI that can initialize
+or manage a Manuscript Lab project inside an arbitrary writing repository.
 
 ## Remaining Gaps
 
 ### Before npm Publishing
 
 - A true `init` command for installing the harness into an arbitrary folder.
+- A stable file protocol v1 and config file.
+- A gate engine that can report section/manuscript/export readiness.
+- A first-class claim/source spine for nonfiction and research workflows.
 - Public sample project or tutorial fixture.
 - Active GitHub Actions CI once a GitHub token with `workflow` scope is used.
 - Changelog/release process.

@@ -1,5 +1,9 @@
 # Changelog
 
+## Unreleased
+
+- Added product strategy documentation for the "local CI for prose" direction.
+
 ## 0.1.1
 
 - Added `npm run doctor` and `manuscript-lab doctor` for environment and release-health diagnostics.
