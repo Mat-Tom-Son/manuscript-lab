@@ -53,5 +53,8 @@ jobs:
         run: npm pack --dry-run
 ```
 
+`npm test` includes the protocol/gate/evidence unit tests, the packlist
+assertion, and the installed-tarball init/validate/evidence/gate smoke test.
+
 Changing this workflow requires a GitHub token with `workflow` scope. Normal
 code and docs pushes do not need that extra scope.

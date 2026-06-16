@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.4.0 - 2026-06-16
+
+- Added config-first `mlab init --profile whitepaper --root manuscript` for the
+  install-anywhere alpha.
+- Added a neutral whitepaper scaffold with `manuscript-lab.config.json`, section
+  contracts, taste/style docs, source and claim registers, issue ledgers, and
+  truth-state placeholders.
+- Preserved legacy template init for bare `init`, `project:init`, and
+  `story:init`.
+- Added an installed-tarball smoke test that packs the package, installs it into
+  a disposable npm project, initializes a workspace, and runs validate, claims,
+  citations, and gate commands.
+- Added a packlist assertion to keep private/generated project files out of
+  package contents.
+
 ## 0.3.0 - 2026-06-16
 
 - Added `mlab validate` / `npm run validate` for deterministic file-protocol

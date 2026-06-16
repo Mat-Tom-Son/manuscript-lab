@@ -66,6 +66,9 @@ feel locked to one agent UI?"
 - Added `examples/technical-whitepaper/` as a public tutorial fixture.
 - Added initial deterministic protocol validation, evidence-spine commands, and
   section/citation/manuscript gate commands.
+- Added config-first `mlab init --profile whitepaper --root manuscript`.
+- Added packlist assertions and an installed-tarball init/validate/evidence/gate
+  smoke test under `npm test`.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
 ## Release Decisions
@@ -75,7 +78,7 @@ feel locked to one agent UI?"
 - License: MIT.
 - First release shape: GitHub template-style public repo.
 - npm publishing: intentionally disabled for now with `private: true` until the
-  installed-package workflow can initialize or locate a full harness cleanly.
+  broader installed-package command surface is config-root aware.
 - User project files: ignored by default so the public repo contains the harness,
   not someone's manuscript.
 - Product lane: local CI for prose, not an AI book generator. See
@@ -88,23 +91,23 @@ has the core primitives: section contracts, runtime packets, typed reviews,
 issue ledger, candidate revisions, comparison, taste gate, diff audit, model
 routing, exports, done gate, optional agent adapters, and local diagnostics.
 
-The main mismatch is packaging maturity. Today the repo is template-first; the
-target product should also work as an install-anywhere CLI that can initialize
-or manage a Manuscript Lab project inside an arbitrary writing repository.
+The main mismatch is packaging maturity. The repo is template-first with an
+install-anywhere alpha; the target product should also manage a Manuscript Lab
+project inside an arbitrary writing repository across the full command surface.
 
 ## Remaining Gaps
 
 ### Before npm Publishing
 
-- Implement the install-anywhere `init` command described in
-  `docs/INSTALL_WORKFLOW.md`.
+- Make `doctor`, `status`, `compose`, `check`, `done`, `export`, and review
+  commands fully config-root aware in installed-package mode.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full
   profile/override/export model described in `docs/GATE_ENGINE.md`.
 - Broaden evidence commands from deterministic Markdown registers into richer
   claim/source records and issue integration from `docs/EVIDENCE_SPINE.md`.
 - Better distinction between optional agent integrations and portable npm usage.
-- Installed-package end-to-end test once npm publishing is enabled.
+- One-off `npx` and global-install smokes once npm publishing is enabled.
 
 ### Nice To Have
 
@@ -117,5 +120,5 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
 1. Publish the clean repo on GitHub.
 2. Keep it template-first for the first public release.
 3. Keep the tutorial fixture current as the public demo path.
-4. Only then invest in an installable npm package that can initialize arbitrary
-   external workspaces.
+4. Mature the install-anywhere alpha until the full command surface works in
+   arbitrary external workspaces.
