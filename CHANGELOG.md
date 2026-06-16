@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.6.0 - 2026-06-16
+
 - Added `exports/manifest.json` generation to `mlab export` / `npm run export`,
   including export ID, source commit when available, input hashes, output
   hashes, file sizes, formats, git dirty state, and chapter metadata.
