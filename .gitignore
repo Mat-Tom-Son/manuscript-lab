@@ -28,6 +28,7 @@ docs/PROJECT_HANDOFF.md
 docs/PROJECT_REVIEW_APPROACH.md
 draft
 exports
+reports
 sources
 style
 taste
@@ -37,3 +38,5 @@ state
 !examples/
 !examples/technical-whitepaper/
 !examples/technical-whitepaper/**
+# Demo reports are generated locally.
+examples/**/reports/

@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+- Added `mlab report` / `npm run report` for text, JSON, and HTML readiness
+  summaries that combine status, evidence, gates, review runs, revision trails,
+  model-call counts, exports, blockers, and suggested next steps.
+- Added installed-mode smoke coverage for `report --json` and
+  `report --write`, with generated reports staying under the configured
+  manuscript root.
+- Made the technical-whitepaper fixture config-first so it can be validated and
+  reported in place without changing the active template project.
+- Added `reports/` to private/generated path hygiene checks and package
+  exclusions.
+
 ## 0.5.0 - 2026-06-16
 
 - Added shared protocol path helpers for separating package assets, workspace

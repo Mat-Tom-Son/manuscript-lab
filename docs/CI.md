@@ -46,6 +46,7 @@ jobs:
           node bin/manuscript-lab.mjs claims list --json
           node bin/manuscript-lab.mjs citations check --json
           node bin/manuscript-lab.mjs gate draft/01-opening.md --json
+          node bin/manuscript-lab.mjs report --json
           node bin/manuscript-lab.mjs check --static-only
           node bin/manuscript-lab.mjs done:no-export
 
@@ -55,8 +56,9 @@ jobs:
 
 `npm test` includes the protocol/gate/evidence unit tests, the packlist
 assertion, and an installed-tarball smoke test for init, validate, evidence,
-gates, status, compose, static check, review reporting, `done:no-export`, and
-Markdown/HTML export from workspace, manuscript, and nested draft directories.
+gates, report generation, status, compose, static check, review reporting,
+`done:no-export`, and Markdown/HTML export from workspace, manuscript, and
+nested draft directories.
 
 Changing this workflow requires a GitHub token with `workflow` scope. Normal
 code and docs pushes do not need that extra scope.

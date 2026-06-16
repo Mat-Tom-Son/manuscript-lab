@@ -6,6 +6,10 @@ project: `brief.md`, `outline.md`, `style.md`, `draft/`, `sources/`, `state/`,
 issue-ledger decisions, candidate runs, revision audits, and Markdown/HTML
 exports.
 
+The fixture includes its own `manuscript-lab.config.json`, so package commands
+run from this directory inspect the fixture itself instead of the active
+template project.
+
 The included candidate and audit artifacts are manual public samples. They do
 not contain provider raw outputs, model-call logs, API keys, private manuscript
 material, or private story fingerprints.
@@ -28,8 +32,21 @@ material, or private story fingerprints.
 
 ## Try The Walkthrough
 
-Run these from the repository root in a disposable workspace, or after archiving
-the current active project. `project:init` changes the active project mount.
+Run the read-only inspection path from this fixture directory:
+
+```bash
+cd examples/technical-whitepaper
+../../bin/manuscript-lab.mjs validate
+../../bin/manuscript-lab.mjs report --write
+```
+
+The generated report lands in `reports/latest.html` and `reports/latest.json`
+and is ignored by git. It shows the fixture's current readiness blockers,
+supported claims, accepted tutorial issue, selected candidate, diff audit, and
+sample exports.
+
+To mutate a copy, create a disposable project and copy this fixture into it
+before running compose, check, review dry-runs, candidate commands, or export.
 
 ```bash
 npm run project:init -- --title "Technical Whitepaper Tutorial" --slug technical-whitepaper --sections 1 --kind document.chapter --archive-current
@@ -37,10 +54,6 @@ cp -R examples/technical-whitepaper/. projects/active/technical-whitepaper/works
 npm run compose -- draft/01-opening.md
 npm run check -- draft/01-opening.md
 npm run review:run -- --dry-run --panel prose.clean --force draft/01-opening.md
-npm run issues -- list --status all
-npm run issues -- show issue_tutorial_0001
-npm run revise:candidates -- draft/01-opening.md --issue issue_tutorial_0001 --n 2 --dry-run
-npm run diff:audit -- --before state/revision-audits/01-opening/before.md --after draft/01-opening.md --issue issue_tutorial_0001 --static-only
 npm run export -- --formats md,html --slug technical-whitepaper --author ""
 ```
 

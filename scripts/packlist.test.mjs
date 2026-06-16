@@ -40,6 +40,7 @@ const forbidden = [
   { label: "sources", test: exactOrUnder("sources") },
   { label: "taste", test: exactOrUnder("taste") },
   { label: "exports", test: exactOrUnder("exports") },
+  { label: "reports", test: hasPathSegment("reports") },
   { label: "archive", test: exactOrUnder("archive") },
   { label: "projects/active", test: exactOrUnder("projects/active") },
   { label: "projects/inactive", test: exactOrUnder("projects/inactive") },
@@ -74,4 +75,8 @@ function exact(target) {
 
 function exactOrUnder(target) {
   return (file) => file === target || file.startsWith(`${target}/`);
+}
+
+function hasPathSegment(target) {
+  return (file) => file.split("/").includes(target);
 }
