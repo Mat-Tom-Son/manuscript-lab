@@ -48,9 +48,9 @@ Requirements:
 - Full EPUB/PDF export additionally needs `zip`, `python3`, and the Python
   `reportlab` package. Markdown/HTML export works without those.
 
-Clone the repo, then initialize your own project workspace. The current scaffold
-is fiction-first by default; for essays, research, whitepapers, or technical
-docs, pass a neutral section kind such as `document.section`.
+Clone the repo, then initialize your own project workspace. The template
+workflow is still the broadest command surface and works well when you want the
+harness and writing project in one repository.
 
 ```bash
 npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
@@ -68,9 +68,6 @@ node bin/manuscript-lab.mjs validate
 node bin/manuscript-lab.mjs status
 ```
 
-Manuscript Lab is template-first today. The wrapper is for local clones; the npm
-package is not published or supported as a global install yet.
-
 The init command creates a mounted active workspace under:
 
 ```text
@@ -79,6 +76,26 @@ projects/active/<slug>/workspace/
 
 The repository root then points to that workspace with symlinks such as
 `brief.md`, `draft/`, `state/`, `taste/`, and `exports/`.
+
+There is also an install-anywhere alpha for external writing repos. It is tested
+from a packed local package, but npm registry publishing remains disabled until
+more legacy commands are fully config-root aware.
+
+```bash
+mkdir my-whitepaper
+cd my-whitepaper
+npm init -y
+npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+npx mlab validate
+npx mlab claims list --json
+npx mlab citations check --json
+npx mlab gate draft/01-opening.md --json
+```
+
+Install-anywhere init writes `manuscript-lab.config.json` plus user-owned files
+under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
+`.pi/`, or `skills/` into the caller workspace.
 
 ## Daily Loop
 

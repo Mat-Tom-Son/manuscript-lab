@@ -57,7 +57,14 @@ if (command === "help" || command === "--help" || command === "-h") {
   process.exit(0);
 }
 
-const target = commands[command] || aliases[command];
+if (initHelpRequest(command, rest)) {
+  printInitHelp();
+  process.exit(0);
+}
+
+const target = installAnywhereInitRequest(command, rest)
+  ? ["scripts/install-init.mjs"]
+  : commands[command] || aliases[command];
 if (!target) {
   console.error(`Unknown command: ${command}\n`);
   printHelp();
@@ -72,6 +79,14 @@ const result = spawnSync(process.execPath, [path.join(packageRoot, script), ...s
 
 process.exit(result.status ?? 1);
 
+function installAnywhereInitRequest(commandName, commandArgs) {
+  return commandName === "init" && commandArgs.some((arg) => arg === "--profile" || arg === "--root" || arg.startsWith("--profile=") || arg.startsWith("--root="));
+}
+
+function initHelpRequest(commandName, commandArgs) {
+  return commandName === "init" && commandArgs.some((arg) => arg === "--help" || arg === "-h");
+}
+
 function printHelp() {
   console.log(`manuscript-lab - file-based writing harness
 
@@ -80,7 +95,8 @@ Usage:
   mlab <command> [args]
 
 Common commands:
-  init --title "My Project" --slug my-project --sections 4 --kind document.section
+  init --profile whitepaper --root manuscript --title "My Whitepaper"
+  project:init --title "My Project" --slug my-project --sections 4 --kind document.section
   validate
   status
   compose -- draft/<section>.md
@@ -106,6 +122,22 @@ Project commands:
   project:sync
   project:verify
 
-The npm scripts remain the canonical interface. This wrapper is a convenience
-for local clones and future packaging work.`);
+The npm scripts remain the broadest template interface. This wrapper also
+supports the install-anywhere alpha for config-first workspaces.`);
+}
+
+function printInitHelp() {
+  console.log(`manuscript-lab init
+
+Install-anywhere alpha:
+  mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+
+Template clone compatibility:
+  mlab init --title "My Project" --slug my-project --sections 4 --kind document.section
+  mlab project:init --title "My Project" --slug my-project --sections 4 --kind document.section
+  mlab story:init --title "My Project" --slug my-project --sections 4 --kind document.section
+
+Notes:
+  Passing --profile or --root selects config-first install-anywhere init.
+  Bare init, project:init, and story:init preserve the template workspace flow.`);
 }

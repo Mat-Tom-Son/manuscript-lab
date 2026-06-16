@@ -1,19 +1,23 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." It does not implement the workflow. It defines the supported target
-so the package can stay template-first until the installed-package path is
-tested enough to publish.
+workflow." v0.4 adds the first installed-package alpha: config-first `mlab init`
+plus deterministic validation, evidence, citation, and gate smoke coverage from
+a packed tarball. The broader template command surface still remains the
+supported path for compose/check/status/done/export until those commands are
+fully config-root aware.
 
 ## Decision
 
-Manuscript Lab remains template-first today.
+Manuscript Lab is template-first with an install-anywhere alpha.
 
-- The repository is the product surface for `0.1.x`.
+- The repository remains the broadest product surface for current releases.
 - `package.json` stays `private: true`.
-- The local `manuscript-lab` / `mlab` wrapper is convenience for clones, not a
-  supported global or `npx` install flow.
+- The local `manuscript-lab` / `mlab` wrapper supports template clones and the
+  config-first init path.
 - Existing `npm run ...` commands stay canonical for template users.
+- npm registry publishing remains disabled until the remaining command surface
+  can operate cleanly from an external workspace.
 
 The install-anywhere target is a package-assets CLI, not a postinstall copy of
 the whole harness.
@@ -33,7 +37,8 @@ Unsupported choices:
 - No postinstall script that mutates the current directory.
 - No global package that assumes the global install directory is the project
   root.
-- No npm publish until an installed-tarball end-to-end test passes in CI.
+- No npm publish until root-aware command coverage extends beyond the alpha
+  deterministic smoke path.
 
 ## Current Template-First Workflow
 
@@ -60,17 +65,18 @@ root from a caller workspace root.
 
 ## Install-Anywhere Target
 
-The target adoption path is:
+The alpha adoption path from a packed local package is:
 
 ```bash
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D manuscript-lab
-npx mlab init --profile whitepaper --root manuscript
-npx mlab doctor
-npx mlab status
-npx mlab check --static-only
+npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+npx mlab validate
+npx mlab claims list --json
+npx mlab citations check --json
+npx mlab gate draft/01-opening.md --json
 ```
 
 After init, the caller repo owns:
@@ -116,25 +122,30 @@ state, sources, exports, and project config under the workspace/manuscript root.
 
 ## `npx` And `mlab` UX
 
-The public CLI should prefer short, coherent commands:
+The current alpha supports:
 
 ```bash
-npx mlab init --profile whitepaper --root manuscript
-npx mlab doctor
-npx mlab status
-npx mlab compose draft/01-intro.md
-npx mlab check draft/01-intro.md
-npx mlab review draft/01-intro.md --panel prose.clean
-npx mlab issues list --status open
-npx mlab revise issue-017 --candidates 3
-npx mlab compare issue-017
-npx mlab merge issue-017 --winner b
-npx mlab gate manuscript --static-only
-npx mlab export --format html
+npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+npx mlab validate
+npx mlab claims list --json
+npx mlab citations check --json
+npx mlab gate draft/01-opening.md --json
 ```
 
 `manuscript-lab` and `mlab` remain equivalent bin names. `mlab` is the primary
 docs name once npm support is real.
+
+The target CLI should later grow to the full command family:
+
+```bash
+npx mlab doctor
+npx mlab status
+npx mlab compose draft/01-intro.md
+npx mlab check draft/01-intro.md
+npx mlab review:run -- --panel prose.clean draft/01-intro.md
+npx mlab issues list --status open
+npx mlab export --format html
+```
 
 Behavior by install mode:
 
@@ -178,9 +189,9 @@ The package must exclude:
   tarballs
 - credentials, provider keys, and local machine paths
 
-The current `npm pack --dry-run` posture already exercises the package file
-list. Before publishing, this needs a stricter packlist assertion that fails if
-any ignored project path enters the tarball.
+The current `npm test` posture includes a stricter packlist assertion and an
+installed-tarball smoke test. The packlist assertion fails if ignored
+project/private/generated paths enter the tarball.
 
 ## Root Discovery
 
@@ -304,9 +315,11 @@ It should prefer refusal with a clear plan over surprising rewrites.
 
 ## Tests
 
-Do not set `private: false` until these tests exist and pass in CI.
+Do not set `private: false` until the remaining command-surface tests exist and
+pass in CI.
 
-Installed tarball e2e:
+Installed tarball e2e now lives in `scripts/install-init.test.mjs` and runs
+under `npm test`:
 
 ```bash
 npm pack
@@ -314,11 +327,11 @@ tmpdir=$(mktemp -d)
 cd "$tmpdir"
 npm init -y
 npm install /path/to/manuscript-lab-*.tgz
-npx mlab init --profile whitepaper --root manuscript
-npx mlab doctor
-npx mlab status
-npx mlab check --static-only
-npx mlab done:no-export
+npx mlab init --profile whitepaper --root manuscript --title "Packed Project"
+npx mlab validate
+npx mlab claims list --json
+npx mlab citations check --json
+npx mlab gate draft/01-opening.md --json
 ```
 
 The test must assert:
@@ -334,17 +347,19 @@ The test must assert:
 - no active project, source text, generated state, or secret-bearing file enters
   the tarball
 
-Additional required tests:
+Additional required tests before npm publishing:
 
 - one-off `npx` smoke for `help`, `version`, `init`, and `doctor`
 - global-install smoke using a temporary npm prefix
+- config-root-aware smoke for `doctor`, `status`, `compose`, `check`,
+  `done:no-export`, and `export`
 - config schema validation and unknown-key behavior
 - legacy template-mode smoke so template-first usage does not regress
 - migration dry-run fixture and apply fixture
 - Windows path fixture for root discovery and configured relative paths
-- CI fixture matching the public docs path:
+- CI fixture matching the future public registry path:
   `npm install -D manuscript-lab`, `npx mlab validate`, `npx mlab check`,
-  `npx mlab gate manuscript --static-only`
+  `npx mlab gate draft/01-opening.md --json`
 
 ## Release Gates
 
@@ -356,7 +371,8 @@ Before the package can be published:
 - `npm run template:audit -- --strict` passes
 - `npm run context:audit -- --strict` passes
 - `npm run doctor -- --no-network` passes without packaging failures
-- installed-tarball e2e passes in CI
+- installed-tarball init/validate/evidence/gate e2e passes in CI
+- root-aware installed-package smoke covers the broader command surface
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow
@@ -368,21 +384,24 @@ Recommended release line:
 
 - `0.1.x`: template-first public repo
 - `0.2.x`: protocol/config/root-discovery design and tests
-- `0.3.x`: installable package alpha behind documented caveats
+- `0.3.x`: deterministic protocol, evidence, and gate commands
+- `0.4.x`: install-anywhere init alpha behind documented caveats
 - `1.0.0`: stable file protocol, installed CLI, gate engine, evidence checks,
   export manifests, and CI-ready `npx mlab`
 
 ## Close Criteria For Issue #2
 
-This design closes the decision portion of issue #2:
+This design plus the v0.4 alpha closes the first implementation slice of issue
+#2:
 
 - npm install should operate from package assets, with `init` writing only
   user-owned project scaffolding/config into the caller workspace
 - copying the whole harness into the current directory is not the target
 - global install remains a convenience layer, not the reproducible project
   workflow
-- npm publishing remains unsupported until installed-tarball e2e coverage exists
+- npm publishing remains unsupported until installed-package coverage includes
+  the broader command surface
 
-The implementation follow-up should add the root-discovery/config layer, the
-installed-tarball tests, and the README/package/CHANGELOG updates in the same
-release path that flips npm publishing on.
+The next implementation follow-up should make status, compose, check, doctor,
+done, export, and review paths respect the same root-discovery/config layer
+already used by validate, evidence, citations, and gate.

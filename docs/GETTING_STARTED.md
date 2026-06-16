@@ -3,7 +3,10 @@
 This walkthrough creates a blank project and runs the first checks without any
 model API key.
 
-## 1. Initialize A Project
+## 1. Choose A Project Shape
+
+The template workflow is the broadest path today. Use it when you are working
+inside a Manuscript Lab clone and want all commands available:
 
 ```bash
 npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
@@ -31,6 +34,24 @@ exports/
 The default scaffold is still fiction-oriented when `--kind` is omitted. Use
 `--kind document.section` for essays, technical docs, research notes,
 whitepapers, or other non-fiction projects.
+
+The install-anywhere alpha is for a separate writing repo with Manuscript Lab as
+a dev dependency. From a packed local package or future registry package:
+
+```bash
+npm init -y
+npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+npx mlab validate
+npx mlab claims list --json
+npx mlab citations check --json
+npx mlab gate draft/01-opening.md --json
+```
+
+That creates `manuscript-lab.config.json` plus a user-owned scaffold under
+`manuscript/`. In the alpha, `validate`, `claims`, `citations`, and `gate` are
+the config-first smoke path; compose/check/status/done remain template-first
+until the next root-awareness pass.
 
 ## 2. Fill In The Core Files
 
