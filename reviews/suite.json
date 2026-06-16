@@ -1,0 +1,266 @@
+{
+  "version": 1,
+  "output_schema": "review_issues_v1",
+  "default_models": [
+    "openai/gpt-4.1-mini",
+    "google/gemini-2.5-flash-lite",
+    "anthropic/claude-haiku-4.5"
+  ],
+  "context_packs": {
+    "blind.section_only": {
+      "description": "Simulates a reader with no outline, brief, continuity, hidden plan, or later context.",
+      "include": [
+        "draft/{section}"
+      ],
+      "exclude": [
+        "PROJECT.md",
+        "brief.md",
+        "outline.md",
+        "style.md",
+        "taste/",
+        "state/continuity.md",
+        "state/claims.md",
+        "state/open-questions.md"
+      ],
+      "strip_contract": true
+    },
+    "informed.editor": {
+      "description": "Gives the reviewer the story brief, outline, style guide, continuity state, and target section.",
+      "include": [
+        "PROJECT.md",
+        "brief.md",
+        "outline.md",
+        "style.md",
+        "state/continuity.md",
+        "state/open-questions.md",
+        "draft/{section}"
+      ]
+    },
+    "continuity.pack": {
+      "description": "Gives the reviewer continuity state, outline, previous draft sections, and target section.",
+      "include": [
+        "PROJECT.md",
+        "state/continuity.md",
+        "outline.md",
+        "draft/{previous_sections}",
+        "draft/{section}"
+      ]
+    },
+    "style.section_only": {
+      "description": "Gives the reviewer the style guide and target section only.",
+      "include": [
+        "PROJECT.md",
+        "style.md",
+        "draft/{section}"
+      ]
+    },
+    "style.voice_fingerprint_plus_section": {
+      "description": "Gives the reviewer voice memory, protected lines, static saturation signals, register map, and the target section.",
+      "include": [
+        "PROJECT.md",
+        "style.md",
+        "style/voice-fingerprint.json",
+        "style/pattern-watchlist.md",
+        "style/protected-lines.md",
+        "state/style/{section_id}-style-signals.json",
+        "state/style/{section_id}-register-map.json",
+        "draft/{section}"
+      ]
+    },
+    "taste.editor": {
+      "description": "Gives the reviewer project taste doctrine, voice/taste memory, style guide, section criteria, and the target section.",
+      "include": [
+        "PROJECT.md",
+        "style.md",
+        "taste/TASTE.md",
+        "taste/VOICE.md",
+        "taste/TARGET_READER.md",
+        "taste/GENRE_PROMISE.md",
+        "taste/FAILURE_MODES.md",
+        "taste/MOTIFS.md",
+        "taste/EXEMPLARS.md",
+        "state/runtime/{section_id}/criteria.json",
+        "state/runtime/{section_id}/rule-stack.yaml",
+        "draft/{section}"
+      ]
+    }
+  },
+  "passes": [
+    {
+      "id": "narrative.taste",
+      "label": "Narrative Taste Sensor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "fiction.section",
+        "technical.narrative",
+        "essay"
+      ],
+      "context_pack": "taste.editor",
+      "models": [
+        "z-ai/glm-5.1"
+      ],
+      "prompt": "reviews/prompts/narrative-taste.md",
+      "blocking": false,
+      "min_confidence": 0.5,
+      "max_issues": 8
+    },
+    {
+      "id": "cold.reader",
+      "label": "Cold Reader",
+      "stage": [
+        "draft",
+        "revision"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "essay.introduction",
+        "technical.guide.introduction"
+      ],
+      "context_pack": "blind.section_only",
+      "models": [
+        "google/gemini-2.5-flash-lite"
+      ],
+      "prompt": "reviews/prompts/cold-reader.md",
+      "blocking": false,
+      "min_confidence": 0.45,
+      "max_issues": 5
+    },
+    {
+      "id": "contract.editor",
+      "label": "Contract Editor",
+      "stage": [
+        "draft",
+        "revision"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "essay",
+        "research.paper.section",
+        "technical.guide.section"
+      ],
+      "context_pack": "informed.editor",
+      "models": [
+        "openai/gpt-4.1-mini"
+      ],
+      "prompt": "reviews/prompts/contract-editor.md",
+      "blocking": false,
+      "min_confidence": 0.5,
+      "max_issues": 10
+    },
+    {
+      "id": "continuity",
+      "label": "Continuity Editor",
+      "stage": [
+        "draft",
+        "revision"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "technical.guide.section",
+        "research.paper.section"
+      ],
+      "context_pack": "continuity.pack",
+      "models": [
+        "openai/gpt-4.1-mini"
+      ],
+      "prompt": "reviews/prompts/continuity.md",
+      "blocking": true,
+      "min_confidence": 0.55,
+      "max_issues": 12
+    },
+    {
+      "id": "line.editor",
+      "label": "Line Editor",
+      "stage": [
+        "polish",
+        "revision"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "essay",
+        "research.paper.section",
+        "technical.guide.section"
+      ],
+      "context_pack": "style.section_only",
+      "models": [
+        "anthropic/claude-haiku-4.5"
+      ],
+      "prompt": "reviews/prompts/line-editor.md",
+      "blocking": false,
+      "min_confidence": 0.45,
+      "max_issues": 5
+    },
+    {
+      "id": "character.presence",
+      "label": "Character Presence Editor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "essay",
+        "technical.narrative"
+      ],
+      "context_pack": "informed.editor",
+      "models": [
+        "qwen/qwen3.7-plus"
+      ],
+      "prompt": "reviews/prompts/character-presence.md",
+      "blocking": false,
+      "min_confidence": 0.5,
+      "max_issues": 5
+    },
+    {
+      "id": "style.pattern_saturation",
+      "label": "Pattern Saturation Editor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "essay",
+        "technical.narrative",
+        "research.paper.section",
+        "technical.guide.section"
+      ],
+      "context_pack": "style.voice_fingerprint_plus_section",
+      "models": [
+        "qwen/qwen3.7-plus"
+      ],
+      "prompt": "reviews/prompts/pattern-saturation.md",
+      "output_schema": "pattern_saturation_v1",
+      "blocking": false,
+      "min_confidence": 0.5,
+      "max_issues": 12
+    },
+    {
+      "id": "hard.sf.science",
+      "label": "Hard SF Science Editor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter"
+      ],
+      "context_pack": "informed.editor",
+      "models": [
+        "google/gemini-3.5-flash"
+      ],
+      "prompt": "reviews/prompts/hard-sf-science.md",
+      "blocking": false,
+      "min_confidence": 0.55,
+      "max_issues": 6
+    }
+  ]
+}

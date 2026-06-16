@@ -1,0 +1,120 @@
+{
+  "version": 1,
+  "model_checks": [
+    {
+      "id": "claims.supported",
+      "purpose": "Detect non-obvious factual claims in a draft section that are not supported by the source index or explicitly marked.",
+      "severity": "blocking",
+      "model": "google/gemini-3.1-flash-lite",
+      "temperature": 0,
+      "max_tokens": 1200,
+      "inputs": [
+        "PROJECT.md",
+        "sources/index.md",
+        "state/claims.md",
+        "{{section}}"
+      ],
+      "prompt": "checks/prompts/claims-supported.md",
+      "schema": {
+        "pass": "boolean",
+        "unsupported_claims": "array"
+      },
+      "assertion": {
+        "type": "empty_array",
+        "path": "unsupported_claims"
+      }
+    },
+    {
+      "id": "continuity.clean",
+      "purpose": "Detect contradictions between the current story section and established canon.",
+      "severity": "blocking",
+      "model": "google/gemini-3.1-flash-lite",
+      "temperature": 0,
+      "max_tokens": 1400,
+      "inputs": [
+        "PROJECT.md",
+        "state/continuity.md",
+        "{{section}}"
+      ],
+      "prompt": "checks/prompts/continuity-clean.md",
+      "schema": {
+        "pass": "boolean",
+        "issues": "array"
+      },
+      "assertion": {
+        "type": "empty_array",
+        "path": "issues"
+      }
+    },
+    {
+      "id": "style.violations",
+      "purpose": "Detect concrete violations of the project style guide in a draft section.",
+      "severity": "warning",
+      "model": "google/gemini-3.1-flash-lite",
+      "temperature": 0,
+      "max_tokens": 1800,
+      "inputs": [
+        "PROJECT.md",
+        "style.md",
+        "{{section}}"
+      ],
+      "prompt": "checks/prompts/style-violations.md",
+      "schema": {
+        "pass": "boolean",
+        "issues": "array"
+      },
+      "assertion": {
+        "type": "empty_array",
+        "path": "issues"
+      }
+    },
+    {
+      "id": "science.plausibility",
+      "purpose": "Detect concrete science or instrumentation details that would likely break plausibility for a science-aware reader.",
+      "severity": "warning",
+      "model": "google/gemini-3.1-flash-lite",
+      "temperature": 0,
+      "max_tokens": 1600,
+      "inputs": [
+        "PROJECT.md",
+        "sources/index.md",
+        "state/claims.md",
+        "state/continuity.md",
+        "{{section}}"
+      ],
+      "prompt": "checks/prompts/science-plausibility.md",
+      "schema": {
+        "pass": "boolean",
+        "issues": "array"
+      },
+      "assertion": {
+        "type": "empty_array",
+        "path": "issues"
+      }
+    },
+    {
+      "id": "scene.turn",
+      "purpose": "Detect whether a story section lacks a meaningful scene-level turn or fails its outline job.",
+      "severity": "advisory",
+      "model": "google/gemini-3.1-flash-lite",
+      "temperature": 0,
+      "max_tokens": 1200,
+      "inputs": [
+        "PROJECT.md",
+        "brief.md",
+        "outline.md",
+        "style.md",
+        "{{section}}"
+      ],
+      "prompt": "checks/prompts/scene-turn.md",
+      "schema": {
+        "pass": "boolean",
+        "issues": "array"
+      },
+      "assertion": {
+        "type": "empty_array",
+        "path": "issues"
+      }
+    }
+  ]
+}

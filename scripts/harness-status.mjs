@@ -1,0 +1,571 @@
+#!/usr/bin/env node
+
+import fs from "node:fs";
+import path from "node:path";
+import crypto from "node:crypto";
+
+const root = process.cwd();
+const options = parseArgs(process.argv.slice(2));
+
+if (options.help) {
+  printHelp();
+  process.exit(0);
+}
+
+const workspaceState = readWorkspaceState();
+const projectWorkspace = readProjectWorkspace();
+const unloaded = workspaceState.status === "unloaded" && !projectWorkspace.active;
+const statusRows = !unloaded && fs.existsSync(abs("state/status.md")) ? parseMarkdownTable(read(abs("state/status.md"))) : [];
+const drafts = unloaded ? [] : statusRows.map(sectionStatus).filter(Boolean);
+const issueLedger = loadJson(abs("state/issues/issue-ledger.json"), { issues: [] });
+const issueStats = summarizeIssues(issueLedger.issues ?? []);
+const exports = unloaded ? [] : listExports();
+const candidateRuns = listCandidateRuns();
+const nextDraft = drafts.find((draft) => draft.status === "todo" && draft.file.startsWith("draft/"));
+const activeReview = drafts.find((draft) => ["review", "revise"].includes(draft.status) && draft.words > 50);
+const activeDraft = drafts.find((draft) => draft.status === "draft" && draft.words > 50);
+
+const summary = {
+  title: readTitle(),
+  generated_at: new Date().toISOString(),
+  workspace_state: workspaceState,
+  drafts,
+  runtime_packets: summarizeRuntimePackets(drafts),
+  issues: issueStats,
+  candidate_runs: candidateRuns,
+  project_workspace: projectWorkspace,
+  exports,
+  suggested_next: suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }),
+};
+
+if (options.json) {
+  console.log(JSON.stringify(summary, null, 2));
+} else {
+  printText(summary);
+}
+
+function sectionStatus(row) {
+  const file = stripCode(row.file ?? "");
+  const status = String(row.status ?? "").toLowerCase();
+  if (!file) return null;
+
+  const full = abs(file);
+  const exists = fs.existsSync(full);
+  const text = exists ? read(full) : "";
+  const contract = text ? parseSectionContract(text) : new Map();
+  const words = text ? wordCount(stripContract(text)) : 0;
+  const targetWords = Number(contract.get("target_words") ?? 0) || null;
+
+  return {
+    section: row.section ?? "",
+    file,
+    status,
+    notes: row.notes ?? "",
+    exists,
+    words,
+    target_words: targetWords,
+    checks: parseContractList(text, "checks"),
+    reviews: parseContractList(text, "reviews"),
+    runtime: runtimePacketStatus(file, contract),
+  };
+}
+
+function summarizeRuntimePackets(drafts) {
+  return drafts
+    .filter((draft) => draft.file.startsWith("draft/"))
+    .map((draft) => ({
+      section: draft.section,
+      file: draft.file,
+      ...draft.runtime,
+    }));
+}
+
+function summarizeIssues(issues) {
+  const byStatus = new Map();
+  const byTarget = new Map();
+  const open = [];
+  const deferred = [];
+
+  for (const issue of issues) {
+    const status = issue.status ?? "unknown";
+    byStatus.set(status, (byStatus.get(status) ?? 0) + 1);
+    const target = issue.target?.file ?? "(no target)";
+    if (status === "open") {
+      open.push(issue);
+      byTarget.set(target, (byTarget.get(target) ?? 0) + 1);
+    }
+    if (issue.decision?.decision === "defer" || status === "deferred") deferred.push(issue);
+  }
+
+  return {
+    total: issues.length,
+    open: open.length,
+    deferred: deferred.length,
+    by_status: Object.fromEntries([...byStatus.entries()].sort()),
+    open_by_target: Object.fromEntries([...byTarget.entries()].sort()),
+  };
+}
+
+function listExports() {
+  const dir = abs("exports");
+  if (!fs.existsSync(dir)) return [];
+
+  return fs
+    .readdirSync(dir)
+    .filter((file) => /\.(md|html|epub|pdf)$/i.test(file))
+    .map((file) => {
+      const full = path.join(dir, file);
+      const stat = fs.statSync(full);
+      return {
+        file: displayPath(full),
+        size: stat.size,
+        modified_at: stat.mtime.toISOString(),
+      };
+    })
+    .sort((a, b) => a.file.localeCompare(b.file));
+}
+
+function listCandidateRuns() {
+  const rootDir = abs("state/candidates");
+  if (!fs.existsSync(rootDir)) return [];
+
+  const runs = [];
+  for (const sectionEntry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    if (!sectionEntry.isDirectory()) continue;
+    const sectionDir = path.join(rootDir, sectionEntry.name);
+    for (const runEntry of fs.readdirSync(sectionDir, { withFileTypes: true })) {
+      if (!runEntry.isDirectory()) continue;
+      const runDir = path.join(sectionDir, runEntry.name);
+      const manifestFile = path.join(runDir, "manifest.json");
+      if (!fs.existsSync(manifestFile)) continue;
+      const manifest = loadJson(manifestFile, null);
+      if (!manifest) continue;
+      const decision = loadJson(path.join(runDir, "decision.json"), null);
+      const tasteGate = loadJson(path.join(runDir, "taste-arbiter.json"), null);
+      const mergeResult = loadJson(path.join(runDir, "merge-result.json"), null);
+      runs.push({
+        section_id: manifest.section_id ?? sectionEntry.name,
+        run_id: manifest.run_id ?? runEntry.name,
+        status: manifest.status ?? "unknown",
+        target: manifest.target ?? "",
+        path: displayPath(runDir),
+        decision: decision?.decision ?? "",
+        winner: decision?.winner ?? "",
+        taste_disposition: tasteGate?.gate?.disposition ?? "",
+        taste_can_apply: tasteGate ? Boolean(tasteGate?.gate?.can_apply) : null,
+        applied: Boolean(mergeResult?.applied),
+        modified_at: fs.statSync(runDir).mtime.toISOString(),
+      });
+    }
+  }
+
+  return runs.sort((a, b) => b.modified_at.localeCompare(a.modified_at)).slice(0, 5);
+}
+
+function readProjectWorkspace() {
+  const registryFile = abs("projects/registry.json");
+  if (!fs.existsSync(registryFile)) {
+    return {
+      configured: false,
+      active: null,
+      project_count: 0,
+    };
+  }
+
+  const registry = loadJson(registryFile, { projects: {} });
+  const active = registry.active ?? null;
+  const project = active?.slug ? registry.projects?.[active.slug] ?? null : null;
+  const workspacePath = active?.workspace_path || project?.workspace_path || "";
+  return {
+    configured: true,
+    active,
+    project_count: Object.keys(registry.projects ?? {}).length,
+    active_status: project?.status ?? "",
+    workspace_path: workspacePath,
+    mounted: workspacePath ? isRootMountedTo(abs(workspacePath)) : false,
+    updated_at: registry.updated_at ?? "",
+  };
+}
+
+function readWorkspaceState() {
+  const file = abs("state/workspace.json");
+  if (!fs.existsSync(file)) {
+    return {
+      status: "active",
+      active: true,
+    };
+  }
+  return loadJson(file, { status: "active", active: true });
+}
+
+function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
+  if (unloaded) {
+    return [
+      "No active story is loaded.",
+      "Start a new story: npm run story:init -- --title \"New Story\" --slug new-story --sections 4",
+      "Restore an archived story: npm run story:restore -- --from archive/<story-archive>",
+    ];
+  }
+
+  if (issueStats.open > 0) {
+    const [target] = Object.keys(issueStats.open_by_target);
+    return [
+      "Triage open issues before revising.",
+      target ? `npm run issues -- list --status open --target ${target}` : "npm run issues -- list --status open",
+      target ? `npm run plan:revision -- ${target}` : "npm run issues -- stats",
+    ];
+  }
+
+  if (activeReview?.file && runtimeNeedsCompose(activeReview)) {
+    return [
+      `Refresh the runtime packet for the section currently in ${activeReview.status}: ${activeReview.file}`,
+      `npm run compose -- ${activeReview.file}`,
+      `npm run check -- ${activeReview.file}`,
+    ];
+  }
+
+  if (nextDraft?.file && runtimeNeedsCompose(nextDraft)) {
+    return [
+      `Compile the runtime packet for the next planned section: ${nextDraft.file}`,
+      `npm run compose -- ${nextDraft.file}`,
+      `/doc-write ${nextDraft.file}`,
+    ];
+  }
+
+  if (activeDraft?.file && runtimeNeedsCompose(activeDraft)) {
+    return [
+      `Refresh the runtime packet for the active section: ${activeDraft.file}`,
+      `npm run compose -- ${activeDraft.file}`,
+      `npm run check -- ${activeDraft.file}`,
+    ];
+  }
+
+  if (activeReview?.file) {
+    return [
+      `Finish the section currently in ${activeReview.status}: ${activeReview.file}`,
+      `npm run review:run -- --dry-run --panel prose.clean ${activeReview.file}`,
+      `npm run check -- ${activeReview.file}`,
+    ];
+  }
+
+  if (nextDraft?.file) {
+    return [
+      `Draft the next planned section: ${nextDraft.file}`,
+      `/doc-write ${nextDraft.file}`,
+      `npm run check -- ${nextDraft.file}`,
+    ];
+  }
+
+  if (activeDraft?.file) {
+    return [
+      `Review or continue the active section: ${activeDraft.file}`,
+      `npm run review:run -- --dry-run --panel prose.clean ${activeDraft.file}`,
+      `npm run check -- ${activeDraft.file}`,
+    ];
+  }
+
+  return ["Run final checks and export.", "npm run check -- --static-only", "npm run export"];
+}
+
+function printText(data) {
+  console.log(`${data.title} Harness Status`);
+  console.log("");
+
+  console.log("Drafts:");
+  if (data.workspace_state?.status === "unloaded") {
+    console.log("- none; workspace is unloaded");
+  } else for (const draft of data.drafts) {
+    const target = draft.target_words ? `/${draft.target_words}` : "";
+    const marker = draft.exists ? "" : " missing";
+    console.log(`- ${draft.section}: ${draft.status}, ${draft.words}${target} words -> ${draft.file}${marker}`);
+  }
+  console.log("");
+
+  console.log("Runtime Packets:");
+  if (data.runtime_packets.length) {
+    for (const packet of data.runtime_packets) {
+      const stale = packet.stale_inputs?.length ? `, ${packet.stale_inputs.length} stale input(s)` : "";
+      const visible = Number.isFinite(packet.visible_files) ? `, ${packet.visible_files} visible file(s)` : "";
+      console.log(`- ${packet.section_id}: ${packet.status}${visible}${stale} -> ${packet.path}`);
+    }
+  } else {
+    console.log("- none yet; run npm run compose -- draft/<section>.md");
+  }
+  console.log("");
+
+  console.log("Issues:");
+  console.log(`- total: ${data.issues.total}`);
+  console.log(`- open: ${data.issues.open}`);
+  console.log(`- deferred: ${data.issues.deferred}`);
+  if (Object.keys(data.issues.open_by_target).length) {
+    for (const [target, count] of Object.entries(data.issues.open_by_target)) {
+      console.log(`- ${target}: ${count} open`);
+    }
+  }
+  console.log("");
+
+  console.log("Candidate Runs:");
+  if (data.candidate_runs.length) {
+    for (const run of data.candidate_runs) {
+      const decision = run.decision ? `, ${run.decision}${run.winner ? ` -> ${run.winner}` : ""}` : "";
+      const taste = run.taste_disposition ? `, taste ${run.taste_disposition}${run.taste_can_apply ? "" : " (stop)"}` : "";
+      const applied = run.applied ? ", applied" : "";
+      console.log(`- ${run.section_id}: ${run.status}${decision}${taste}${applied} -> ${run.path}`);
+    }
+  } else {
+    console.log("- none yet; run npm run revise:candidates -- draft/<section>.md --issue <issue-id>");
+  }
+  console.log("");
+
+  console.log("Project Workspace:");
+  if (data.project_workspace?.configured && data.project_workspace.active) {
+    const active = data.project_workspace.active;
+    console.log(`- active: ${active.slug} -> ${active.path}`);
+    if (data.project_workspace.workspace_path) console.log(`- workspace: ${data.project_workspace.workspace_path}`);
+    console.log(`- mounted: ${data.project_workspace.mounted ? "yes" : "no"}`);
+    console.log(`- logs: ${active.logs_path}`);
+    console.log(`- projects tracked: ${data.project_workspace.project_count}`);
+  } else {
+    if (data.workspace_state?.status === "unloaded") {
+      const archived = data.workspace_state?.archived_story?.archive_path;
+      console.log("- active: none (workspace unloaded)");
+      if (archived) console.log(`- last archived story: ${archived}`);
+      console.log(`- projects tracked: ${data.project_workspace?.project_count ?? 0}`);
+    } else {
+      console.log("- not synced yet; run npm run project:sync");
+    }
+  }
+  console.log("");
+
+  console.log("Exports:");
+  if (data.exports.length) {
+    for (const item of data.exports) {
+      console.log(`- ${item.file} (${formatBytes(item.size)})`);
+    }
+  } else {
+    console.log("- none yet; run npm run export");
+  }
+  console.log("");
+
+  console.log("Suggested Next:");
+  for (const step of data.suggested_next) console.log(`- ${step}`);
+}
+
+function parseMarkdownTable(text) {
+  const lines = text.split("\n").filter((line) => line.trim().startsWith("|"));
+  if (lines.length < 2) return [];
+
+  const headers = splitTableRow(lines[0]).map((header) => normalizeHeader(header));
+  return lines
+    .slice(2)
+    .map(splitTableRow)
+    .filter((cells) => cells.length)
+    .map((cells) => Object.fromEntries(headers.map((header, index) => [header, cells[index] ?? ""])));
+}
+
+function splitTableRow(line) {
+  return line
+    .trim()
+    .replace(/^\|/, "")
+    .replace(/\|$/, "")
+    .split("|")
+    .map((cell) => cell.trim());
+}
+
+function normalizeHeader(value) {
+  return value.toLowerCase().replace(/[^a-z0-9]+/g, "_").replace(/^_+|_+$/g, "");
+}
+
+function parseSectionContract(text) {
+  const match = text.match(/^\s*<!--([\s\S]*?)-->/);
+  if (!match) return new Map();
+
+  const fields = new Map();
+  for (const line of match[1].split("\n")) {
+    const field = line.match(/^\s*([A-Za-z_][A-Za-z0-9_-]*)\s*:\s*(.*?)\s*$/);
+    if (field) fields.set(field[1], field[2]);
+  }
+  return fields;
+}
+
+function parseContractList(text, field) {
+  const contract = parseSectionContract(text);
+  const value = contract.get(field) ?? "";
+  return value
+    .split(",")
+    .map((item) => item.trim())
+    .filter(Boolean);
+}
+
+function runtimePacketStatus(file, contract) {
+  const sectionId = safeId(contract.get("id") || path.basename(file, ".md"));
+  const dir = `state/runtime/${sectionId}`;
+  const contextFile = `${dir}/context.json`;
+
+  if (!fs.existsSync(abs(contextFile))) {
+    return {
+      section_id: sectionId,
+      status: "missing",
+      path: dir,
+      context: contextFile,
+      generated_at: null,
+      visible_files: null,
+      stale_inputs: [],
+      output_missing: [],
+    };
+  }
+
+  let context;
+  try {
+    context = loadJson(abs(contextFile), null);
+  } catch {
+    context = null;
+  }
+
+  if (!context || typeof context !== "object") {
+    return {
+      section_id: sectionId,
+      status: "invalid",
+      path: dir,
+      context: contextFile,
+      generated_at: null,
+      visible_files: null,
+      stale_inputs: [],
+      output_missing: [contextFile],
+    };
+  }
+
+  const staleInputs = [];
+  for (const [input, expectedHash] of Object.entries(context.input_hashes ?? {})) {
+    if (!fs.existsSync(abs(input))) {
+      staleInputs.push(`${input} (missing)`);
+      continue;
+    }
+
+    const actualHash = sha256(read(abs(input)));
+    if (actualHash !== expectedHash) staleInputs.push(input);
+  }
+
+  if (context.section && context.section !== file) staleInputs.push(`section mismatch: ${context.section}`);
+
+  const outputMissing = ["intent.md", "context.json", "rule-stack.yaml", "criteria.json", "trace.json"]
+    .map((name) => `${dir}/${name}`)
+    .filter((runtimeFile) => !fs.existsSync(abs(runtimeFile)));
+
+  return {
+    section_id: sectionId,
+    status: outputMissing.length ? "invalid" : staleInputs.length ? "stale" : "fresh",
+    path: dir,
+    context: contextFile,
+    generated_at: context.generated_at ?? null,
+    visible_files: Array.isArray(context.visible_files) ? context.visible_files.length : null,
+    stale_inputs: staleInputs,
+    output_missing: outputMissing,
+  };
+}
+
+function runtimeNeedsCompose(draft) {
+  return draft.runtime?.status !== "fresh";
+}
+
+function stripContract(text) {
+  return text.replace(/^\s*<!--[\s\S]*?-->/, "").trim();
+}
+
+function wordCount(text) {
+  return (text.match(/\b[\w'-]+\b/g) ?? []).length;
+}
+
+function readTitle() {
+  const workspace = readWorkspaceState();
+  if (workspace.status === "unloaded" && workspace.active === false) return "No Active Story Loaded";
+
+  const titleFile = abs("draft/00-title.md");
+  if (fs.existsSync(titleFile)) {
+    const match = stripContract(read(titleFile)).match(/^#\s+(.+)$/m);
+    if (match) return match[1].trim();
+  }
+
+  const briefFile = abs("brief.md");
+  if (fs.existsSync(briefFile)) {
+    const match = read(briefFile).match(/^Working title:\s*(.+)$/m);
+    if (match) return match[1].trim();
+  }
+
+  return path.basename(root);
+}
+
+function stripCode(value) {
+  return String(value).replace(/^`|`$/g, "").trim();
+}
+
+function formatBytes(bytes) {
+  if (bytes < 1024) return `${bytes} B`;
+  if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)} KB`;
+  return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+}
+
+function loadJson(file, fallback) {
+  try {
+    return JSON.parse(read(file));
+  } catch {
+    return fallback;
+  }
+}
+
+function safeId(value) {
+  const id = String(value).trim().replace(/[^A-Za-z0-9_.:-]+/g, "-").replace(/^-+|-+$/g, "");
+  return id || "section";
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
+}
+
+function parseArgs(args) {
+  const parsed = { json: false, help: false };
+  for (const arg of args) {
+    if (arg === "--json") parsed.json = true;
+    else if (arg === "--help" || arg === "-h") parsed.help = true;
+    else {
+      console.error(`Unknown option: ${arg}`);
+      process.exit(1);
+    }
+  }
+  return parsed;
+}
+
+function abs(rel) {
+  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+}
+
+function displayPath(file) {
+  return path.relative(root, file).split(path.sep).join("/");
+}
+
+function isRootMountedTo(workspaceDir) {
+  const probe = abs("brief.md");
+  if (!fs.existsSync(probe)) return false;
+  try {
+    const stat = fs.lstatSync(probe);
+    if (!stat.isSymbolicLink()) return false;
+    const real = fs.realpathSync(probe);
+    const normalizedWorkspace = fs.realpathSync(workspaceDir);
+    return real === path.join(normalizedWorkspace, "brief.md");
+  } catch {
+    return false;
+  }
+}
+
+function read(file) {
+  return fs.readFileSync(file, "utf8");
+}
+
+function printHelp() {
+  console.log(`harness-status - print a quick operator dashboard
+
+Usage:
+  npm run status
+  node scripts/harness-status.mjs --json
+`);
+}

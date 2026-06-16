@@ -1,0 +1,240 @@
+{
+  "version": 1,
+  "panels": {
+    "prose.board": {
+      "description": "Broad prose taste/opinion panel for voice-forward fiction and narrative nonfiction.",
+      "passes": {
+        "cold.reader": [
+          "qwen/qwen3.7-plus",
+          "deepseek/deepseek-v4-flash",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "line.editor": [
+          "anthropic/claude-haiku-4.5",
+          "qwen/qwen3.6-flash",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "character.presence": [
+          "qwen/qwen3.7-plus",
+          "anthropic/claude-haiku-4.5",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "contract.editor": [
+          "openai/gpt-4.1-mini",
+          "qwen/qwen3.7-plus"
+        ],
+        "continuity": [
+          "openai/gpt-4.1-mini",
+          "qwen/qwen3.7-plus"
+        ],
+        "style.pattern_saturation": [
+          "qwen/qwen3.7-plus",
+          "anthropic/claude-haiku-4.5",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "narrative.taste": [
+          "z-ai/glm-5.1",
+          "qwen/qwen3.7-plus",
+          "anthropic/claude-haiku-4.5"
+        ]
+      }
+    },
+    "prose.fast": {
+      "description": "Low-cost smoke panel for quick narrative checks.",
+      "passes": {
+        "*": [
+          "google/gemini-3.1-flash-lite",
+          "qwen/qwen3.6-flash"
+        ]
+      }
+    },
+    "prose.clean": {
+      "description": "Small reliable clean-context panel for post-revision verification.",
+      "passes": {
+        "cold.reader": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "line.editor": [
+          "anthropic/claude-haiku-4.5",
+          "qwen/qwen3.7-plus"
+        ],
+        "character.presence": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "style.pattern_saturation": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "narrative.taste": [
+          "z-ai/glm-5.1",
+          "qwen/qwen3.7-plus"
+        ],
+        "*": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ]
+      }
+    },
+    "style.calibration": {
+      "description": "Focused voice overfit and pattern-saturation panel.",
+      "passes": {
+        "style.pattern_saturation": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ]
+      }
+    },
+    "lightning.fast": {
+      "description": "Lightning AI structured-review smoke panel using provider-prefixed model IDs.",
+      "passes": {
+        "*": [
+          "lightning:lightning-ai/gpt-oss-120b"
+        ]
+      }
+    },
+    "lightning.clean": {
+      "description": "Lightning AI clean-context panel for verification and targeted editorial passes.",
+      "passes": {
+        "cold.reader": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "line.editor": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "character.presence": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "style.pattern_saturation": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "narrative.taste": [
+          "lightning:lightning-ai/glm-5",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "*": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ]
+      }
+    },
+    "lightning.board": {
+      "description": "Lightning AI broader opinion/taste panel for model variety under one credit account.",
+      "passes": {
+        "cold.reader": [
+          "lightning:lightning-ai/deepseek-v4-pro",
+          "lightning:lightning-ai/gpt-oss-120b"
+        ],
+        "line.editor": [
+          "lightning:lightning-ai/glm-5",
+          "lightning:anthropic/claude-opus-4-8"
+        ],
+        "character.presence": [
+          "lightning:lightning-ai/glm-5",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "contract.editor": [
+          "lightning:openai/gpt-5.5-2026-04-23",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "continuity": [
+          "lightning:openai/gpt-5.5-2026-04-23",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "style.pattern_saturation": [
+          "lightning:lightning-ai/glm-5",
+          "lightning:lightning-ai/deepseek-v4-pro",
+          "lightning:lightning-ai/nvidia-nemotron-3-ultra-550b-a55b"
+        ],
+        "narrative.taste": [
+          "lightning:lightning-ai/glm-5",
+          "lightning:anthropic/claude-opus-4-8",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
+        "hard.sf.science": [
+          "lightning:lightning-ai/nvidia-nemotron-3-ultra-550b-a55b",
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ]
+      }
+    },
+    "hard-sf.board": {
+      "description": "Broad hard-SF taste/science/opinion panel for anthology-scale fiction.",
+      "passes": {
+        "cold.reader": [
+          "qwen/qwen3.7-plus",
+          "deepseek/deepseek-v4-flash",
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "mistralai/mistral-small-2603",
+          "google/gemini-3.1-flash-lite",
+          "inclusionai/ring-2.6-1t"
+        ],
+        "line.editor": [
+          "openai/gpt-5.4-nano",
+          "~anthropic/claude-haiku-latest",
+          "qwen/qwen3.6-flash",
+          "deepseek/deepseek-v4-flash",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "character.presence": [
+          "qwen/qwen3.7-plus",
+          "deepseek/deepseek-v4-flash",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "contract.editor": [
+          "openai/gpt-5.4-nano",
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "continuity": [
+          "openai/gpt-5.4-nano",
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "hard.sf.science": [
+          "google/gemini-3.5-flash",
+          "qwen/qwen3.7-max",
+          "deepseek/deepseek-v4-pro",
+          "nvidia/nemotron-3-ultra-550b-a55b",
+          "mistralai/mistral-medium-3-5"
+        ],
+        "narrative.taste": [
+          "z-ai/glm-5.1",
+          "qwen/qwen3.7-plus",
+          "deepseek/deepseek-v4-pro",
+          "google/gemini-3.1-flash-lite"
+        ]
+      }
+    },
+    "hard-sf.fast": {
+      "description": "Lower-cost smoke panel for quick checks before a broader hard-SF review board.",
+      "passes": {
+        "*": [
+          "google/gemini-3.1-flash-lite",
+          "qwen/qwen3.6-flash",
+          "deepseek/deepseek-v4-flash"
+        ]
+      }
+    },
+    "hard-sf.clean": {
+      "description": "Small reliable clean-context panel for post-revision hard-SF verification.",
+      "passes": {
+        "cold.reader": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "line.editor": [
+          "anthropic/claude-haiku-4.5",
+          "openai/gpt-5.4-nano"
+        ],
+        "character.presence": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "*": [
+          "openai/gpt-5.4-nano",
+          "google/gemini-3.1-flash-lite"
+        ]
+      }
+    }
+  }
+}

@@ -1,0 +1,30 @@
+node_modules/
+.DS_Store
+.env
+.env.*
+!.env.example
+*.log
+dist/
+build/
+coverage/
+.doccheck/
+tmp/
+
+# User projects and generated writing artifacts.
+# The public repo should contain the harness, not someone's manuscript.
+archive/
+projects/active/
+projects/inactive/
+projects/registry.json
+PROJECT.md
+brief.md
+outline.md
+style.md
+docs/PROJECT_HANDOFF.md
+docs/PROJECT_REVIEW_APPROACH.md
+draft
+exports
+sources
+style
+taste
+state
