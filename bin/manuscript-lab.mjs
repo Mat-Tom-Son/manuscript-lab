@@ -12,13 +12,17 @@ const rest = args[1] === "--" ? args.slice(2) : args.slice(1);
 
 const commands = {
   "check": ["scripts/doccheck.mjs"],
+  "citations": ["scripts/evidence-spine.mjs", "citations"],
+  "claims": ["scripts/evidence-spine.mjs", "claims"],
   "compose": ["scripts/compose-context.mjs"],
   "context:audit": ["scripts/context-audit.mjs"],
   "diff:audit": ["scripts/revision-diff-audit.mjs"],
   "doctor": ["scripts/doctor.mjs"],
   "done": ["scripts/done-gate.mjs"],
   "done:no-export": ["scripts/done-gate.mjs", "--skip-exports"],
+  "evidence": ["scripts/evidence-spine.mjs", "evidence"],
   "export": ["scripts/export-manuscript.mjs"],
+  "gate": ["scripts/gate.mjs"],
   "issues": ["scripts/issue-ledger.mjs"],
   "model:calls": ["scripts/model-call-report.mjs"],
   "model:capabilities": ["scripts/model-capabilities.mjs"],
@@ -29,8 +33,10 @@ const commands = {
   "status": ["scripts/harness-status.mjs"],
   "story": ["scripts/story-workspace.mjs"],
   "style:signals": ["scripts/style-calibration.mjs", "signals"],
+  "sources": ["scripts/evidence-spine.mjs", "sources"],
   "template:audit": ["scripts/template-audit.mjs"],
   "test": ["scripts/run-tests.mjs"],
+  "validate": ["scripts/protocol-validate.mjs"],
   "words": ["scripts/word-usage.mjs"],
 };
 
@@ -75,9 +81,14 @@ Usage:
 
 Common commands:
   init --title "My Project" --slug my-project --sections 4 --kind document.section
+  validate
   status
   compose -- draft/<section>.md
   check --static-only
+  claims list --unsupported
+  citations check draft/<section>.md
+  evidence report
+  gate draft/<section>.md
   doctor
   review:run -- --dry-run --panel prose.clean draft/<section>.md
   issues -- list

@@ -85,10 +85,14 @@ If you add factual or canon-sensitive claims, update:
 
 Use `[citation-needed]` instead of inventing support.
 
-## 5. Check
+## 5. Validate And Check
 
 ```bash
+npm run validate
 npm run doctor
+npm run claims -- list --unsupported
+npm run citations -- check draft/01-opening.md
+npm run gate -- draft/01-opening.md
 npm run check -- draft/01-opening.md
 npm run done:no-export
 ```
