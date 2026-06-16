@@ -69,6 +69,10 @@ feel locked to one agent UI?"
 - Added config-first `mlab init --profile whitepaper --root manuscript`.
 - Added packlist assertions and an installed-tarball init/validate/evidence/gate
   smoke test under `npm test`.
+- Added root-aware installed-mode support and tarball smoke coverage for
+  `status`, `compose`, static `check`, `done:no-export`, `review:report`, and
+  Markdown/HTML export from workspace, manuscript, and nested draft
+  directories.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
 ## Release Decisions
@@ -77,8 +81,9 @@ feel locked to one agent UI?"
 - Package/repo slug: `manuscript-lab`.
 - License: MIT.
 - First release shape: GitHub template-style public repo.
-- npm publishing: intentionally disabled for now with `private: true` until the
-  broader installed-package command surface is config-root aware.
+- npm publishing: intentionally disabled for now with `private: true` until
+  registry/global install smokes, migration, and the remaining model-heavy
+  command paths are ready.
 - User project files: ignored by default so the public repo contains the harness,
   not someone's manuscript.
 - Product lane: local CI for prose, not an AI book generator. See
@@ -92,14 +97,16 @@ issue ledger, candidate revisions, comparison, taste gate, diff audit, model
 routing, exports, done gate, optional agent adapters, and local diagnostics.
 
 The main mismatch is packaging maturity. The repo is template-first with an
-install-anywhere alpha; the target product should also manage a Manuscript Lab
-project inside an arbitrary writing repository across the full command surface.
+install-anywhere alpha; v0.5 covers the deterministic local command loop in an
+external writing repository, but the full model/revision/project-switching
+surface is not yet stable as an installed package.
 
 ## Remaining Gaps
 
 ### Before npm Publishing
 
-- Make `doctor`, `status`, `compose`, `check`, `done`, `export`, and review
+- Make `doctor`, full `done` with EPUB/PDF export expectations, model-backed
+  `review:run`, candidate revision commands, and template project-switching
   commands fully config-root aware in installed-package mode.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full

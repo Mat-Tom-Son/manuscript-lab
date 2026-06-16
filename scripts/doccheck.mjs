@@ -5,8 +5,11 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
+const doccheckRoot = discovery.mode === "installed" ? paths.projectAbs(".doccheck") : paths.workspaceAbs(".doccheck");
 const options = parseArgs(process.argv.slice(2));
 if (options.help) {
   printHelp();
@@ -18,9 +21,7 @@ const allowedSeverities = new Set(["blocking", "warning", "advisory"]);
 const allowedSchemaTypes = new Set(["array", "boolean", "number", "object", "string"]);
 const supportedAssertionTypes = new Set(["empty_array", "no_issues", "pass_true", "max_array_length", "score_at_least"]);
 
-const requiredFiles = [
-  "AGENTS.md",
-  ".env.example",
+const requiredProjectFiles = [
   "brief.md",
   "outline.md",
   "style.md",
@@ -29,11 +30,6 @@ const requiredFiles = [
   "state/claims.md",
   "state/open-questions.md",
   "sources/index.md",
-  "templates/section-contract.md",
-  "checks/README.md",
-  "checks/suite.json",
-  "reviews/suite.json",
-  "reviews/model-panels.json",
   "state/issues/README.md",
   "state/issues/issue-ledger.json",
   "state/issues/decisions.json",
@@ -53,6 +49,16 @@ const requiredFiles = [
   "state/truth/artifacts.json",
   "state/projections/README.md",
   "state/observations/README.md",
+];
+
+const requiredPackageFiles = [
+  "AGENTS.md",
+  ".env.example",
+  "templates/section-contract.md",
+  "checks/README.md",
+  "checks/suite.json",
+  "reviews/suite.json",
+  "reviews/model-panels.json",
   "evals/README.md",
   "evals/judges/README.md",
   "docs/OPERATOR_GUIDE.md",
@@ -72,25 +78,11 @@ const requiredFiles = [
   ".pi/skills/chapter-production/SKILL.md",
 ];
 
-const requiredDirs = [
+const requiredProjectDirs = [
   "draft",
   "sources",
   "state",
-  "templates",
-  "checks",
-  "checks/prompts",
-  "reviews",
-  "reviews/prompts",
   "state/revision-audits",
-  ".pi/prompts",
-  ".pi/skills",
-  ".pi/skills/longform-writing",
-  ".pi/skills/evaluation-lab",
-  ".pi/skills/story-workspace",
-  ".pi/skills/chapter-production",
-  "docs",
-  "evals",
-  "evals/judges",
   "state/reviews",
   "state/issues",
   "state/candidates",
@@ -101,6 +93,23 @@ const requiredDirs = [
   "state/observations",
 ];
 
+const requiredPackageDirs = [
+  "templates",
+  "checks",
+  "checks/prompts",
+  "reviews",
+  "reviews/prompts",
+  ".pi/prompts",
+  ".pi/skills",
+  ".pi/skills/longform-writing",
+  ".pi/skills/evaluation-lab",
+  ".pi/skills/story-workspace",
+  ".pi/skills/chapter-production",
+  "docs",
+  "evals",
+  "evals/judges",
+];
+
 const errors = [];
 const warnings = [];
 
@@ -108,16 +117,29 @@ for (const flag of options.unknownFlags) {
   errors.push(`Unknown option: ${flag}`);
 }
 
-for (const file of requiredFiles) {
-  if (!fs.existsSync(abs(file))) errors.push(`Missing required file: ${file}`);
+for (const file of requiredProjectFiles) {
+  if (!fs.existsSync(abs(file))) errors.push(`Missing required project file: ${file}`);
 }
 
-for (const dir of requiredDirs) {
+for (const file of requiredPackageFiles) {
+  if (!fs.existsSync(packageAbs(file))) errors.push(`Missing required package file: ${file}`);
+}
+
+for (const dir of requiredProjectDirs) {
   const full = abs(dir);
   if (!fs.existsSync(full)) {
-    errors.push(`Missing required directory: ${dir}`);
+    errors.push(`Missing required project directory: ${dir}`);
   } else if (!fs.statSync(full).isDirectory()) {
-    errors.push(`Expected directory but found file: ${dir}`);
+    errors.push(`Expected project directory but found file: ${dir}`);
+  }
+}
+
+for (const dir of requiredPackageDirs) {
+  const full = packageAbs(dir);
+  if (!fs.existsSync(full)) {
+    errors.push(`Missing required package directory: ${dir}`);
+  } else if (!fs.statSync(full).isDirectory()) {
+    errors.push(`Expected package directory but found file: ${dir}`);
   }
 }
 
@@ -491,7 +513,7 @@ async function runOneModelCheck({ check, section }) {
   const sectionRel = displayPath(section);
   const model = modelForCheck(check);
   const runtime = describeModelRuntime(model);
-  const promptPath = abs(check.prompt);
+  const promptPath = packageAbs(check.prompt);
   const prompt = fs.existsSync(promptPath) ? read(promptPath) : "";
   if (!prompt) {
     return modelCheckResult({
@@ -906,7 +928,7 @@ function shouldRunModelChecks() {
 }
 
 function writeDoccheckRun(result) {
-  const dir = abs(".doccheck");
+  const dir = doccheckAbs();
   const runsDir = path.join(dir, "runs");
   fs.mkdirSync(runsDir, { recursive: true });
   const stamp = result.timestamp.replace(/[:.]/g, "-");
@@ -915,7 +937,7 @@ function writeDoccheckRun(result) {
 }
 
 function readCachedModelResult(cacheKey) {
-  const file = path.join(abs(".doccheck/cache"), `${cacheKey}.json`);
+  const file = path.join(doccheckAbs("cache"), `${cacheKey}.json`);
   if (!fs.existsSync(file)) return null;
   try {
     return JSON.parse(read(file));
@@ -926,7 +948,7 @@ function readCachedModelResult(cacheKey) {
 
 function writeCachedModelResult(cacheKey, result) {
   if (!cacheKey) return;
-  const dir = abs(".doccheck/cache");
+  const dir = doccheckAbs("cache");
   fs.mkdirSync(dir, { recursive: true });
   fs.writeFileSync(path.join(dir, `${cacheKey}.json`), `${JSON.stringify(result, null, 2)}\n`);
 }
@@ -1188,7 +1210,7 @@ function checkModelSuiteConfig() {
 
     if (!isNonEmptyString(check.prompt)) {
       errors.push(`${checkLabel}.prompt must be a non-empty string`);
-    } else if (!fs.existsSync(abs(check.prompt))) {
+    } else if (!fs.existsSync(packageAbs(check.prompt))) {
       errors.push(`${checkLabel}.prompt points to missing file: ${check.prompt}`);
     }
 
@@ -1302,7 +1324,7 @@ function checkReviewSuiteConfig() {
 
     if (!isNonEmptyString(reviewPass.prompt)) {
       errors.push(`${passLabel}.prompt must be a non-empty string`);
-    } else if (!fs.existsSync(abs(reviewPass.prompt))) {
+    } else if (!fs.existsSync(packageAbs(reviewPass.prompt))) {
       errors.push(`${passLabel}.prompt points to missing file: ${reviewPass.prompt}`);
     }
 
@@ -1384,7 +1406,7 @@ function validateModelIdList(label, models) {
 function loadCheckSuite() {
   if (loadCheckSuite.cache !== undefined) return loadCheckSuite.cache;
 
-  const file = abs("checks/suite.json");
+  const file = packageAbs("checks/suite.json");
   if (!fs.existsSync(file)) {
     loadCheckSuite.cache = null;
     return null;
@@ -1409,7 +1431,7 @@ function loadCheckSuite() {
 function loadReviewSuite() {
   if (loadReviewSuite.cache !== undefined) return loadReviewSuite.cache;
 
-  const file = abs("reviews/suite.json");
+  const file = packageAbs("reviews/suite.json");
   if (!fs.existsSync(file)) {
     loadReviewSuite.cache = null;
     return null;
@@ -1434,7 +1456,7 @@ function loadReviewSuite() {
 function loadReviewPanels() {
   if (loadReviewPanels.cache !== undefined) return loadReviewPanels.cache;
 
-  const file = abs("reviews/model-panels.json");
+  const file = packageAbs("reviews/model-panels.json");
   if (!fs.existsSync(file)) {
     loadReviewPanels.cache = null;
     return null;
@@ -1626,7 +1648,7 @@ Artifacts:
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInput(input);
 }
 
 function normalizeRel(file) {
@@ -1652,9 +1674,17 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.join(root, rel);
+  return paths.projectAbs(rel);
+}
+
+function packageAbs(rel) {
+  return paths.packageAbs(rel);
+}
+
+function doccheckAbs(rel = "") {
+  return path.resolve(doccheckRoot, rel);
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
 }

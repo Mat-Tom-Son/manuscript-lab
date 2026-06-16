@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 0.5.0 - 2026-06-16
+
+- Added shared protocol path helpers for separating package assets, workspace
+  roots, manuscript roots, configured state directories, and configured export
+  directories.
+- Made `status`, `compose`, `check`, `done:no-export`, `export --formats
+  md,html`, and `review:report` work from packed install-anywhere workspaces.
+- Split `doccheck` package assets from project files so installed workspaces no
+  longer need copied `checks/`, `reviews/`, `.pi/`, docs, or templates.
+- Added installed-tarball smoke coverage for running commands from the workspace
+  root, manuscript root, and nested `draft/` directory.
+- Added installed-mode export coverage that keeps generated runtime packets,
+  `.doccheck` artifacts, and Markdown/HTML exports under the configured
+  manuscript root instead of the package directory.
+
 ## 0.4.0 - 2026-06-16
 
 - Added config-first `mlab init --profile whitepaper --root manuscript` for the

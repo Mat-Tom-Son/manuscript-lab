@@ -40,18 +40,26 @@ a dev dependency. From a packed local package or future registry package:
 
 ```bash
 npm init -y
-npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npm install -D /path/to/manuscript-lab-0.5.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
+npx mlab status
+npx mlab compose draft/01-opening.md
+npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab export --formats md,html --include-todo --slug my-whitepaper
+npx mlab done:no-export
 ```
 
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
-`manuscript/`. In the alpha, `validate`, `claims`, `citations`, and `gate` are
-the config-first smoke path; compose/check/status/done remain template-first
-until the next root-awareness pass.
+`manuscript/`. In the v0.5 alpha, deterministic local commands such as
+`validate`, `status`, `compose`, static `check`, claims/citations/evidence,
+gates, `review:report`, Markdown/HTML export, and `done:no-export` are
+config-root aware. Full typed review execution, candidate revisions, template
+project switching, and EPUB/PDF-oriented `done` remain template-first while the
+installed CLI matures.
 
 ## 2. Fill In The Core Files
 

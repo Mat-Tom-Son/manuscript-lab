@@ -5,6 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 import { parseContractList, parseSectionContract } from "./lib/section-contract.mjs";
 
 const repoRoot = process.cwd();
@@ -14,6 +15,7 @@ try {
   testContractParser();
   testInstalledWorkspaceValidation();
   testNestedRootDiscovery();
+  testProtocolPaths();
   testEscapingConfigFails();
   console.log("protocol tests passed");
 } finally {
@@ -64,6 +66,21 @@ function testNestedRootDiscovery() {
   const parsed = JSON.parse(result.stdout);
   assert.equal(fs.realpathSync(parsed.workspace_root), fs.realpathSync(workspace));
   assert.equal(fs.realpathSync(parsed.manuscript_root), fs.realpathSync(path.join(workspace, "manuscript")));
+}
+
+function testProtocolPaths() {
+  const workspace = path.join(tmp, "path-workspace");
+  writeProject(workspace);
+  const manuscript = path.join(workspace, "manuscript");
+  const nested = path.join(manuscript, "draft");
+  const discovery = discoverProtocol({ cwd: nested });
+  const paths = protocolPaths(discovery, { cwd: nested });
+
+  assert.equal(paths.projectRel(paths.resolveProjectInput("01-opening.md")), "draft/01-opening.md");
+  assert.equal(paths.projectRel(paths.resolveProjectInput("draft/01-opening.md")), "draft/01-opening.md");
+  assert.equal(paths.projectRel(paths.stateAbs("runtime")), "state/runtime");
+  assert.equal(paths.projectRel(paths.exportsAbs("book.md")), "exports/book.md");
+  assert.equal(paths.packageAbs("checks/suite.json"), path.join(repoRoot, "checks/suite.json"));
 }
 
 function testEscapingConfigFails() {

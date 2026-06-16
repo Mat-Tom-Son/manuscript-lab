@@ -3,8 +3,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
+const defaultRuntimeDir = normalizeRel(path.join(paths.stateDir, "runtime"));
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help) {
@@ -42,11 +45,12 @@ if (!contract.has_contract) {
 }
 
 const sectionId = safeId(contract.fields.id || path.basename(targetPath, ".md"));
-const runtimeDirRel = normalizeRel(path.join(options.out, sectionId));
-const runtimeDir = abs(runtimeDirRel);
+const runtimeBaseDir = paths.resolveProjectOutput(options.out);
+const runtimeDir = path.join(runtimeBaseDir, sectionId);
+const runtimeDirRel = displayPath(runtimeDir);
 const generatedAt = new Date().toISOString();
 const runId = `compose_${generatedAt.replace(/\D/g, "").slice(0, 14)}_${sectionId}`;
-const reviewSuite = loadJson(abs("reviews/suite.json"), {});
+const reviewSuite = loadJson(packageAbs("reviews/suite.json"), {});
 let contextPack;
 try {
   contextPack = resolveContextPack(options.contextPack, reviewSuite);
@@ -162,9 +166,9 @@ function selectContextFiles({ contextPack, contract, sectionId, targetRel }) {
     "state/reviews/",
     "state/candidates/",
     "state/private/",
-    "state/runtime/",
+    `${paths.stateDir}/runtime/`,
     "archive/",
-    "exports/",
+    `${paths.exportsDir}/`,
     ".doccheck/",
     ".env",
     "docs/PROJECT_HANDOFF.md",
@@ -616,7 +620,7 @@ function parseArgs(args) {
     target: "",
     operation: "draft",
     contextPack: "informed.section_writer",
-    out: "state/runtime",
+    out: defaultRuntimeDir,
     dryRun: false,
     json: false,
     help: false,
@@ -736,7 +740,7 @@ function safeId(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInput(input);
 }
 
 function read(file) {
@@ -744,7 +748,11 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.join(root, rel);
+  return paths.projectAbs(rel);
+}
+
+function packageAbs(rel) {
+  return paths.packageAbs(rel);
 }
 
 function normalizeRel(file) {
@@ -752,5 +760,5 @@ function normalizeRel(file) {
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
 }

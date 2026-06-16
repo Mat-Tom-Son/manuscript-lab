@@ -255,6 +255,44 @@ export function projectPath(discovery, rel) {
   return path.join(discovery.manuscriptRoot, rel);
 }
 
+export function protocolPaths(discovery, options = {}) {
+  const cwd = path.resolve(options.cwd ?? process.cwd());
+  const stateDir = discovery.config?.stateDir ?? "state";
+  const exportsDir = discovery.config?.exportsDir ?? "exports";
+
+  const projectAbs = (rel = "") => resolveUnder(discovery.manuscriptRoot, rel);
+  const packageAbs = (rel = "") => resolveUnder(discovery.packageRoot, rel);
+  const workspaceAbs = (rel = "") => resolveUnder(discovery.workspaceRoot, rel);
+  const stateAbs = (rel = "") => projectAbs(path.join(stateDir, rel));
+  const exportsAbs = (rel = "") => projectAbs(path.join(exportsDir, rel));
+  const projectRel = (file) => displayPath(path.resolve(file), discovery.manuscriptRoot);
+
+  return {
+    cwd,
+    stateDir,
+    exportsDir,
+    projectAbs,
+    packageAbs,
+    workspaceAbs,
+    stateAbs,
+    exportsAbs,
+    projectRel,
+    resolveProjectInput(input) {
+      if (path.isAbsolute(input)) return path.resolve(input);
+      const projectCandidate = projectAbs(input);
+      if (fs.existsSync(projectCandidate)) return projectCandidate;
+
+      const cwdCandidate = path.resolve(cwd, input);
+      if (isPathInsideOrEqual(cwdCandidate, discovery.manuscriptRoot)) return cwdCandidate;
+
+      return projectCandidate;
+    },
+    resolveProjectOutput(input) {
+      return path.isAbsolute(input) ? path.resolve(input) : projectAbs(input);
+    },
+  };
+}
+
 export function displayPath(file, base = process.cwd()) {
   const rel = path.relative(base, file);
   return normalizeRel(rel && !rel.startsWith("..") ? rel : file);
@@ -333,6 +371,10 @@ function firstGlobDir(glob) {
 function isPathInsideOrEqual(child, parent) {
   const rel = path.relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function resolveUnder(base, rel) {
+  return path.isAbsolute(String(rel)) ? path.resolve(String(rel)) : path.resolve(base, String(rel));
 }
 
 function isPlainObject(value) {
