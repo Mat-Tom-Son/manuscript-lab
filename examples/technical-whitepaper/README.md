@@ -46,6 +46,16 @@ and is ignored by git. It shows the fixture's current readiness blockers,
 supported claims, accepted tutorial issue, selected candidate, diff audit, and
 sample exports with a manifest.
 
+After running the report, inspect:
+
+- `reports/latest.html`: the one-page readiness cockpit.
+- `state/issues/issue-ledger.json`: the accepted tutorial issue.
+- `state/candidates/01-opening/tutorial-run-001/`: base draft, issue context,
+  candidate revisions, comparison result, and winner decision.
+- `state/revision-audits/01-opening/`: before snapshot and static diff audit.
+- `exports/manifest.json`: export release metadata, input hashes, and output
+  hashes.
+
 To mutate a copy, create a disposable project and copy this fixture into it
 before running compose, check, review dry-runs, candidate commands, or export.
 

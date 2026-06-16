@@ -1,19 +1,18 @@
 # Manuscript Lab
 
-Manuscript Lab is a file-based writing harness for long-form work: fiction,
-essays, research papers, whitepapers, and technical documentation.
+Manuscript Lab is local CI for prose.
 
-It gives an agent or human operator a durable workflow for planning, drafting,
-reviewing, revising, and exporting a document without keeping the important work
+It is a file-based workflow for making long-form writing reviewable,
+source-grounded, revisable, and release-ready without keeping the important work
 only in chat.
 
 ```text
 brief -> outline -> section contract -> compose -> draft -> check -> review -> triage -> revise -> verify -> export
 ```
 
-It is deliberately not an AI book generator. The product direction is local CI
-for prose: contracts, checks, issues, revision trails, evidence gates, and
-release workflow for serious writing.
+It is deliberately not an AI book generator. The product direction is contracts,
+checks, issues, revision trails, evidence gates, and release workflow for
+serious writing.
 
 The harness is not a final judge. It is an evaluation lab for controlled writing
 experiments.
@@ -62,6 +61,31 @@ candidate run, comparison winner, diff audit, source/claim register, and sample
 exports. The report lands at `reports/latest.html` and `reports/latest.json`
 inside the fixture.
 
+The terminal report should look roughly like this:
+
+```text
+FAIL Manuscript Lab Report
+Project: Technical Whitepaper Tutorial
+Profile: whitepaper
+Status: not_ready
+
+Summary:
+- issues: 0 open, 0 deferred
+- claims: 3 total, 0 blocker(s)
+- revision trail: 1 accepted issue(s), 1 candidate run(s), 1 audit(s)
+- exports: 2
+- export manifest: exports/manifest.json
+```
+
+After running the demo, inspect:
+
+- `reports/latest.html`: the one-page readiness cockpit
+- `state/issues/issue-ledger.json`: the accepted tutorial issue
+- `state/candidates/01-opening/tutorial-run-001/`: base, issue context,
+  candidates, comparison, and winner decision
+- `state/revision-audits/01-opening/`: before snapshot and static diff audit
+- `exports/manifest.json`: export release metadata and hashes
+
 Clone the repo, then initialize your own project workspace. The template
 workflow is still the broadest command surface and works well when you want the
 harness and writing project in one repository.
@@ -99,7 +123,7 @@ global/registry smokes and the remaining model-heavy commands are ready.
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.5.0.tgz
+npm install -D /path/to/manuscript-lab-0.6.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -117,7 +141,7 @@ Install-anywhere init writes `manuscript-lab.config.json` plus user-owned files
 under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 `.pi/`, or `skills/` into the caller workspace.
 
-The v0.5 install-anywhere surface covers deterministic local work: validate,
+The v0.6 install-anywhere surface covers deterministic local work: validate,
 status, compose, static checks, claims/citations/evidence, gates,
 reports, `review:report`, `done:no-export`, and Markdown/HTML export. Full
 typed review execution, candidate revisions, template project switching, and full

@@ -1,7 +1,7 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." v0.5 extends the installed-package alpha: config-first `mlab init`
+workflow." v0.6 extends the installed-package alpha: config-first `mlab init`
 plus deterministic validation, evidence, citation, gate, status, compose,
 static check, report generation, review-report, `done:no-export`, and
 Markdown/HTML export plus manifest smoke coverage from a packed tarball.
@@ -71,7 +71,7 @@ The alpha adoption path from a packed local package is:
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.5.0.tgz
+npm install -D /path/to/manuscript-lab-0.6.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -133,7 +133,7 @@ state, sources, exports, and project config under the workspace/manuscript root.
 `manuscript-lab` and `mlab` remain equivalent bin names. `mlab` is the primary
 docs name once npm support is real.
 
-The v0.5 alpha supports the deterministic local loop:
+The v0.6 alpha supports the deterministic local loop:
 
 ```bash
 npx mlab status
@@ -406,7 +406,7 @@ Recommended release line:
 
 ## Close Criteria For Issue #2
 
-This design plus the v0.5 alpha closes the first implementation slices of issue
+This design plus the v0.6 alpha closes the first implementation slices of issue
 #2:
 
 - npm install should operate from package assets, with `init` writing only

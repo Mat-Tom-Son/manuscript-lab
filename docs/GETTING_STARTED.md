@@ -53,7 +53,7 @@ a dev dependency. From a packed local package or future registry package:
 
 ```bash
 npm init -y
-npm install -D /path/to/manuscript-lab-0.5.0.tgz
+npm install -D /path/to/manuscript-lab-0.6.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -68,7 +68,7 @@ npx mlab done:no-export
 ```
 
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
-`manuscript/`. In the v0.5 alpha, deterministic local commands such as
+`manuscript/`. In the v0.6 alpha, deterministic local commands such as
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
 gates, `report`, `review:report`, Markdown/HTML export, and `done:no-export` are
 config-root aware. Full typed review execution, candidate revisions, template

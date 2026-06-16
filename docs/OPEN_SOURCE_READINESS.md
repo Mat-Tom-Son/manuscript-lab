@@ -105,7 +105,7 @@ issue ledger, candidate revisions, comparison, taste gate, diff audit, model
 routing, exports, done gate, optional agent adapters, and local diagnostics.
 
 The main mismatch is packaging maturity. The repo is template-first with an
-install-anywhere alpha; v0.5 covers the deterministic local command loop and a
+install-anywhere alpha; v0.6 covers the deterministic local command loop and a
 unified local report in an external writing repository, but the full
 model/revision/project-switching surface is not yet stable as an installed
 package.
