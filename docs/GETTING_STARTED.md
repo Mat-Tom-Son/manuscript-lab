@@ -189,11 +189,13 @@ Markdown and HTML exports require only Node:
 npm run export -- --formats md,html --slug my-project --author ""
 ```
 
-The default export creates Markdown, HTML, EPUB, and PDF. EPUB needs `zip`; PDF
-needs `python3` and the Python `reportlab` package.
+Each successful export also writes `exports/manifest.json` with input hashes,
+output hashes, file sizes, formats, source commit when available, and git dirty
+state. The default export creates Markdown, HTML, EPUB, and PDF. EPUB needs
+`zip`; PDF needs `python3` and the Python `reportlab` package.
 
 ```bash
 npm run export -- --slug my-project --author ""
 ```
 
-Exports land in `exports/`.
+Exports and their manifest land in `exports/`.

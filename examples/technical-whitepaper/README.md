@@ -27,8 +27,9 @@ material, or private story fingerprints.
 - `state/runtime/01-opening/`: compact example of a composed runtime packet.
 - `state/candidates/01-opening/tutorial-run-001/`: manual two-candidate sample.
 - `state/revision-audits/01-opening/`: before snapshot plus static audit sample.
-- `exports/technical-whitepaper.md`, `exports/technical-whitepaper.html`: sample
-  reader exports for the draft section.
+- `exports/technical-whitepaper.md`, `exports/technical-whitepaper.html`,
+  `exports/manifest.json`: sample reader exports plus release metadata for the
+  draft section.
 
 ## Try The Walkthrough
 
@@ -43,7 +44,7 @@ cd examples/technical-whitepaper
 The generated report lands in `reports/latest.html` and `reports/latest.json`
 and is ignored by git. It shows the fixture's current readiness blockers,
 supported claims, accepted tutorial issue, selected candidate, diff audit, and
-sample exports.
+sample exports with a manifest.
 
 To mutate a copy, create a disposable project and copy this fixture into it
 before running compose, check, review dry-runs, candidate commands, or export.

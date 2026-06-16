@@ -8,7 +8,8 @@ Exported 2026-06-16 from technical-whitepaper.
 
 - Executive Summary
 
-## Executive Summary
+
+# Executive Summary
 
 This whitepaper is a tutorial fixture. It does not describe a real customer,
 private manuscript, proprietary benchmark, or deployed system. It gives a small

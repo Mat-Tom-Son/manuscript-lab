@@ -258,9 +258,13 @@ Records static pattern signals and optional model-backed voice fingerprinting.
 
 ```bash
 npm run export
+npm run export -- --formats md,html --slug my-project --json
 ```
 
 Writes reader-friendly Markdown, HTML, EPUB, and PDF files under `exports/`.
+Every successful export also writes `exports/manifest.json` with the export ID,
+source commit when available, git dirty state, input hashes, output hashes, file
+sizes, formats, and chapter metadata.
 
 ### Done Gate
 

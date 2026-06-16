@@ -309,9 +309,8 @@ Initial deterministic requirements:
   EPUB, and PDF.
 - `export.files_nonempty`: required export files are nonempty.
 - `export.generated_after_inputs`: exports are newer than the source inputs or
-  match a future export manifest input hash.
-- `export.manifest_present`: when export manifests exist, the manifest is
-  present and parseable.
+  match the export manifest input hashes.
+- `export.manifest_present`: the export manifest is present and parseable.
 - `export.no_dirty_override`: exports created with overrides are visibly marked
   dirty in the result or manifest.
 
@@ -469,5 +468,5 @@ Follow-up implementation can be split cleanly:
 3. Add result writer and latest pointer update.
 4. Add `mlab gate` CLI routing and exit codes.
 5. Refactor `scripts/done-gate.mjs` to consume gate primitives.
-6. Add export manifest integration once export manifests exist.
+6. Add export gate enforcement on top of the existing export manifest.
 7. Add optional model-backed sensors behind explicit profiles.
