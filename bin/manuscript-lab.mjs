@@ -28,6 +28,7 @@ const commands = {
   "model:capabilities": ["scripts/model-capabilities.mjs"],
   "model:smoke": ["scripts/model-smoke.mjs"],
   "project": ["scripts/story-workspace.mjs"],
+  "report": ["scripts/report.mjs"],
   "review:report": ["scripts/review-report.mjs"],
   "review:run": ["scripts/review-runner.mjs"],
   "status": ["scripts/harness-status.mjs"],
@@ -105,6 +106,7 @@ Common commands:
   citations check draft/<section>.md
   evidence report
   gate draft/<section>.md
+  report --write
   doctor
   review:run -- --dry-run --panel prose.clean draft/<section>.md
   issues -- list

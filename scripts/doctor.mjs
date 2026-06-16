@@ -78,6 +78,7 @@ function checkIgnoredPrivatePaths() {
     "draft",
     "state",
     "exports",
+    "reports",
     "sources",
     "taste",
     "projects/active/",

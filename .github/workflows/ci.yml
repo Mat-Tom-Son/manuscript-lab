@@ -39,6 +39,7 @@ jobs:
           node bin/manuscript-lab.mjs claims list --json
           node bin/manuscript-lab.mjs citations check --json
           node bin/manuscript-lab.mjs gate draft/01-opening.md --json
+          node bin/manuscript-lab.mjs report --json
           node bin/manuscript-lab.mjs check --static-only
           node bin/manuscript-lab.mjs done:no-export
 

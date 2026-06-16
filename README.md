@@ -29,6 +29,7 @@ repo keeps them in files:
 - typed review findings in `state/issues/`
 - candidate revisions in `state/candidates/`
 - exports in `exports/`
+- readiness reports in `reports/`
 
 The `.pi/` directory adds optional Pi slash commands and skills. The npm scripts
 are the portable core.
@@ -47,6 +48,19 @@ Requirements:
 - No npm dependencies are required
 - Full EPUB/PDF export additionally needs `zip`, `python3`, and the Python
   `reportlab` package. Markdown/HTML export works without those.
+
+Fastest demo:
+
+```bash
+cd examples/technical-whitepaper
+../../bin/manuscript-lab.mjs validate
+../../bin/manuscript-lab.mjs report --write
+```
+
+That fixture is a tiny config-first whitepaper project with an accepted issue,
+candidate run, comparison winner, diff audit, source/claim register, and sample
+exports. The report lands at `reports/latest.html` and `reports/latest.json`
+inside the fixture.
 
 Clone the repo, then initialize your own project workspace. The template
 workflow is still the broadest command surface and works well when you want the
@@ -94,6 +108,7 @@ npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab report --write
 npx mlab export --formats md,html --include-todo --slug my-whitepaper
 npx mlab done:no-export
 ```
@@ -104,8 +119,8 @@ under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 
 The v0.5 install-anywhere surface covers deterministic local work: validate,
 status, compose, static checks, claims/citations/evidence, gates,
-`review:report`, `done:no-export`, and Markdown/HTML export. Full typed review
-execution, candidate revisions, template project switching, and full
+reports, `review:report`, `done:no-export`, and Markdown/HTML export. Full
+typed review execution, candidate revisions, template project switching, and full
 EPUB/PDF-oriented `done` remain template-first while the installed CLI matures.
 
 ## Daily Loop
@@ -121,6 +136,7 @@ Draft or revise in `draft/01-opening.md`, then run:
 ```bash
 npm run check -- draft/01-opening.md
 npm run gate -- draft/01-opening.md
+npm run report -- --write
 npm run done:no-export
 ```
 

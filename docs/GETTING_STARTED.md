@@ -3,6 +3,19 @@
 This walkthrough creates a blank project and runs the first checks without any
 model API key.
 
+For the fastest public demo, run the technical-whitepaper fixture first:
+
+```bash
+cd examples/technical-whitepaper
+../../bin/manuscript-lab.mjs validate
+../../bin/manuscript-lab.mjs report --write
+```
+
+Open `reports/latest.html` to see section readiness, evidence state, accepted
+issues, the sample candidate winner, diff audit presence, and exports in one
+place. The fixture is config-first, so those commands inspect the fixture
+itself instead of the active template project.
+
 ## 1. Choose A Project Shape
 
 The template workflow is the broadest path today. Use it when you are working
@@ -49,6 +62,7 @@ npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab report --write
 npx mlab export --formats md,html --include-todo --slug my-whitepaper
 npx mlab done:no-export
 ```
@@ -56,7 +70,7 @@ npx mlab done:no-export
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
 `manuscript/`. In the v0.5 alpha, deterministic local commands such as
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
-gates, `review:report`, Markdown/HTML export, and `done:no-export` are
+gates, `report`, `review:report`, Markdown/HTML export, and `done:no-export` are
 config-root aware. Full typed review execution, candidate revisions, template
 project switching, and EPUB/PDF-oriented `done` remain template-first while the
 installed CLI matures.
@@ -122,6 +136,7 @@ npm run doctor
 npm run claims -- list --unsupported
 npm run citations -- check draft/01-opening.md
 npm run gate -- draft/01-opening.md
+npm run report -- --write
 npm run check -- draft/01-opening.md
 npm run done:no-export
 ```

@@ -199,6 +199,11 @@ function assertInstalledCommandSurface(workspace, runner) {
     const report = assertJsonCommand(runner, ["review:report", "--json"], { cwd });
     assert.equal(report.totals.runs, 0);
 
+    const projectReport = assertJsonCommand(runner, ["report", "--json"], { cwd });
+    assert.equal(projectReport.schema_version, "manuscript-lab.report.v1");
+    assert.equal(fs.realpathSync(projectReport.project.manuscript_root), fs.realpathSync(manuscriptRoot));
+    assert.equal(projectReport.summary.sections.total, 2);
+
     const done = assertJsonCommand(runner, ["done:no-export", "--json"], { cwd });
     assert.equal(done.pass, true, JSON.stringify(done, null, 2));
     assert.equal(done.checks.project_sync, "skipped");
@@ -217,10 +222,17 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.md")));
   assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.html")));
 
+  const writtenReport = assertJsonCommand(runner, ["report", "--write", "--json"], { cwd: workspace });
+  assert.equal(writtenReport.artifacts.json, "reports/latest.json");
+  assert.equal(writtenReport.artifacts.html, "reports/latest.html");
+  assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.json")));
+  assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.html")));
   assert(fs.existsSync(path.join(manuscriptRoot, "state", "runtime", "01-opening", "context.json")));
   assert.equal(fs.existsSync(path.join(workspace, "state")), false, "commands should not write state at workspace root");
+  assert.equal(fs.existsSync(path.join(workspace, "reports")), false, "commands should not write reports at workspace root");
   assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "commands should not write state under draft/");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "commands should not write state under the package");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "reports")), false, "commands should not write reports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
 }
 

@@ -17,6 +17,7 @@ status
 -> candidate arena, when useful
 -> taste arbiter, when aesthetic/story tradeoffs matter
 -> audit
+-> report
 -> export
 -> project sync
 -> done gate
@@ -155,6 +156,21 @@ status sync, runtime freshness, static section issues, issue blockers, and lates
 review errors. `citation-ready` checks claims and sources. `manuscript-ready`
 aggregates active sections, citation readiness, runtime packets, issues, and
 review errors. `--write` stores gate artifacts under `state/gates/`.
+
+### Report
+
+```bash
+npm run report
+npm run report -- --json
+npm run report -- --write
+node bin/manuscript-lab.mjs report --html
+```
+
+Summarizes Manuscript Lab readiness as text, JSON, or HTML. The report combines
+status, evidence, manuscript gate results, review-run summaries, accepted
+issues, candidate winners, diff audit presence, model-call counts, exports, and
+suggested next steps. `--write` stores `reports/latest.json` and
+`reports/latest.html` under the manuscript root.
 
 ### Review
 
