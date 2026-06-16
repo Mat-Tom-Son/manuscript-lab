@@ -47,7 +47,7 @@ if (command === "fingerprint") {
   const prompt = buildFingerprintPrompt(targets.map(resolveInputPath));
   const response = await callChatModel({
     model,
-    title: "doc-repo-agent style calibration",
+    title: "manuscript-lab style calibration",
     temperature,
     maxTokens,
     responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

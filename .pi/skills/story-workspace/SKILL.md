@@ -1,6 +1,6 @@
 ---
 name: story-workspace
-description: Load, restore, archive, or start a story in the active document-repo-agent workspace while preserving reusable harness infrastructure. Use when switching active stories, archiving one project, unarchiving another, or preparing a blank story workspace.
+description: Load, restore, archive, or start a story in the active Manuscript Lab workspace while preserving reusable harness infrastructure. Use when switching active stories, archiving one project, unarchiving another, or preparing a blank story workspace.
 ---
 
 # Story Workspace

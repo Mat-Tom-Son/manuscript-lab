@@ -6,7 +6,7 @@ model API key.
 ## 1. Initialize A Project
 
 ```bash
-npm run story:init -- --title "My Project" --slug my-project --sections 4
+npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
 ```
 
 This creates a canonical workspace at:
@@ -27,6 +27,10 @@ state/
 taste/
 exports/
 ```
+
+The default scaffold is still fiction-oriented when `--kind` is omitted. Use
+`--kind document.section` for essays, technical docs, research notes,
+whitepapers, or other non-fiction projects.
 
 ## 2. Fill In The Core Files
 
@@ -114,9 +118,17 @@ Reviews create issues. Triage those issues before revising.
 
 ## 7. Export
 
+Markdown and HTML exports require only Node:
+
+```bash
+npm run export -- --formats md,html --slug my-project --author ""
+```
+
+The default export creates Markdown, HTML, EPUB, and PDF. EPUB needs `zip`; PDF
+needs `python3` and the Python `reportlab` package.
+
 ```bash
 npm run export -- --slug my-project --author ""
 ```
 
 Exports land in `exports/`.
-

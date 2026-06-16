@@ -7,12 +7,12 @@ actually contains.
 
 - Zero npm dependencies.
 - Many npm scripts.
-- No traditional CLI entry point.
+- A small CLI wrapper rather than a fully polished global install flow.
 - Reusable harness and active project content sharing one working tree.
 - Symlink-mounted project files.
 - A large README and several detailed operator docs.
 - Pi-specific files under `.pi/`.
-- Missing license and public contribution policy.
+- Project-specific work lives beside the reusable harness unless ignored.
 
 Those observations are mostly correct, but incomplete.
 
@@ -52,33 +52,37 @@ feel locked to one agent UI?"
 - Copied reusable harness files only.
 - Excluded active manuscripts, archives, exports, model logs, generated state,
   `.env`, and private project work.
-- Renamed package metadata from `doc-repo-agent` to `manuscript-lab`.
+- Renamed package metadata from `manuscript-lab` to `manuscript-lab`.
 - Added a small local wrapper: `manuscript-lab` / `mlab`.
+- Chose MIT license.
+- Documented the intended CI workflow in `docs/CI.md`.
+- Added contribution, security, issue, and pull-request templates.
 - Rewrote `README.md` as a quick public entry point.
 - Added `docs/GETTING_STARTED.md`.
 - Added `docs/ARCHITECTURE.md`.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
-## Remaining Release Gaps
+## Release Decisions
 
-### Must Decide
+- Name: Manuscript Lab.
+- Package/repo slug: `manuscript-lab`.
+- License: MIT.
+- First release shape: GitHub template-style public repo.
+- npm publishing: intentionally disabled for now with `private: true` until the
+  installed-package workflow can initialize or locate a full harness cleanly.
+- User project files: ignored by default so the public repo contains the harness,
+  not someone's manuscript.
 
-- Final project name.
-- License.
-- Whether this is primarily a template repo, an npm package, or both.
-- Whether user project files should be ignored by default or tracked in a
-  generated project repo.
+## Remaining Gaps
 
-### Must Build Or Polish
+### Before npm Publishing
 
 - A true `init` command for installing the harness into an arbitrary folder.
 - Public sample project or tutorial fixture.
-- CI workflow for tests and template/context audits.
-- Security note for prompt-injection boundaries and secret handling.
-- Contribution guide.
-- Code of conduct, if desired.
+- Active GitHub Actions CI once a GitHub token with `workflow` scope is used.
 - Changelog/release process.
 - Better distinction between optional Pi integration and portable npm usage.
+- Installed-package end-to-end test once npm publishing is enabled.
 
 ### Nice To Have
 
@@ -90,11 +94,8 @@ feel locked to one agent UI?"
 
 ## Suggested Release Path
 
-1. Keep this as a template repo for the first public release.
-2. Add one polished tutorial project fixture.
-3. Add CI for `npm test`, `template:audit`, and `context:audit`.
-4. Choose license and final name.
-5. Publish as a GitHub template.
-6. Only then invest in an installable npm package that can initialize arbitrary
+1. Publish the clean repo on GitHub.
+2. Keep it template-first for the first public release.
+3. Add one polished tutorial project fixture.
+4. Only then invest in an installable npm package that can initialize arbitrary
    external workspaces.
-

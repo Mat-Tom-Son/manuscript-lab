@@ -43,7 +43,7 @@ for (const model of options.models) {
   try {
     const response = await callChatModel({
       model,
-      title: "doc-repo-agent model review",
+      title: "manuscript-lab model review",
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       system:

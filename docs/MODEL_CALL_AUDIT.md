@@ -64,7 +64,7 @@ Callers can pass an optional `audit` object to `callChatModel`.
 ```js
 await callChatModel({
   model,
-  title: "doc-repo-agent review runner",
+  title: "manuscript-lab review runner",
   system,
   content,
   audit: {
@@ -87,6 +87,12 @@ MODEL_CALL_AUDIT=1
 Default behavior remains lightweight. When disabled, existing artifacts continue to work and no exact prompt ledger is written.
 
 Secrets and dangerous headers are redacted.
+
+Custom `MODEL_CALL_AUDIT_DIR` values must resolve under ignored/private paths,
+known generated project paths, or the system temp directory. This prevents exact
+prompt/response capture from accidentally landing in tracked public files. Use
+`MODEL_CALL_AUDIT_ALLOW_UNSAFE_DIR=1` only for a deliberately reviewed
+destination.
 
 Never write API keys or Authorization headers. Store provider label, provider ID, resolved model, and base URL only.
 

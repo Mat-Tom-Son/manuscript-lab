@@ -8,7 +8,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
 const args = process.argv.slice(2);
 const command = args[0] || "help";
-const rest = args.slice(1);
+const rest = args[1] === "--" ? args.slice(2) : args.slice(1);
 
 const commands = {
   "check": ["scripts/doccheck.mjs"],
@@ -36,6 +36,7 @@ const commands = {
 const aliases = {
   "init": ["scripts/story-workspace.mjs", "init"],
   "new": ["scripts/story-workspace.mjs", "init"],
+  "project:init": ["scripts/story-workspace.mjs", "init"],
   "project:list": ["scripts/story-workspace.mjs", "list-projects"],
   "project:sync": ["scripts/story-workspace.mjs", "sync-project"],
   "project:verify": ["scripts/story-workspace.mjs", "verify-projects"],
@@ -72,10 +73,10 @@ Usage:
   mlab <command> [args]
 
 Common commands:
-  init -- --title "My Project" --slug my-project --sections 4
+  init --title "My Project" --slug my-project --sections 4 --kind document.section
   status
   compose -- draft/<section>.md
-  check -- --static-only
+  check --static-only
   review:run -- --dry-run --panel prose.clean draft/<section>.md
   issues -- list
   words -- draft/<section>.md
@@ -84,6 +85,7 @@ Common commands:
   done
 
 Project commands:
+  project:init
   story:init
   story:restore
   story:unload

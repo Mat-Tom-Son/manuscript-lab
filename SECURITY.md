@@ -26,7 +26,13 @@ Model-call audit logs may contain sensitive document context and provider
 metadata. Keep `MODEL_CALL_AUDIT=1` outputs private unless they have been
 reviewed and redacted.
 
+`MODEL_CALL_AUDIT_DIR` is refused unless it points under an ignored/private
+path, a known generated project path, or the system temp directory. Set
+`MODEL_CALL_AUDIT_ALLOW_UNSAFE_DIR=1` only after confirming the destination will
+not be committed.
+
 ## Reporting
 
-This project is not public yet. Add a public security contact before release.
-
+Please open a private vulnerability report through GitHub Security Advisories
+when available. If that is not available, open a minimal public issue that does
+not include secrets, private manuscripts, provider tokens, or model-call logs.

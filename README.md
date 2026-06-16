@@ -35,11 +35,15 @@ Requirements:
 
 - Node.js 18 or newer
 - No npm dependencies are required
+- Full EPUB/PDF export additionally needs `zip`, `python3`, and the Python
+  `reportlab` package. Markdown/HTML export works without those.
 
-Clone the repo, then initialize your own project workspace:
+Clone the repo, then initialize your own project workspace. The current scaffold
+is fiction-first by default; for essays, research, whitepapers, or technical
+docs, pass a neutral section kind such as `document.section`.
 
 ```bash
-npm run story:init -- --title "My Project" --slug my-project --sections 4
+npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
 npm run status
 npm run check -- --static-only
 ```
@@ -47,9 +51,12 @@ npm run check -- --static-only
 Or use the local wrapper:
 
 ```bash
-node bin/manuscript-lab.mjs init -- --title "My Project" --slug my-project --sections 4
+node bin/manuscript-lab.mjs init --title "My Project" --slug my-project --sections 4 --kind document.section
 node bin/manuscript-lab.mjs status
 ```
+
+Manuscript Lab is template-first today. The wrapper is for local clones; the npm
+package is not published or supported as a global install yet.
 
 The init command creates a mounted active workspace under:
 
@@ -117,6 +124,13 @@ LIGHTNING_API_KEY=... npm run check:model -- draft/01-opening.md
 
 Do not commit `.env`.
 
+## Optional Pi Adapter
+
+Pi is an agent UI that can read `AGENTS.md`, `.pi/prompts/`, and `.pi/skills/`.
+You do not need Pi to use Manuscript Lab. The npm scripts are the portable core;
+the `.pi/` files are an optional command-and-skill layer for agents that support
+them.
+
 ## What Is In The Repo
 
 - `scripts/`: harness commands
@@ -135,6 +149,7 @@ are ignored by default so the public repo stays reusable.
 - `docs/GETTING_STARTED.md`: first-project walkthrough
 - `docs/ARCHITECTURE.md`: layers and file boundaries
 - `docs/OPEN_SOURCE_READINESS.md`: current public-readiness gap list
+- `docs/CI.md`: intended GitHub Actions workflow
 - `docs/OPERATOR_GUIDE.md`: detailed operating manual
 - `docs/PROJECT_FILESYSTEM.md`: active/inactive project filesystem
 - `docs/CHAPTER_PRODUCTION_WORKFLOW.md`: section-level writing workflow
@@ -165,8 +180,18 @@ npm run done
 Use `npm run done:no-export` for maintenance work that should not regenerate
 reader exports.
 
-## Status
+For a Markdown/HTML reader copy without Python:
 
-This repo is being prepared for open source. The core harness is usable, but the
-name, license, npm packaging story, and public contribution policy still need a
-human decision before release.
+```bash
+npm run export -- --formats md,html --slug my-project
+```
+
+For all formats, including EPUB and PDF:
+
+```bash
+npm run export -- --slug my-project
+```
+
+## License
+
+MIT. See `LICENSE`.

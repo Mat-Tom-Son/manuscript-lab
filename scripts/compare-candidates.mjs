@@ -128,7 +128,7 @@ async function runComparison({ pair, order, model }) {
   try {
     const response = await callChatModel({
       model,
-      title: "doc-repo-agent candidate comparison",
+      title: "manuscript-lab candidate comparison",
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

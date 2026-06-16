@@ -55,7 +55,7 @@ if (!options.staticOnly) {
     try {
       const response = await callChatModel({
         model,
-        title: "doc-repo-agent revision diff audit",
+        title: "manuscript-lab revision diff audit",
         temperature: Number(options.temperature ?? 0.1),
         maxTokens: Number(options.maxTokens ?? 1800),
         responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

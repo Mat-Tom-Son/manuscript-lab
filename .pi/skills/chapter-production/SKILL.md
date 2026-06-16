@@ -1,6 +1,6 @@
 ---
 name: chapter-production
-description: Plan, draft, revise, review, or verify a single chapter or section through the document-repo-agent harness using core stores, runtime packets, checks, reviews, issue ledger, and candidate arena when useful.
+description: Plan, draft, revise, review, or verify a single chapter or section through the Manuscript Lab harness using core stores, runtime packets, checks, reviews, issue ledger, and candidate arena when useful.
 ---
 
 # Chapter Production

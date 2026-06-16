@@ -142,7 +142,7 @@ async function runReviewJob({ job }) {
     try {
       const response = await callChatModel({
         model: job.model,
-        title: "doc-repo-agent review runner",
+        title: "manuscript-lab review runner",
         temperature: options.temperature,
         maxTokens: options.maxTokens,
         responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

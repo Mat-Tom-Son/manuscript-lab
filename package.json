@@ -1,12 +1,40 @@
 {
   "name": "manuscript-lab",
   "version": "0.1.0",
-  "private": false,
+  "private": true,
   "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
+  "license": "MIT",
+  "author": "Mat Tom Son",
   "type": "module",
   "engines": {
     "node": ">=18"
   },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Mat-Tom-Son/manuscript-lab.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Mat-Tom-Son/manuscript-lab/issues"
+  },
+  "homepage": "https://github.com/Mat-Tom-Son/manuscript-lab#readme",
+  "files": [
+    "AGENTS.md",
+    "README.md",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
+    "LICENSE",
+    "bin/",
+    "checks/",
+    "docs/",
+    "evals/",
+    "reviews/",
+    "scripts/",
+    "templates/",
+    ".pi/",
+    ".env.example"
+  ],
   "bin": {
     "manuscript-lab": "bin/manuscript-lab.mjs",
     "mlab": "bin/manuscript-lab.mjs"
@@ -30,7 +58,9 @@
     "model:response-test": "node scripts/model-provider-response.test.mjs",
     "project:list": "node scripts/story-workspace.mjs list-projects",
     "project:log": "node scripts/story-workspace.mjs log-project",
+    "project:init": "node scripts/story-workspace.mjs init",
     "project:mount": "node scripts/story-workspace.mjs mount-project",
+    "project:restore": "node scripts/story-workspace.mjs restore",
     "project:sync": "node scripts/story-workspace.mjs sync-project",
     "project:test": "node scripts/project-mount.test.mjs",
     "project:verify": "node scripts/story-workspace.mjs verify-projects",

@@ -21,29 +21,11 @@ cat docs/PROJECT_FILESYSTEM.md
 cat docs/CHAPTER_PRODUCTION_WORKFLOW.md
 ```
 
-Then choose one loop:
+Then use the npm scripts directly:
 
 ```bash
-/doc-compose draft/<section>.md
-/doc-write draft/<section>.md
-/doc-review-section draft/<section>.md
-/doc-triage-issues draft/<section>.md
-/doc-plan-revision draft/<section>.md
-/doc-revise-candidates draft/<section>.md --issue <issue_id>
-/doc-compare-candidates draft/<section>.md --run <candidate-run-id>
-/doc-taste-arbiter draft/<section>.md --run <candidate-run-id>
-/doc-merge-winner draft/<section>.md --run <candidate-run-id>
-/doc-revise draft/<section>.md
-/doc-diff-audit --before path/to/before.md --after draft/<section>.md
-/doc-export
-/doc-done
-```
-
-If you are outside Pi, use the npm scripts directly:
-
-```bash
-npm run story:init -- --title "New Story" --slug new-story --sections 4 --archive-current
-npm run story:unload -- --slug current-story
+npm run project:init -- --title "New Project" --slug new-project --sections 4 --kind document.section
+npm run story:unload -- --slug current-project
 npm run story:verify
 npm run compose -- draft/<section>.md
 npm run check -- --static-only
@@ -58,6 +40,22 @@ npm run export
 npm run done
 npm test
 ```
+
+If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
+
+| Pi command | npm equivalent |
+|---|---|
+| `/doc-status` | `npm run status` |
+| `/doc-compose draft/<section>.md` | `npm run compose -- draft/<section>.md` |
+| `/doc-write draft/<section>.md` | compose, edit `draft/<section>.md`, then `npm run check` |
+| `/doc-review-section draft/<section>.md` | `npm run review:run -- --panel prose.clean draft/<section>.md` |
+| `/doc-triage-issues draft/<section>.md` | `npm run issues -- list --status open --target draft/<section>.md` |
+| `/doc-revise-candidates draft/<section>.md --issue <id>` | `npm run revise:candidates -- draft/<section>.md --issue <id>` |
+| `/doc-compare-candidates draft/<section>.md --run <id>` | `npm run compare:candidates -- draft/<section>.md --run <id>` |
+| `/doc-taste-arbiter draft/<section>.md --run <id>` | `npm run taste:arbiter -- draft/<section>.md --run <id>` |
+| `/doc-merge-winner draft/<section>.md --run <id>` | `npm run merge:winner -- draft/<section>.md --run <id>` |
+| `/doc-export` | `npm run export` |
+| `/doc-done` | `npm run done` |
 
 ## Cockpit Map
 

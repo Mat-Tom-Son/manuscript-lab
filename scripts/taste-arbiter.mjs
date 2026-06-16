@@ -93,7 +93,7 @@ async function runModelJudgment({ model }) {
   try {
     const response = await callChatModel({
       model,
-      title: "doc-repo-agent narrative taste arbiter",
+      title: "manuscript-lab narrative taste arbiter",
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

@@ -5,15 +5,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const options = parseArgs(process.argv.slice(2));
-const STORY_PATTERNS = [
-  pattern("Plant Room B", /\bPlant Room B\b|plant-room-b/i),
-  pattern("Plant Room B character", /\b(?:Hale|Corinne|Kiera)\b/),
-  pattern("Plant Room B science", /\b(?:fluorometer|fluorescence|photosynthesis|NPQ|fern|chlorophyll|stomata)\b/i),
-  pattern("Astronaut story title", /\bThe Last Nine Meters Per Second\b|the-last-nine-meters-per-second/i),
-  pattern("Astronaut story character", /\b(?:Rae|Okonkwo)\b/),
-  pattern("Astronaut story vehicle", /\b(?:Cicada|Lowell)\b/),
-  pattern("Astronaut story engineering", /\b(?:cislunar|water barge|micrometeoroid|hydrazine|lunar-capture|starboard|far-side|nozzle-side)\b/i),
-];
+const configuredPatterns = loadConfiguredPatterns();
 
 if (options.help) {
   printHelp();
@@ -27,7 +19,7 @@ for (const file of files) {
   const text = fs.readFileSync(file, "utf8");
   const lines = text.split(/\r?\n/);
   for (let index = 0; index < lines.length; index += 1) {
-    for (const pattern of STORY_PATTERNS) {
+    for (const pattern of configuredPatterns) {
       if (pattern.regex.test(lines[index])) {
         findings.push({
           file: displayPath(file),
@@ -45,7 +37,9 @@ if (options.json) {
   console.log(JSON.stringify({ checked_files: files.length, findings }, null, 2));
 } else {
   console.log(`Template audit checked ${files.length} reusable infrastructure file(s).`);
-  if (!findings.length) {
+  if (!configuredPatterns.length) {
+    console.log("No local contamination patterns configured.");
+  } else if (!findings.length) {
     console.log("No sample-story contamination found in reusable infrastructure.");
   } else {
     console.log("");
@@ -62,6 +56,42 @@ function pattern(label, regex) {
   return { label, regex };
 }
 
+function loadConfiguredPatterns() {
+  const files = [
+    options.patterns,
+    process.env.TEMPLATE_AUDIT_PATTERNS,
+    ".template-audit.local.json",
+  ].filter(Boolean);
+
+  const loaded = [];
+  for (const file of files) {
+    const full = abs(file);
+    if (!fs.existsSync(full)) continue;
+    const data = JSON.parse(fs.readFileSync(full, "utf8"));
+    const entries = Array.isArray(data) ? data : data.patterns;
+    if (!Array.isArray(entries)) fail(`Template audit pattern file must contain an array or { "patterns": [] }: ${file}`);
+    for (const [index, entry] of entries.entries()) {
+      loaded.push(patternFromEntry(entry, `${file}#${index + 1}`));
+    }
+  }
+  return loaded;
+}
+
+function patternFromEntry(entry, fallbackLabel) {
+  if (typeof entry === "string") {
+    return pattern(entry, new RegExp(escapeRegex(entry), "i"));
+  }
+  if (!entry || typeof entry !== "object") fail(`Invalid template audit pattern: ${fallbackLabel}`);
+  const label = String(entry.label || entry.term || entry.pattern || fallbackLabel);
+  if (entry.term) return pattern(label, new RegExp(escapeRegex(String(entry.term)), entry.flags || "i"));
+  if (entry.pattern) return pattern(label, new RegExp(String(entry.pattern), entry.flags || ""));
+  fail(`Template audit pattern needs "term" or "pattern": ${fallbackLabel}`);
+}
+
+function escapeRegex(value) {
+  return String(value).replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function collectFiles() {
   const roots = [
     "README.md",
@@ -76,6 +106,10 @@ function collectFiles() {
     "reviews",
     "evals",
     "package.json",
+    "CHANGELOG.md",
+    "CODE_OF_CONDUCT.md",
+    "CONTRIBUTING.md",
+    "SECURITY.md",
     "state/candidates/README.md",
     "state/issues/README.md",
     "state/reviews/README.md",
@@ -92,7 +126,6 @@ function collectFiles() {
   return roots
     .flatMap((entry) => collectEntry(abs(entry)))
     .filter((file) => /\.(?:md|mjs|js|json|py)$/.test(file))
-    .filter((file) => displayPath(file) !== "scripts/template-audit.mjs")
     .sort();
 }
 
@@ -111,12 +144,15 @@ function collectEntry(entry) {
 }
 
 function parseArgs(rawArgs) {
-  const parsed = { help: false, json: false, strict: false, includeProjectDocs: false };
-  for (const arg of rawArgs) {
+  const parsed = { help: false, json: false, strict: false, includeProjectDocs: false, patterns: "" };
+  for (let index = 0; index < rawArgs.length; index += 1) {
+    const arg = rawArgs[index];
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--json") parsed.json = true;
     else if (arg === "--strict") parsed.strict = true;
     else if (arg === "--include-project-docs") parsed.includeProjectDocs = true;
+    else if (arg === "--patterns") parsed.patterns = rawArgs[++index] || "";
+    else if (arg.startsWith("--patterns=")) parsed.patterns = arg.slice("--patterns=".length);
     else fail(`Unknown option: ${arg}`);
   }
   return parsed;
@@ -145,7 +181,13 @@ Usage:
 Options:
   --strict                Exit nonzero when findings are present.
   --include-project-docs  Also scan project-specific handoff/status files.
+  --patterns <file>       JSON contamination patterns. Defaults to .template-audit.local.json when present.
   --json                  Print machine-readable output.
   --help, -h              Show this help.
+
+Pattern file formats:
+  ["Private Term"]
+  { "patterns": [{ "label": "Old project title", "term": "Private Term" }] }
+  { "patterns": [{ "label": "Regex", "pattern": "\\\\bPrivate[A-Z]+", "flags": "i" }] }
 `);
 }

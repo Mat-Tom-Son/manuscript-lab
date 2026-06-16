@@ -17,6 +17,11 @@ npm run template:audit -- --strict
 npm run context:audit -- --strict
 ```
 
+If you need to scan for private project fingerprints, put them in an ignored
+`.template-audit.local.json` file or pass `--patterns path/to/patterns.json`.
+Do not commit private titles, character names, client names, or source-specific
+terms to `scripts/template-audit.mjs`.
+
 ## Project Boundaries
 
 Keep reusable harness code separate from user writing projects.
@@ -65,4 +70,3 @@ update the relevant docs and Pi adapter files together:
 - `docs/OPERATOR_GUIDE.md`
 - `.pi/skills/`
 - `.pi/prompts/`
-

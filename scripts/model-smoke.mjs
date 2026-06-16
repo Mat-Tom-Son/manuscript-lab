@@ -35,7 +35,7 @@ try {
   const response = await callChatModel({
     model: options.model,
     explicitProvider: options.provider,
-    title: "doc-repo-agent model smoke",
+    title: "manuscript-lab model smoke",
     temperature: options.temperature,
     maxTokens: options.maxTokens,
     responseFormat: options.jsonMode ? JSON_OBJECT_RESPONSE_FORMAT : null,

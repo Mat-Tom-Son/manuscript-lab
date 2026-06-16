@@ -560,7 +560,7 @@ async function runOneModelCheck({ check, section }) {
     try {
       const response = await callChatModel({
         model,
-        title: "doc-repo-agent doccheck",
+        title: "manuscript-lab doccheck",
         temperature: check.temperature ?? 0,
         maxTokens: check.max_tokens ?? 1200,
         responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

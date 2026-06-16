@@ -4,11 +4,15 @@ node_modules/
 .env.*
 !.env.example
 *.log
+*.tgz
 dist/
 build/
 coverage/
 .doccheck/
 tmp/
+model-calls/
+.template-audit.local.json
+template-audit.local.json
 
 # User projects and generated writing artifacts.
 # The public repo should contain the harness, not someone's manuscript.

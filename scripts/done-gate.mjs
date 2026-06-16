@@ -184,7 +184,7 @@ function printText(result) {
 }
 
 function printHelp() {
-  console.log(`done-gate - end-of-run verification for document-repo-agent
+  console.log(`done-gate - end-of-run verification for Manuscript Lab
 
 Usage:
   npm run done

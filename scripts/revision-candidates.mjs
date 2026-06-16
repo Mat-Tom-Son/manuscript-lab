@@ -117,7 +117,7 @@ const candidateResults = await mapLimit(jobs, options.concurrency, async (job) =
   try {
     const response = await callChatModel({
       model: job.model,
-      title: "doc-repo-agent revision candidates",
+      title: "manuscript-lab revision candidates",
       temperature: options.temperature,
       maxTokens: options.maxTokens,
       responseFormat: JSON_OBJECT_RESPONSE_FORMAT,

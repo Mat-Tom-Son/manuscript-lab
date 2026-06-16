@@ -1,5 +1,7 @@
 import fs from "node:fs";
 import path from "node:path";
+import os from "node:os";
+import { spawnSync } from "node:child_process";
 import { createHash, randomUUID } from "node:crypto";
 
 const KNOWN_PROVIDERS = new Set(["openrouter", "lightning", "custom"]);
@@ -54,7 +56,7 @@ export function hasAnyApiKeyForModels(models = []) {
 export async function callChatModel({
   model,
   explicitProvider = "",
-  title = "doc-repo-agent",
+  title = "manuscript-lab",
   temperature = 0.2,
   maxTokens = 1200,
   responseFormat = null,
@@ -614,9 +616,14 @@ function beginModelCallAudit({ audit, runtime, title, requestBody, attempts, par
       request,
     };
   } catch (error) {
+    if (isUnsafeAuditRootError(error)) throw error;
     auditWarning(`Could not initialize model-call audit: ${error.message}`);
     return null;
   }
+}
+
+function isUnsafeAuditRootError(error) {
+  return /MODEL_CALL_AUDIT_DIR|model-call audit root/.test(String(error?.message || ""));
 }
 
 function finishModelCallAudit(record, { status, error, attempts, usage, rawResponseText, rawResponseJson, assistantText }) {
@@ -679,16 +686,60 @@ function modelCallAuditEnabled(audit) {
 }
 
 function modelCallAuditRoot() {
-  if (process.env.MODEL_CALL_AUDIT_DIR) return absolutePath(process.env.MODEL_CALL_AUDIT_DIR);
+  if (process.env.MODEL_CALL_AUDIT_DIR) {
+    const customRoot = absolutePath(process.env.MODEL_CALL_AUDIT_DIR);
+    validateModelCallAuditRoot(customRoot, { custom: true });
+    return customRoot;
+  }
 
   const registryFile = absolutePath("projects/registry.json");
   const registry = readJsonIfExists(registryFile);
   const activeSlug = typeof registry?.active === "string" ? registry.active : registry?.active?.slug;
   const project = activeSlug ? registry?.projects?.[activeSlug] : null;
   const logsPath = project?.logs_path || registry?.active?.logs_path || (activeSlug ? path.join("projects", "active", activeSlug, "logs") : "");
-  if (logsPath) return path.join(absolutePath(logsPath), "model-calls");
+  if (logsPath) {
+    const projectRoot = path.join(absolutePath(logsPath), "model-calls");
+    validateModelCallAuditRoot(projectRoot, { custom: false });
+    return projectRoot;
+  }
 
-  return absolutePath("state/model-calls");
+  const stateRoot = absolutePath("state/model-calls");
+  validateModelCallAuditRoot(stateRoot, { custom: false });
+  return stateRoot;
+}
+
+function validateModelCallAuditRoot(rootDir, { custom }) {
+  if (envFlag("MODEL_CALL_AUDIT_ALLOW_UNSAFE_DIR")) return;
+
+  const safeRoots = [
+    absolutePath("state/model-calls"),
+    absolutePath("projects"),
+    absolutePath(".doccheck"),
+    absolutePath("tmp"),
+    absolutePath("model-calls"),
+    os.tmpdir(),
+  ];
+  if (safeRoots.some((safeRoot) => isPathInside(rootDir, safeRoot))) return;
+
+  if (isPathInside(rootDir, process.cwd()) && isGitIgnored(rootDir)) return;
+
+  const scope = custom ? "MODEL_CALL_AUDIT_DIR" : "model-call audit root";
+  throw new Error(`${scope} must be under an ignored/private path such as state/model-calls, projects/, tmp/, .doccheck/, model-calls/, or the system temp directory. Set MODEL_CALL_AUDIT_ALLOW_UNSAFE_DIR=1 only after confirming the path will not be committed.`);
+}
+
+function isGitIgnored(target) {
+  const rel = displayPath(target);
+  if (!rel || rel === "." || rel.startsWith("..")) return false;
+  const result = spawnSync("git", ["check-ignore", "-q", "--", rel], {
+    cwd: process.cwd(),
+    stdio: "ignore",
+  });
+  return result.status === 0;
+}
+
+function isPathInside(candidate, rootDir) {
+  const relative = path.relative(path.resolve(rootDir), path.resolve(candidate));
+  return relative === "" || (!relative.startsWith("..") && !path.isAbsolute(relative));
 }
 
 function modelCallId({ createdAt, operation, runtime }) {
@@ -1075,9 +1126,16 @@ function isSensitiveAuditKey(key) {
   );
 }
 
-function redactSensitiveText(value) {
+export function redactSensitiveText(value) {
   return String(value ?? "")
     .replace(/sk-or-v1-[A-Za-z0-9_-]+/g, "[REDACTED_OPENROUTER_KEY]")
+    .replace(/sk-proj-[A-Za-z0-9_-]+/g, "[REDACTED_OPENAI_PROJECT_KEY]")
+    .replace(/sk-ant-[A-Za-z0-9_-]+/g, "[REDACTED_ANTHROPIC_KEY]")
+    .replace(/\bsk-[A-Za-z0-9][A-Za-z0-9_-]{20,}\b/g, "[REDACTED_API_KEY]")
+    .replace(/\bAIza[0-9A-Za-z_-]{30,}\b/g, "[REDACTED_GOOGLE_KEY]")
+    .replace(/\bgh[pousr]_[A-Za-z0-9_]{20,}\b/g, "[REDACTED_GITHUB_TOKEN]")
+    .replace(/\bhf_[A-Za-z0-9]{20,}\b/g, "[REDACTED_HUGGINGFACE_TOKEN]")
+    .replace(/\bxox[baprs]-[A-Za-z0-9-]{20,}\b/g, "[REDACTED_SLACK_TOKEN]")
     .replace(/(Authorization\s*:\s*Bearer\s+)[^\s"']+/gi, "$1[REDACTED]")
     .replace(/((?:OPENROUTER|LIGHTNING|LITAI|MODEL)_API_KEY\s*=\s*)[^\s"']+/gi, "$1[REDACTED]")
     .replace(/((?:api[_-]?key|access[_-]?token|secret|password)\s*[:=]\s*)[^\s"',}]+/gi, "$1[REDACTED]");
