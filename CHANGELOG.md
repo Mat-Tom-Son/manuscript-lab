@@ -2,10 +2,13 @@
 
 ## Unreleased
 
+## 0.2.0 - 2026-06-16
+
 - Added product strategy documentation for the "local CI for prose" direction.
 - Added a Codex skill adapter, validator, and installer for Manuscript Lab shipping work.
 - Added active GitHub Actions CI for tests, audits, smoke checks, and package dry-runs.
 - Added draft protocol/install/gate/evidence design docs and the public technical whitepaper tutorial fixture.
+- Fixed doctor ignore checks so fresh CI checkouts validate private/generated path rules correctly.
 
 ## 0.1.1
 
