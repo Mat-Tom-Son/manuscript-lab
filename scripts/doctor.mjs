@@ -69,8 +69,8 @@ function checkGit() {
 function checkIgnoredPrivatePaths() {
   const privatePaths = [
     ".env",
-    ".doccheck",
-    "tmp",
+    ".doccheck/",
+    "tmp/",
     "PROJECT.md",
     "brief.md",
     "outline.md",
@@ -80,8 +80,8 @@ function checkIgnoredPrivatePaths() {
     "exports",
     "sources",
     "taste",
-    "projects/active",
-    "projects/inactive",
+    "projects/active/",
+    "projects/inactive/",
     "projects/registry.json",
     "docs/PROJECT_HANDOFF.md",
     "docs/PROJECT_REVIEW_APPROACH.md",
