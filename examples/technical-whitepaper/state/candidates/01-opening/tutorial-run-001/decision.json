@@ -1,0 +1,12 @@
+{
+  "version": 1,
+  "run_id": "tutorial-run-001",
+  "decision": "winner",
+  "winner": "candidate-a",
+  "confidence": "medium",
+  "reason": "Candidate A addresses the accepted issue while preserving the original paragraph boundaries.",
+  "applied": false,
+  "notes": [
+    "Manual public sample; no model judge output is included."
+  ]
+}

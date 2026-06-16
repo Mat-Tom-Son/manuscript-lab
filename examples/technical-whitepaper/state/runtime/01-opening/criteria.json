@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "section": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "operation": "draft",
+  "criteria": [
+    {
+      "id": "contract.definitions",
+      "type": "acceptance",
+      "text": "Defines context packet, issue, candidate, audit, and export in plain language."
+    },
+    {
+      "id": "contract.claims",
+      "type": "acceptance",
+      "text": "Uses only local fixture claims listed in state/claims.md."
+    },
+    {
+      "id": "contract.operating_promise",
+      "type": "acceptance",
+      "text": "Ends with a concrete operating promise a tutorial reader can verify."
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "version": 1,
+  "decisions": [
+    {
+      "issue_id": "issue_tutorial_0001",
+      "decision": "accept",
+      "reason": "The tutorial should show how a small accepted issue becomes revision input.",
+      "revision_instruction": "Add a concise owner-review sentence without expanding the section.",
+      "merge_into": "",
+      "decided_at": "2026-06-16T00:00:00.000Z"
+    }
+  ]
+}

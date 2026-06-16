@@ -1,0 +1,34 @@
+# Example gate config shape. This is a template for future gate-engine work,
+# not an executable config in the current harness.
+gate:
+  schema_version: manuscript-lab.gate-config.v1
+  id: section-ready
+  version: 1
+  scope: section
+  applies_to:
+    include:
+      - draft/*.md
+  profiles:
+    default:
+      requires:
+        - id: contract.valid
+          severity: block
+          sensor: section_contract
+        - id: runtime.fresh
+          severity: block
+          sensor: runtime_packet
+        - id: doccheck.static_pass
+          severity: block
+          sensor: doccheck_static
+        - id: issues.no_blockers
+          severity: block
+          sensor: issue_ledger
+      warns:
+        - id: reviews.latest_clean
+          severity: warn
+          sensor: review_errors
+  overrides:
+    allowed: true
+    require_actor: true
+    require_reason: true
+    max_age_days: 14

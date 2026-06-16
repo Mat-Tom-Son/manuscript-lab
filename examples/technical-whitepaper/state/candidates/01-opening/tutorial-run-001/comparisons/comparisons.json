@@ -1,0 +1,51 @@
+{
+  "version": 1,
+  "source_candidate_run": "tutorial-run-001",
+  "compared_at": "2026-06-16T00:00:00.000Z",
+  "target": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "models": [
+    "manual:public-fixture"
+  ],
+  "swap_order": false,
+  "pairs": [
+    {
+      "pair_id": "candidate-a__vs__candidate-b",
+      "candidates": [
+        "candidate-a",
+        "candidate-b"
+      ],
+      "orders": [
+        {
+          "order": "ab",
+          "model": "manual:public-fixture",
+          "provider": "manual",
+          "resolved_model": "public-fixture",
+          "model_call_id": "",
+          "model_call_path": "",
+          "a_candidate": "candidate-a",
+          "b_candidate": "candidate-b",
+          "winner": "candidate-a",
+          "winner_label": "A",
+          "confidence": "medium",
+          "reason": "Candidate A resolves the issue with less loss of context.",
+          "issue_resolution": "Names owner review before export.",
+          "voice_preservation": "Keeps the original plain operational style.",
+          "new_regressions": [],
+          "raw_output_file": "",
+          "error": ""
+        }
+      ],
+      "position_stable": true,
+      "winner": "candidate-a",
+      "confidence": "medium",
+      "reason": "Candidate A resolves the issue with less loss of context."
+    }
+  ],
+  "decision": {
+    "decision": "winner",
+    "winner": "candidate-a",
+    "confidence": "medium",
+    "reason": "Candidate A resolves the accepted issue without compressing useful definitions."
+  }
+}

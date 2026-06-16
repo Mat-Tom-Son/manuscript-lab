@@ -1,0 +1,91 @@
+{
+  "version": 1,
+  "section": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "operation": "draft",
+  "context_pack": "informed.section_writer",
+  "requested_context_pack": "informed.section_writer",
+  "context_pack_description": "Sample public context packet for the tutorial fixture.",
+  "generated_at": "2026-06-16T00:00:00.000Z",
+  "run_id": "compose_tutorial_001_01-opening",
+  "visible_files": [
+    {
+      "path": "PROJECT.md",
+      "sha256": "sample",
+      "bytes": 498,
+      "reason": "project supplement"
+    },
+    {
+      "path": "brief.md",
+      "sha256": "sample",
+      "bytes": 980,
+      "reason": "project brief"
+    },
+    {
+      "path": "outline.md",
+      "sha256": "sample",
+      "bytes": 1110,
+      "reason": "document structure"
+    },
+    {
+      "path": "style.md",
+      "sha256": "sample",
+      "bytes": 960,
+      "reason": "voice and citation rules"
+    },
+    {
+      "path": "sources/index.md",
+      "sha256": "sample",
+      "bytes": 600,
+      "reason": "source registry"
+    },
+    {
+      "path": "state/claims.md",
+      "sha256": "sample",
+      "bytes": 610,
+      "reason": "claim support"
+    },
+    {
+      "path": "state/continuity.md",
+      "sha256": "sample",
+      "bytes": 565,
+      "reason": "definitions and invariants"
+    },
+    {
+      "path": "draft/01-opening.md",
+      "sha256": "sample",
+      "bytes": 3100,
+      "reason": "target section"
+    }
+  ],
+  "excluded_files": [
+    "state/reviews/",
+    "state/candidates/",
+    "state/runtime/",
+    "exports/",
+    ".env"
+  ],
+  "missing_files": [],
+  "skipped_files": [],
+  "input_hashes": {},
+  "contract": {
+    "fields": {
+      "id": "01-opening",
+      "kind": "document.chapter",
+      "stage": "draft",
+      "status": "draft",
+      "target_words": "650",
+      "purpose": "Introduce the sample packet workflow and show how durable review artifacts fit together."
+    },
+    "lists": {
+      "checks": [
+        "claims.supported",
+        "style.violations"
+      ],
+      "reviews": [
+        "cold.reader",
+        "contract.editor"
+      ]
+    }
+  }
+}

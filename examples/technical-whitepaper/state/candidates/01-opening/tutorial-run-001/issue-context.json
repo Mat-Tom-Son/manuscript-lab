@@ -1,0 +1,18 @@
+{
+  "version": 1,
+  "target": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "issues": [
+    {
+      "id": "issue_tutorial_0001",
+      "status": "accepted",
+      "category": "structure",
+      "severity": "minor",
+      "target_quote": "The packet does not replace judgment; it creates a small place to write down what judgment should protect.",
+      "claim": "The workflow introduces verification but does not name who performs the final owner review.",
+      "evidence": "The paragraph explains the packet's purpose but leaves the review handoff implicit.",
+      "recommended_action": "Add one sentence that names owner review as the final human check before export.",
+      "revision_instruction": "Add a concise owner-review sentence without expanding the section."
+    }
+  ]
+}

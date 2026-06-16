@@ -148,6 +148,7 @@ them.
 - `checks/`: model-backed semantic checks and prompts
 - `reviews/`: typed review passes and model panels
 - `skills/codex/`: optional Codex skill adapter
+- `examples/`: public tutorial fixture projects
 - `.pi/prompts/`: optional slash-command templates
 - `.pi/skills/`: optional local skills for long-form writing workflows
 - `docs/`: operating guides and architecture notes
@@ -162,8 +163,13 @@ are ignored by default so the public repo stays reusable.
 - `docs/CODEX_SKILLS.md`: installing and using the Codex skill
 - `docs/PRODUCT_STRATEGY.md`: positioning and product roadmap
 - `docs/ARCHITECTURE.md`: layers and file boundaries
+- `docs/FILE_PROTOCOL.md`: draft protocol v1 for project layout and config
+- `docs/INSTALL_WORKFLOW.md`: npm/install-anywhere design record
+- `docs/GATE_ENGINE.md`: readiness gate design and result format
+- `docs/EVIDENCE_SPINE.md`: claims and sources design
+- `examples/technical-whitepaper/README.md`: public tutorial fixture
 - `docs/OPEN_SOURCE_READINESS.md`: current public-readiness gap list
-- `docs/CI.md`: intended GitHub Actions workflow
+- `docs/CI.md`: GitHub Actions workflow
 - `docs/OPERATOR_GUIDE.md`: detailed operating manual
 - `docs/PROJECT_FILESYSTEM.md`: active/inactive project filesystem
 - `docs/CHAPTER_PRODUCTION_WORKFLOW.md`: section-level writing workflow

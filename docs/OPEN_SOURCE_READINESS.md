@@ -61,6 +61,8 @@ feel locked to one agent UI?"
 - Added `docs/GETTING_STARTED.md`.
 - Added `docs/ARCHITECTURE.md`.
 - Added a repo-shipped Codex skill adapter under `skills/codex/`.
+- Added protocol, install workflow, gate engine, and evidence spine design docs.
+- Added `examples/technical-whitepaper/` as a public tutorial fixture.
 - Updated `.gitignore` so user writing work does not accidentally become public.
 
 ## Release Decisions
@@ -91,13 +93,13 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
 
 ### Before npm Publishing
 
-- A true `init` command for installing the harness into an arbitrary folder.
-- A stable file protocol v1 and config file.
-- A gate engine that can report section/manuscript/export readiness.
-- A first-class claim/source spine for nonfiction and research workflows.
-- Public sample project or tutorial fixture.
+- Implement the install-anywhere `init` command described in
+  `docs/INSTALL_WORKFLOW.md`.
+- Implement protocol validation/migration for the draft protocol in
+  `docs/FILE_PROTOCOL.md`.
+- Implement the gate engine described in `docs/GATE_ENGINE.md`.
+- Implement claim/source commands from `docs/EVIDENCE_SPINE.md`.
 - Active GitHub Actions CI once a GitHub token with `workflow` scope is used.
-- Changelog/release process.
 - Better distinction between optional agent integrations and portable npm usage.
 - Installed-package end-to-end test once npm publishing is enabled.
 
@@ -105,13 +107,12 @@ or manage a Manuscript Lab project inside an arbitrary writing repository.
 
 - `manuscript-lab quickstart` for guided setup.
 - A public docs site.
-- A fixture-based end-to-end test that initializes a project, composes context,
-  checks it, exports it, and passes `done:no-export`.
+- A CI end-to-end test that runs the public tutorial fixture walkthrough.
 
 ## Suggested Release Path
 
 1. Publish the clean repo on GitHub.
 2. Keep it template-first for the first public release.
-3. Add one polished tutorial project fixture.
+3. Keep the tutorial fixture current as the public demo path.
 4. Only then invest in an installable npm package that can initialize arbitrary
    external workspaces.

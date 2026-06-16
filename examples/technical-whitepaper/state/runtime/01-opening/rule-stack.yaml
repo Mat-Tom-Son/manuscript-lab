@@ -1,0 +1,13 @@
+version: 1
+section: draft/01-opening.md
+section_id: 01-opening
+operation: draft
+rules:
+  - source: PROJECT.md
+    rule: Keep the fixture public, generic, and free of secrets.
+  - source: brief.md
+    rule: Demonstrate the harness concepts with compact neutral content.
+  - source: style.md
+    rule: Use plain operational prose and avoid hype.
+  - source: state/claims.md
+    rule: Support visible local claims with registered source keys.

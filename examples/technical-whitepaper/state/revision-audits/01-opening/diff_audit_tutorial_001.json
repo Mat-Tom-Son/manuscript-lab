@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "pass": "revision.diff_audit",
+  "run_id": "diff_audit_tutorial_001",
+  "created_at": "2026-06-16T00:00:00.000Z",
+  "mode": "static",
+  "model": null,
+  "provider": null,
+  "resolved_model": null,
+  "model_call_id": "",
+  "model_call_path": "",
+  "target": {
+    "section_id": "01-opening",
+    "before_file": "state/revision-audits/01-opening/before.md",
+    "after_file": "state/candidates/01-opening/tutorial-run-001/candidate-a.md",
+    "issue_id": "issue_tutorial_0001"
+  },
+  "static": {
+    "before_file": "state/revision-audits/01-opening/before.md",
+    "after_file": "state/candidates/01-opening/tutorial-run-001/candidate-a.md",
+    "issue_id": "issue_tutorial_0001",
+    "word_count_before": 47,
+    "word_count_after": 63,
+    "word_count_delta": 16,
+    "line_delta": {
+      "removed_count": 0,
+      "added_count": 2,
+      "removed_examples": [],
+      "added_examples": [
+        "small place to write down what judgment should protect. Before export, the",
+        "document owner reviews that packet against the accepted issue and the section"
+      ]
+    },
+    "removed_protected_lines": [],
+    "pattern_metrics_before": {},
+    "pattern_metrics_after": {},
+    "pattern_metric_delta": {}
+  },
+  "parsed": null,
+  "raw_output": "",
+  "error": ""
+}

@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "next_id": 2,
+  "issues": [
+    {
+      "id": "issue_tutorial_0001",
+      "status": "accepted",
+      "source": {
+        "type": "manual",
+        "run_id": "tutorial-review-dry-run",
+        "pass_id": "contract.editor"
+      },
+      "target": {
+        "file": "draft/01-opening.md",
+        "section_id": "01-opening",
+        "target_quote": "The packet does not replace judgment; it creates a small place to write down what judgment should protect.",
+        "start_line": 43,
+        "end_line": 44
+      },
+      "category": "structure",
+      "severity": "minor",
+      "claim": "The workflow introduces verification but does not name who performs the final owner review.",
+      "evidence": "The paragraph explains the packet's purpose but leaves the review handoff implicit.",
+      "recommended_action": "Add one sentence that names owner review as the final human check before export.",
+      "created_at": "2026-06-16T00:00:00.000Z",
+      "updated_at": "2026-06-16T00:00:00.000Z",
+      "decision": {
+        "issue_id": "issue_tutorial_0001",
+        "decision": "accept",
+        "reason": "The tutorial should show how a small accepted issue becomes revision input.",
+        "revision_instruction": "Add a concise owner-review sentence without expanding the section.",
+        "merge_into": "",
+        "decided_at": "2026-06-16T00:00:00.000Z"
+      },
+      "history": [
+        {
+          "at": "2026-06-16T00:00:00.000Z",
+          "action": "created",
+          "source": "manual tutorial fixture"
+        },
+        {
+          "at": "2026-06-16T00:00:00.000Z",
+          "action": "decided",
+          "decision": {
+            "issue_id": "issue_tutorial_0001",
+            "decision": "accept",
+            "reason": "The tutorial should show how a small accepted issue becomes revision input.",
+            "revision_instruction": "Add a concise owner-review sentence without expanding the section.",
+            "merge_into": "",
+            "decided_at": "2026-06-16T00:00:00.000Z"
+          }
+        }
+      ]
+    }
+  ]
+}

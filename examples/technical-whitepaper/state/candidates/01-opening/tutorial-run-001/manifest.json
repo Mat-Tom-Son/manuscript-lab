@@ -1,0 +1,43 @@
+{
+  "version": 1,
+  "run_id": "tutorial-run-001",
+  "created_at": "2026-06-16T00:00:00.000Z",
+  "target": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "source_sha256": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868",
+  "status": "generated",
+  "n": 2,
+  "models": [
+    "manual:public-fixture"
+  ],
+  "issue_ids": [
+    "issue_tutorial_0001"
+  ],
+  "runtime_packet": {
+    "file": "state/runtime/01-opening/context.json",
+    "run_id": "compose_tutorial_001_01-opening"
+  },
+  "revision_plan": null,
+  "files": {
+    "base": "state/candidates/01-opening/tutorial-run-001/base.md",
+    "issue_context": "state/candidates/01-opening/tutorial-run-001/issue-context.json",
+    "candidate_meta": "state/candidates/01-opening/tutorial-run-001/candidate-meta.json"
+  },
+  "candidates": [
+    {
+      "candidate_id": "candidate-a",
+      "model": "manual:public-fixture",
+      "strategy": "minimal owner-review addition",
+      "file": "state/candidates/01-opening/tutorial-run-001/candidate-a.md",
+      "raw_output_file": ""
+    },
+    {
+      "candidate_id": "candidate-b",
+      "model": "manual:public-fixture",
+      "strategy": "compressed operating rule",
+      "file": "state/candidates/01-opening/tutorial-run-001/candidate-b.md",
+      "raw_output_file": ""
+    }
+  ],
+  "completed_at": "2026-06-16T00:00:00.000Z"
+}

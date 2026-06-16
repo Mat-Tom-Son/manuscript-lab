@@ -32,3 +32,8 @@ sources
 style
 taste
 state
+
+# Public tutorial fixtures intentionally contain miniature draft/state/source/export trees.
+!examples/
+!examples/technical-whitepaper/
+!examples/technical-whitepaper/**

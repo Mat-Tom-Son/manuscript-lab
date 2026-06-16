@@ -47,5 +47,7 @@ jobs:
         run: npm pack --dry-run
 ```
 
-Enable it by saving this as `.github/workflows/ci.yml` after pushing with a
-GitHub token that has `workflow` scope.
+Enable it by saving this as `.github/workflows/ci.yml` and pushing with a
+GitHub token that has `workflow` scope. The current automation token can push
+normal code and docs, but GitHub rejects workflow-file changes without that
+extra scope.

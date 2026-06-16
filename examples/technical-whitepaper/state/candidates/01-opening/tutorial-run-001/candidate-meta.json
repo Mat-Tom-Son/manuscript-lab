@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "run_id": "tutorial-run-001",
+  "generated_at": "2026-06-16T00:00:00.000Z",
+  "target": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "source_sha256": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868",
+  "candidates": [
+    {
+      "candidate_id": "candidate-a",
+      "model": "manual:public-fixture",
+      "provider": "manual",
+      "resolved_model": "public-fixture",
+      "model_call_id": "",
+      "model_call_path": "",
+      "strategy": "minimal owner-review addition",
+      "file": "state/candidates/01-opening/tutorial-run-001/candidate-a.md",
+      "raw_output_file": "",
+      "started_at": "2026-06-16T00:00:00.000Z",
+      "finished_at": "2026-06-16T00:00:00.000Z",
+      "error": "",
+      "summary": "Adds one owner-review sentence while preserving structure.",
+      "changed_lines": [
+        "Adds owner review to the context-packet paragraph."
+      ],
+      "protected_strengths": [
+        "Keeps the artifact definitions and public fixture framing."
+      ],
+      "risk_notes": []
+    },
+    {
+      "candidate_id": "candidate-b",
+      "model": "manual:public-fixture",
+      "provider": "manual",
+      "resolved_model": "public-fixture",
+      "model_call_id": "",
+      "model_call_path": "",
+      "strategy": "compressed operating rule",
+      "file": "state/candidates/01-opening/tutorial-run-001/candidate-b.md",
+      "raw_output_file": "",
+      "started_at": "2026-06-16T00:00:00.000Z",
+      "finished_at": "2026-06-16T00:00:00.000Z",
+      "error": "",
+      "summary": "Compresses the workflow paragraph and names owner review.",
+      "changed_lines": [
+        "Combines packet purpose and owner review into one shorter rule."
+      ],
+      "protected_strengths": [
+        "Keeps the public fixture constraints."
+      ],
+      "risk_notes": [
+        "Slightly less explicit about packet boundaries."
+      ]
+    }
+  ]
+}

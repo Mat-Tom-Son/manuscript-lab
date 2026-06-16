@@ -1,0 +1,62 @@
+{
+  "version": 1,
+  "section": "draft/01-opening.md",
+  "section_id": "01-opening",
+  "composed_at": "2026-06-16T00:00:00.000Z",
+  "composer_version": "sample",
+  "run_id": "compose_tutorial_001_01-opening",
+  "operation": "draft",
+  "context_pack": "informed.section_writer",
+  "selected_context": [
+    {
+      "file": "PROJECT.md",
+      "reason": "project supplement",
+      "sha256": "sample"
+    },
+    {
+      "file": "brief.md",
+      "reason": "project brief",
+      "sha256": "sample"
+    },
+    {
+      "file": "outline.md",
+      "reason": "document structure",
+      "sha256": "sample"
+    },
+    {
+      "file": "style.md",
+      "reason": "voice and citation rules",
+      "sha256": "sample"
+    },
+    {
+      "file": "draft/01-opening.md",
+      "reason": "target section",
+      "sha256": "sample"
+    }
+  ],
+  "required_checks": [
+    "claims.supported",
+    "style.violations"
+  ],
+  "suggested_reviews": [
+    "cold.reader",
+    "contract.editor"
+  ],
+  "generated_criteria": [
+    "contract.definitions",
+    "contract.claims",
+    "contract.operating_promise"
+  ],
+  "known_risks": [
+    "Tutorial prose may imply a real product if local fixture framing is removed."
+  ],
+  "missing_files": [],
+  "skipped_files": [],
+  "output_files": {
+    "intent": "state/runtime/01-opening/intent.md",
+    "context": "state/runtime/01-opening/context.json",
+    "rule_stack": "state/runtime/01-opening/rule-stack.yaml",
+    "criteria": "state/runtime/01-opening/criteria.json",
+    "trace": "state/runtime/01-opening/trace.json"
+  }
+}
