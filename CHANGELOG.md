@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.3.0 - 2026-06-16
+
 - Added `mlab validate` / `npm run validate` for deterministic file-protocol
   discovery and validation across template-first and config-first workspaces.
 - Added deterministic evidence commands for listing unsupported claims, checking
