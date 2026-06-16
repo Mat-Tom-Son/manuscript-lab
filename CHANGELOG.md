@@ -2,6 +2,9 @@
 
 ## Unreleased
 
+- Sharpened the README demo payoff with a concrete report excerpt and an
+  inspection trail for the technical-whitepaper fixture.
+
 ## 0.6.0 - 2026-06-16
 
 - Added `exports/manifest.json` generation to `mlab export` / `npm run export`,
