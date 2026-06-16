@@ -79,23 +79,34 @@ The repository root then points to that workspace with symlinks such as
 
 There is also an install-anywhere alpha for external writing repos. It is tested
 from a packed local package, but npm registry publishing remains disabled until
-more legacy commands are fully config-root aware.
+global/registry smokes and the remaining model-heavy commands are ready.
 
 ```bash
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npm install -D /path/to/manuscript-lab-0.5.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
+npx mlab status
+npx mlab compose draft/01-opening.md
+npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab export --formats md,html --include-todo --slug my-whitepaper
+npx mlab done:no-export
 ```
 
 Install-anywhere init writes `manuscript-lab.config.json` plus user-owned files
 under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 `.pi/`, or `skills/` into the caller workspace.
+
+The v0.5 install-anywhere surface covers deterministic local work: validate,
+status, compose, static checks, claims/citations/evidence, gates,
+`review:report`, `done:no-export`, and Markdown/HTML export. Full typed review
+execution, candidate revisions, template project switching, and full
+EPUB/PDF-oriented `done` remain template-first while the installed CLI matures.
 
 ## Daily Loop
 

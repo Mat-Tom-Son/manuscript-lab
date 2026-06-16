@@ -114,7 +114,7 @@ The original line remains.
 }
 
 function testUnknownContextPackFailsClosed() {
-  const result = run(["scripts/compose-context.mjs", targetRel, "--context-pack", "blind.section_onl", "--dry-run"]);
+  const result = run(["scripts/compose-context.mjs", abs(targetRel), "--context-pack", "blind.section_onl", "--dry-run"]);
   assert.notEqual(result.status, 0, "unknown context pack should fail");
   assert.match(result.stderr, /Unknown context pack: blind\.section_onl/);
 }

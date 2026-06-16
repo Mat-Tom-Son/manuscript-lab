@@ -5,8 +5,11 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const root = discovery.manuscriptRoot;
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help) {
@@ -24,7 +27,7 @@ for (const format of formats) {
 const manuscript = collectManuscript();
 if (!manuscript.chapters.length) fail("No manuscript chapters found. Draft at least one non-todo chapter first.");
 
-const outDir = resolveInputPath(options.out ?? "exports");
+const outDir = resolveOutputPath(options.out ?? paths.exportsDir);
 fs.mkdirSync(outDir, { recursive: true });
 
 const slug = slugify(options.slug || manuscript.title || "manuscript");
@@ -68,7 +71,7 @@ function collectManuscript() {
       continue;
     }
 
-    if (!kind.includes("chapter")) continue;
+    if (!exportableSectionKind(kind)) continue;
     if (!options.includeTodo && status === "todo") continue;
 
     const contentAfterHeading = stripFirstHeading(body).trim();
@@ -196,7 +199,7 @@ function writePdf(manuscript, file, slug) {
   const dataFile = path.join(tmpDir, "manuscript.json");
   fs.writeFileSync(dataFile, `${JSON.stringify(manuscript, null, 2)}\n`);
 
-  const renderer = abs("scripts/render-pdf.py");
+  const renderer = packageAbs("scripts/render-pdf.py");
   execFileSync(python, [renderer, dataFile, file], { cwd: root, stdio: options.quiet ? "ignore" : "inherit" });
   fs.rmSync(tmpDir, { recursive: true, force: true });
   return { format: "pdf", file: displayPath(file) };
@@ -566,16 +569,26 @@ function read(file) {
   return fs.readFileSync(file, "utf8");
 }
 
-function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+function resolveOutputPath(input) {
+  return paths.resolveProjectOutput(input);
 }
 
 function abs(rel) {
-  return path.join(root, rel);
+  return paths.projectAbs(rel);
+}
+
+function packageAbs(rel) {
+  return paths.packageAbs(rel);
 }
 
 function displayPath(file) {
-  return path.relative(root, file).split(path.sep).join("/");
+  return paths.projectRel(file);
+}
+
+function exportableSectionKind(kind) {
+  const value = String(kind ?? "");
+  if (value.includes("chapter")) return true;
+  return value === "document.section" || value.endsWith(".section");
 }
 
 function fail(message) {

@@ -2,8 +2,10 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help) {
@@ -21,7 +23,7 @@ if (options.json) {
 }
 
 function loadRuns() {
-  const dir = abs("state/reviews");
+  const dir = paths.stateAbs("reviews");
   if (!fs.existsSync(dir)) return [];
 
   const runs = [];
@@ -209,7 +211,7 @@ function walk(dir) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInput(input);
 }
 
 function normalizeRel(file) {
@@ -220,10 +222,6 @@ function read(file) {
   return fs.readFileSync(file, "utf8");
 }
 
-function abs(rel) {
-  return path.join(root, rel);
-}
-
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
 }

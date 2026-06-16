@@ -3,8 +3,11 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const root = discovery.manuscriptRoot;
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help) {
@@ -15,9 +18,10 @@ if (options.help) {
 const workspaceState = readWorkspaceState();
 const projectWorkspace = readProjectWorkspace();
 const unloaded = workspaceState.status === "unloaded" && !projectWorkspace.active;
-const statusRows = !unloaded && fs.existsSync(abs("state/status.md")) ? parseMarkdownTable(read(abs("state/status.md"))) : [];
+const statusFile = paths.stateAbs("status.md");
+const statusRows = !unloaded && fs.existsSync(statusFile) ? parseMarkdownTable(read(statusFile)) : [];
 const drafts = unloaded ? [] : statusRows.map(sectionStatus).filter(Boolean);
-const issueLedger = loadJson(abs("state/issues/issue-ledger.json"), { issues: [] });
+const issueLedger = loadJson(paths.stateAbs("issues/issue-ledger.json"), { issues: [] });
 const issueStats = summarizeIssues(issueLedger.issues ?? []);
 const exports = unloaded ? [] : listExports();
 const candidateRuns = listCandidateRuns();
@@ -28,6 +32,10 @@ const activeDraft = drafts.find((draft) => draft.status === "draft" && draft.wor
 const summary = {
   title: readTitle(),
   generated_at: new Date().toISOString(),
+  mode: discovery.mode,
+  workspace_root: discovery.workspaceRoot,
+  manuscript_root: discovery.manuscriptRoot,
+  config_path: discovery.configPath,
   workspace_state: workspaceState,
   drafts,
   runtime_packets: summarizeRuntimePackets(drafts),
@@ -107,7 +115,7 @@ function summarizeIssues(issues) {
 }
 
 function listExports() {
-  const dir = abs("exports");
+  const dir = paths.exportsAbs();
   if (!fs.existsSync(dir)) return [];
 
   return fs
@@ -126,7 +134,7 @@ function listExports() {
 }
 
 function listCandidateRuns() {
-  const rootDir = abs("state/candidates");
+  const rootDir = paths.stateAbs("candidates");
   if (!fs.existsSync(rootDir)) return [];
 
   const runs = [];
@@ -163,7 +171,25 @@ function listCandidateRuns() {
 }
 
 function readProjectWorkspace() {
-  const registryFile = abs("projects/registry.json");
+  if (discovery.mode === "installed") {
+    return {
+      configured: true,
+      mode: "installed",
+      active: {
+        slug: path.basename(discovery.workspaceRoot),
+        path: displayPath(discovery.manuscriptRoot),
+        workspace_path: displayPath(discovery.manuscriptRoot),
+      },
+      project_count: 1,
+      active_status: "active",
+      workspace_path: displayPath(discovery.manuscriptRoot),
+      mounted: false,
+      updated_at: "",
+      config_path: discovery.configPath ? path.relative(discovery.workspaceRoot, discovery.configPath).split(path.sep).join("/") : "",
+    };
+  }
+
+  const registryFile = paths.workspaceAbs("projects/registry.json");
   if (!fs.existsSync(registryFile)) {
     return {
       configured: false,
@@ -182,13 +208,13 @@ function readProjectWorkspace() {
     project_count: Object.keys(registry.projects ?? {}).length,
     active_status: project?.status ?? "",
     workspace_path: workspacePath,
-    mounted: workspacePath ? isRootMountedTo(abs(workspacePath)) : false,
+    mounted: workspacePath ? isRootMountedTo(paths.workspaceAbs(workspacePath)) : false,
     updated_at: registry.updated_at ?? "",
   };
 }
 
 function readWorkspaceState() {
-  const file = abs("state/workspace.json");
+  const file = paths.stateAbs("workspace.json");
   if (!fs.existsSync(file)) {
     return {
       status: "active",
@@ -318,7 +344,12 @@ function printText(data) {
   console.log("");
 
   console.log("Project Workspace:");
-  if (data.project_workspace?.configured && data.project_workspace.active) {
+  if (data.project_workspace?.mode === "installed") {
+    console.log("- mode: installed");
+    console.log(`- workspace: ${data.workspace_root}`);
+    console.log(`- manuscript: ${data.manuscript_root}`);
+    if (data.project_workspace.config_path) console.log(`- config: ${data.project_workspace.config_path}`);
+  } else if (data.project_workspace?.configured && data.project_workspace.active) {
     const active = data.project_workspace.active;
     console.log(`- active: ${active.slug} -> ${active.path}`);
     if (data.project_workspace.workspace_path) console.log(`- workspace: ${data.project_workspace.workspace_path}`);
@@ -399,7 +430,7 @@ function parseContractList(text, field) {
 
 function runtimePacketStatus(file, contract) {
   const sectionId = safeId(contract.get("id") || path.basename(file, ".md"));
-  const dir = `state/runtime/${sectionId}`;
+  const dir = normalizeRel(path.join(paths.stateDir, "runtime", sectionId));
   const contextFile = `${dir}/context.json`;
 
   if (!fs.existsSync(abs(contextFile))) {
@@ -536,15 +567,19 @@ function parseArgs(args) {
 }
 
 function abs(rel) {
-  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function displayPath(file) {
-  return path.relative(root, file).split(path.sep).join("/");
+  return paths.projectRel(file);
+}
+
+function normalizeRel(file) {
+  return file.split(path.sep).join("/");
 }
 
 function isRootMountedTo(workspaceDir) {
-  const probe = abs("brief.md");
+  const probe = paths.workspaceAbs("brief.md");
   if (!fs.existsSync(probe)) return false;
   try {
     const stat = fs.lstatSync(probe);

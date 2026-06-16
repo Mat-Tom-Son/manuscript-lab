@@ -122,6 +122,7 @@ function testInstalledTarball() {
   assertEvidenceAndGate(workspace, installedRunner);
   assertEvidenceAndGate(path.join(workspace, "manuscript"), installedRunner);
   assertEvidenceAndGate(path.join(workspace, "manuscript", "draft"), installedRunner);
+  assertInstalledCommandSurface(workspace, installedRunner);
 }
 
 function assertProjectScaffold(workspace) {
@@ -174,6 +175,59 @@ function assertEvidenceAndGate(workspace, runner = runMlab) {
   const parsedGate = JSON.parse(gate.stdout);
   assert.equal(parsedGate.ready, true);
   assert.equal(parsedGate.gate_id, "section-ready");
+}
+
+function assertInstalledCommandSurface(workspace, runner) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+  const cwdCases = [workspace, manuscriptRoot, draftRoot];
+
+  for (const cwd of cwdCases) {
+    const status = assertJsonCommand(runner, ["status", "--json"], { cwd });
+    assert.equal(status.mode, "installed");
+    assert.equal(fs.realpathSync(status.manuscript_root), fs.realpathSync(manuscriptRoot));
+    assert.equal(status.drafts.length, 2);
+
+    const compose = assertJsonCommand(runner, ["compose", "draft/01-opening.md", "--json"], { cwd });
+    assert.equal(compose.section, "draft/01-opening.md");
+    assert.equal(compose.runtime_dir, "state/runtime/01-opening");
+    assert(compose.visible_file_count > 1, "compose should include project context files");
+
+    const check = assertJsonCommand(runner, ["check", "--static-only", "--json", "draft/01-opening.md"], { cwd });
+    assert.equal(check.pass, true);
+
+    const report = assertJsonCommand(runner, ["review:report", "--json"], { cwd });
+    assert.equal(report.totals.runs, 0);
+
+    const done = assertJsonCommand(runner, ["done:no-export", "--json"], { cwd });
+    assert.equal(done.pass, true, JSON.stringify(done, null, 2));
+    assert.equal(done.checks.project_sync, "skipped");
+    assert.equal(done.checks.project_filesystem, "skipped");
+  }
+
+  const nestedCompose = assertJsonCommand(runner, ["compose", "01-opening.md", "--json"], { cwd: draftRoot });
+  assert.equal(nestedCompose.section, "draft/01-opening.md");
+
+  const exported = assertJsonCommand(runner, ["export", "--formats", "md,html", "--include-todo", "--slug", "packed", "--json"], { cwd: workspace });
+  assert.equal(exported.chapters, 1);
+  assert.deepEqual(
+    exported.outputs.map((output) => output.file).sort(),
+    ["exports/packed.html", "exports/packed.md"],
+  );
+  assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.md")));
+  assert(fs.existsSync(path.join(manuscriptRoot, "exports", "packed.html")));
+
+  assert(fs.existsSync(path.join(manuscriptRoot, "state", "runtime", "01-opening", "context.json")));
+  assert.equal(fs.existsSync(path.join(workspace, "state")), false, "commands should not write state at workspace root");
+  assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "commands should not write state under draft/");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "commands should not write state under the package");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
+}
+
+function assertJsonCommand(runner, args, { cwd }) {
+  const result = runner(args, { cwd });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  return JSON.parse(result.stdout);
 }
 
 function runMlab(args, { cwd }) {

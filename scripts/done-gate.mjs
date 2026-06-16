@@ -4,8 +4,12 @@ import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
 import { scanReviewErrors } from "./lib/review-errors.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = normalizeOptions(parseArgs(process.argv.slice(2)));
+const installedMode = discovery.mode === "installed";
 const unloaded = isWorkspaceUnloaded();
 
 if (options.help) {
@@ -19,10 +23,10 @@ const warnings = [];
 const checkResult = unloaded ? skippedResult() : runNode(["scripts/doccheck.mjs", "--static-only"], { capture: true });
 if (checkResult.status !== 0) errors.push("Static document checks failed.");
 
-const auditResult = runNode(["scripts/template-audit.mjs", "--strict"], { capture: true });
+const auditResult = runNode(["scripts/template-audit.mjs", "--strict"], { capture: true, cwd: discovery.packageRoot });
 if (auditResult.status !== 0) errors.push("Reusable template audit failed.");
 
-const contextAuditResult = runNode(["scripts/context-audit.mjs", "--strict"], { capture: true });
+const contextAuditResult = runNode(["scripts/context-audit.mjs", "--strict"], { capture: true, cwd: discovery.packageRoot });
 if (contextAuditResult.status !== 0) errors.push("Context hygiene audit failed.");
 
 const exportResult = options["skip-exports"] || unloaded ? null : runNode(["scripts/export-manuscript.mjs", "--quiet"], { capture: true });
@@ -42,7 +46,7 @@ if (statusResult.status !== 0) {
 
 if (status) validateStatus(status);
 
-const reviewScan = unloaded ? { failures: [] } : scanReviewErrors("state/reviews");
+const reviewScan = unloaded ? { failures: [] } : scanReviewErrors(paths.stateAbs("reviews"));
 if (reviewScan.failures.length) {
   const details = reviewScan.failures.slice(0, 5).map((failure) => `${failure.file}${failure.error ? `: ${failure.error}` : ""}`).join("; ");
   const message = `Review run errors remain: ${reviewScan.failures.length}${details ? ` (${details}${reviewScan.failures.length > 5 ? "; ..." : ""})` : ""}`;
@@ -50,13 +54,13 @@ if (reviewScan.failures.length) {
   else errors.push(message);
 }
 
-const projectSyncResult = unloaded ? skippedResult() : runNode(["scripts/story-workspace.mjs", "sync-project", "--json"], { capture: true });
-if (!unloaded && projectSyncResult.status !== 0) {
+const projectSyncResult = unloaded || installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "sync-project", "--json"], { capture: true });
+if (!unloaded && !installedMode && projectSyncResult.status !== 0) {
   errors.push("Project filesystem sync failed. Run npm run project:sync.");
 }
 
-const projectResult = runNode(["scripts/story-workspace.mjs", "verify-projects", "--json"], { capture: true });
-if (projectResult.status !== 0) {
+const projectResult = installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "verify-projects", "--json"], { capture: true });
+if (!installedMode && projectResult.status !== 0) {
   errors.push("Project filesystem verification failed. Run npm run project:sync.");
 }
 
@@ -69,8 +73,8 @@ const result = {
     context_audit: contextAuditResult.status === 0,
     exports: options["skip-exports"] || unloaded ? "skipped" : exportResult?.status === 0,
     status: statusResult.status === 0,
-    project_sync: unloaded ? "skipped" : projectSyncResult.status === 0,
-    project_filesystem: projectResult.status === 0,
+    project_sync: unloaded || installedMode ? "skipped" : projectSyncResult.status === 0,
+    project_filesystem: installedMode ? "skipped" : projectResult.status === 0,
     review_errors: unloaded ? "skipped" : reviewScan.failures.length === 0,
   },
   errors,
@@ -119,9 +123,11 @@ function validateStatus(status) {
 
 }
 
-function runNode(args, { capture }) {
-  return spawnSync(process.execPath, args, {
-    cwd: process.cwd(),
+function runNode(args, { capture, cwd = process.cwd() }) {
+  const [script, ...scriptArgs] = args;
+  const scriptPath = script.startsWith("scripts/") ? path.join(discovery.packageRoot, script) : script;
+  return spawnSync(process.execPath, [scriptPath, ...scriptArgs], {
+    cwd,
     encoding: "utf8",
     stdio: capture ? ["ignore", "pipe", "pipe"] : "inherit",
   });
@@ -132,13 +138,14 @@ function skippedResult() {
 }
 
 function isWorkspaceUnloaded() {
-  const workspace = loadJson("state/workspace.json", null);
-  const registry = loadJson("projects/registry.json", { active: null });
+  if (installedMode) return false;
+  const workspace = loadJson(paths.stateAbs("workspace.json"), null);
+  const registry = loadJson(paths.workspaceAbs("projects/registry.json"), { active: null });
   return workspace?.status === "unloaded" && workspace?.active === false && !registry.active;
 }
 
 function loadJson(file, fallback) {
-  const full = path.join(process.cwd(), file);
+  const full = path.resolve(file);
   if (!fs.existsSync(full)) return fallback;
   try {
     return JSON.parse(fs.readFileSync(full, "utf8"));

@@ -1,11 +1,10 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." v0.4 adds the first installed-package alpha: config-first `mlab init`
-plus deterministic validation, evidence, citation, and gate smoke coverage from
-a packed tarball. The broader template command surface still remains the
-supported path for compose/check/status/done/export until those commands are
-fully config-root aware.
+workflow." v0.5 extends the installed-package alpha: config-first `mlab init`
+plus deterministic validation, evidence, citation, gate, status, compose,
+static check, review-report, `done:no-export`, and Markdown/HTML export smoke
+coverage from a packed tarball.
 
 ## Decision
 
@@ -16,8 +15,9 @@ Manuscript Lab is template-first with an install-anywhere alpha.
 - The local `manuscript-lab` / `mlab` wrapper supports template clones and the
   config-first init path.
 - Existing `npm run ...` commands stay canonical for template users.
-- npm registry publishing remains disabled until the remaining command surface
-  can operate cleanly from an external workspace.
+- npm registry publishing remains disabled until registry/global smokes,
+  migration, and the remaining model-heavy command surface can operate cleanly
+  from an external workspace.
 
 The install-anywhere target is a package-assets CLI, not a postinstall copy of
 the whole harness.
@@ -37,8 +37,8 @@ Unsupported choices:
 - No postinstall script that mutates the current directory.
 - No global package that assumes the global install directory is the project
   root.
-- No npm publish until root-aware command coverage extends beyond the alpha
-  deterministic smoke path.
+- No npm publish until root-aware command coverage includes the remaining
+  model/revision/project-switching paths and registry/global install smokes.
 
 ## Current Template-First Workflow
 
@@ -71,12 +71,17 @@ The alpha adoption path from a packed local package is:
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.4.0.tgz
+npm install -D /path/to/manuscript-lab-0.5.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
+npx mlab status
+npx mlab compose draft/01-opening.md
+npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab export --formats md,html --include-todo --slug my-whitepaper
+npx mlab done:no-export
 ```
 
 After init, the caller repo owns:
@@ -122,30 +127,23 @@ state, sources, exports, and project config under the workspace/manuscript root.
 
 ## `npx` And `mlab` UX
 
-The current alpha supports:
-
-```bash
-npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
-npx mlab validate
-npx mlab claims list --json
-npx mlab citations check --json
-npx mlab gate draft/01-opening.md --json
-```
-
 `manuscript-lab` and `mlab` remain equivalent bin names. `mlab` is the primary
 docs name once npm support is real.
 
-The target CLI should later grow to the full command family:
+The v0.5 alpha supports the deterministic local loop:
 
 ```bash
-npx mlab doctor
 npx mlab status
 npx mlab compose draft/01-intro.md
-npx mlab check draft/01-intro.md
-npx mlab review:run -- --panel prose.clean draft/01-intro.md
-npx mlab issues list --status open
-npx mlab export --format html
+npx mlab check --static-only draft/01-intro.md
+npx mlab review:report --json
+npx mlab export --formats md,html --include-todo --slug draft
+npx mlab done:no-export
 ```
+
+The target CLI should later grow to the full command family, including
+model-backed `review:run`, candidate revisions, full `done` with reader export
+expectations, richer `doctor`, migration, and project-switching commands.
 
 Behavior by install mode:
 
@@ -332,6 +330,12 @@ npx mlab validate
 npx mlab claims list --json
 npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
+npx mlab status --json
+npx mlab compose draft/01-opening.md --json
+npx mlab check --static-only --json draft/01-opening.md
+npx mlab review:report --json
+npx mlab export --formats md,html --include-todo --slug packed --json
+npx mlab done:no-export --json
 ```
 
 The test must assert:
@@ -351,8 +355,8 @@ Additional required tests before npm publishing:
 
 - one-off `npx` smoke for `help`, `version`, `init`, and `doctor`
 - global-install smoke using a temporary npm prefix
-- config-root-aware smoke for `doctor`, `status`, `compose`, `check`,
-  `done:no-export`, and `export`
+- config-root-aware smoke for `doctor`, model-backed `review:run`, candidate
+  revision commands, full `done`, and template project-switching commands
 - config schema validation and unknown-key behavior
 - legacy template-mode smoke so template-first usage does not regress
 - migration dry-run fixture and apply fixture
@@ -371,8 +375,10 @@ Before the package can be published:
 - `npm run template:audit -- --strict` passes
 - `npm run context:audit -- --strict` passes
 - `npm run doctor -- --no-network` passes without packaging failures
-- installed-tarball init/validate/evidence/gate e2e passes in CI
-- root-aware installed-package smoke covers the broader command surface
+- installed-tarball init/validate/evidence/gate/status/compose/check/export
+  e2e passes in CI
+- root-aware installed-package smoke covers the remaining model/revision
+  command surface
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow
@@ -386,12 +392,13 @@ Recommended release line:
 - `0.2.x`: protocol/config/root-discovery design and tests
 - `0.3.x`: deterministic protocol, evidence, and gate commands
 - `0.4.x`: install-anywhere init alpha behind documented caveats
+- `0.5.x`: root-aware installed deterministic command loop
 - `1.0.0`: stable file protocol, installed CLI, gate engine, evidence checks,
   export manifests, and CI-ready `npx mlab`
 
 ## Close Criteria For Issue #2
 
-This design plus the v0.4 alpha closes the first implementation slice of issue
+This design plus the v0.5 alpha closes the first implementation slices of issue
 #2:
 
 - npm install should operate from package assets, with `init` writing only
@@ -400,8 +407,11 @@ This design plus the v0.4 alpha closes the first implementation slice of issue
 - global install remains a convenience layer, not the reproducible project
   workflow
 - npm publishing remains unsupported until installed-package coverage includes
-  the broader command surface
+  registry/global smokes, migration, and the remaining model/revision command
+  surface
 
-The next implementation follow-up should make status, compose, check, doctor,
-done, export, and review paths respect the same root-discovery/config layer
-already used by validate, evidence, citations, and gate.
+The next implementation follow-up should make doctor, full done/export
+expectations, review-run, candidate revision, and project-switching paths
+respect the same root-discovery/config layer already used by validate,
+evidence, citations, gate, status, compose, check, review-report, and
+Markdown/HTML export.
