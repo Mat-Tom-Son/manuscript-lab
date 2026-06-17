@@ -14,6 +14,7 @@ const commands = {
   "check": ["scripts/doccheck.mjs"],
   "citations": ["scripts/evidence-spine.mjs", "citations"],
   "claims": ["scripts/evidence-spine.mjs", "claims"],
+  "compare:candidates": ["scripts/compare-candidates.mjs"],
   "compose": ["scripts/compose-context.mjs"],
   "context:audit": ["scripts/context-audit.mjs"],
   "diff:audit": ["scripts/revision-diff-audit.mjs"],
@@ -29,12 +30,15 @@ const commands = {
   "model:smoke": ["scripts/model-smoke.mjs"],
   "project": ["scripts/story-workspace.mjs"],
   "report": ["scripts/report.mjs"],
+  "revise:candidates": ["scripts/revision-candidates.mjs"],
   "review:report": ["scripts/review-report.mjs"],
   "review:run": ["scripts/review-runner.mjs"],
+  "merge:winner": ["scripts/merge-winner.mjs"],
   "status": ["scripts/harness-status.mjs"],
   "story": ["scripts/story-workspace.mjs"],
   "style:signals": ["scripts/style-calibration.mjs", "signals"],
   "sources": ["scripts/evidence-spine.mjs", "sources"],
+  "taste:arbiter": ["scripts/taste-arbiter.mjs"],
   "template:audit": ["scripts/template-audit.mjs"],
   "test": ["scripts/run-tests.mjs"],
   "validate": ["scripts/protocol-validate.mjs"],
@@ -107,9 +111,13 @@ Common commands:
   evidence report
   gate draft/<section>.md
   report --write
+  revise:candidates draft/<section>.md --issue <issue-id> --dry-run
+  compare:candidates draft/<section>.md --run <candidate-run-id> --dry-run
+  taste:arbiter draft/<section>.md --run <candidate-run-id> --dry-run
+  merge:winner draft/<section>.md --run <candidate-run-id>
   doctor
   review:run -- --dry-run --panel prose.clean draft/<section>.md
-  issues -- list
+  issues list
   words -- draft/<section>.md
   export -- --slug my-project
   done:no-export

@@ -284,7 +284,16 @@ export function protocolPaths(discovery, options = {}) {
 
       const cwdCandidate = path.resolve(cwd, input);
       if (isPathInsideOrEqual(cwdCandidate, discovery.manuscriptRoot)) return cwdCandidate;
+      return projectCandidate;
+    },
+    resolveProjectInputOrCwd(input) {
+      if (path.isAbsolute(input)) return path.resolve(input);
+      const projectCandidate = projectAbs(input);
+      if (fs.existsSync(projectCandidate)) return projectCandidate;
 
+      const cwdCandidate = path.resolve(cwd, input);
+      if (fs.existsSync(cwdCandidate)) return cwdCandidate;
+      if (isPathInsideOrEqual(cwdCandidate, discovery.manuscriptRoot)) return cwdCandidate;
       return projectCandidate;
     },
     resolveProjectOutput(input) {

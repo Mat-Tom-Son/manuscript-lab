@@ -5,8 +5,10 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help || !options.target) {
@@ -185,7 +187,7 @@ if (options.json) {
   console.log(JSON.stringify({ run_id: runId, run_dir: runDirRel, manifest, candidate_meta: candidateMeta }, null, 2));
 } else {
   console.log(`Candidate run written: ${runDirRel}`);
-  console.log(`Next: npm run compare:candidates -- ${displayPath(target)} --run ${runId}`);
+  console.log(`Next: ${cliCommand("compare:candidates", [displayPath(target), "--run", runId])}`);
 }
 
 function buildCandidatePrompt({ job, issueContext, revisionPlan, runtimePacket }) {
@@ -543,7 +545,7 @@ function sha256(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInputOrCwd(input);
 }
 
 function read(file) {
@@ -551,7 +553,7 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function normalizeRel(file) {
@@ -559,7 +561,12 @@ function normalizeRel(file) {
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
+}
+
+function cliCommand(command, commandArgs = []) {
+  const args = commandArgs.filter(Boolean).join(" ");
+  return discovery.mode === "installed" ? `mlab ${command}${args ? ` ${args}` : ""}` : `npm run ${command} --${args ? ` ${args}` : ""}`;
 }
 
 function fail(message) {

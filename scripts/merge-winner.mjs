@@ -4,8 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help || !options.target) {
@@ -37,7 +39,7 @@ if (!candidateId) {
 const candidate = loadCandidate(candidateMeta, candidateId);
 if (!candidate) fail(`Candidate not found or not materialized: ${candidateId}`);
 
-const winnerText = read(abs(candidate.file));
+const winnerText = read(resolveInputPath(candidate.file));
 const sourceIntegrity = sourceIntegrityForRun({ manifest, candidateMeta, currentText: targetText });
 const winnerFileRel = normalizeRel(path.join(runDirRel, "winner.md"));
 const backupFileRel = normalizeRel(path.join(runDirRel, "before-apply.md"));
@@ -118,16 +120,16 @@ const result = {
 if (options.apply) {
   writeFile(backupFileRel, targetText);
   writeFile(displayPath(target), winnerText);
-  result.next.push(`npm run diff:audit -- --before ${backupFileRel} --after ${displayPath(target)}${firstIssueId(issueContext) ? ` --issue ${firstIssueId(issueContext)}` : ""}`);
-  result.next.push(`npm run check -- ${displayPath(target)}`);
+  result.next.push(cliCommand("diff:audit", ["--before", backupFileRel, "--after", displayPath(target), firstIssueId(issueContext) ? `--issue ${firstIssueId(issueContext)}` : ""]));
+  result.next.push(cliCommand("check", [displayPath(target)]));
 
   if (options.audit) {
     result.audit = runDiffAudit({ before: backupFileRel, after: displayPath(target), issue: firstIssueId(issueContext) });
   }
 } else {
   result.next.push(`Inspect ${winnerFileRel}`);
-  result.next.push(`npm run taste:arbiter -- ${manifest.target} --run ${manifest.run_id}`);
-  result.next.push(`npm run merge:winner -- ${displayPath(target)} --run ${manifest.run_id} --apply`);
+  result.next.push(cliCommand("taste:arbiter", [manifest.target, "--run", manifest.run_id]));
+  result.next.push(cliCommand("merge:winner", [displayPath(target), "--run", manifest.run_id, "--apply"]));
 }
 
 writeJson(mergeResultFileRel, result);
@@ -152,23 +154,24 @@ function loadCandidate(meta, id) {
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
   const candidate = candidates.find((item) => item.candidate_id === id);
   if (!candidate || candidate.error) return null;
-  const file = abs(candidate.file);
+  const file = resolveInputPath(candidate.file);
   return fs.existsSync(file) ? candidate : null;
 }
 
 function runDiffAudit({ before, after, issue }) {
-  const args = ["scripts/revision-diff-audit.mjs", "--before", before, "--after", after];
+  const script = paths.packageAbs("scripts/revision-diff-audit.mjs");
+  const args = [script, "--before", before, "--after", after];
   if (issue) args.push("--issue", issue);
   if (options.staticOnly) args.push("--static-only");
   if (options.model) args.push("--model", options.model);
   const result = spawnSync(process.execPath, args, {
-    cwd: root,
+    cwd: discovery.manuscriptRoot,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   return {
     status: result.status === 0 ? "ran" : "failed",
-    command: `node ${args.join(" ")}`,
+    command: `node ${["scripts/revision-diff-audit.mjs", ...args.slice(1)].join(" ")}`,
     stdout: result.stdout ?? "",
     stderr: result.stderr ?? "",
     error: result.error?.message ?? "",
@@ -221,7 +224,7 @@ function renderMergeMarkdown(result) {
 }
 
 function resolveRunDir(id, requestedRun, out) {
-  const sectionDir = abs(path.join(out, id));
+  const sectionDir = resolveInputPath(path.join(out, id));
   if (requestedRun) {
     const run = path.isAbsolute(requestedRun) ? requestedRun : path.join(sectionDir, requestedRun);
     if (!fs.existsSync(run)) fail(`Candidate run not found: ${requestedRun}`);
@@ -387,7 +390,7 @@ function safeId(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInputOrCwd(input);
 }
 
 function read(file) {
@@ -395,7 +398,7 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function normalizeRel(file) {
@@ -403,7 +406,12 @@ function normalizeRel(file) {
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
+}
+
+function cliCommand(command, commandArgs = []) {
+  const args = commandArgs.filter(Boolean).join(" ");
+  return discovery.mode === "installed" ? `mlab ${command}${args ? ` ${args}` : ""}` : `npm run ${command} --${args ? ` ${args}` : ""}`;
 }
 
 function fail(message) {

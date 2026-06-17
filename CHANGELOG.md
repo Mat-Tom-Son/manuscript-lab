@@ -4,6 +4,14 @@
 
 - Sharpened the README demo payoff with a concrete report excerpt and an
   inspection trail for the technical-whitepaper fixture.
+- Made `mlab issues`, `mlab revise:candidates --dry-run`,
+  `mlab compare:candidates --dry-run`, `mlab taste:arbiter --dry-run`, and
+  `mlab merge:winner` root-aware in packed install-anywhere workspaces, with
+  smoke coverage from the workspace root, manuscript root, and nested `draft/`
+  directory.
+- Added packed install smoke coverage for `merge:winner --apply --audit
+  --static-only`, keeping candidate and revision-audit artifacts under the
+  configured manuscript root.
 
 ## 0.6.0 - 2026-06-16
 

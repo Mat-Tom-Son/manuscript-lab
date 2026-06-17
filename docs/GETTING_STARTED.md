@@ -68,12 +68,14 @@ npx mlab done:no-export
 ```
 
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
-`manuscript/`. In the v0.6 alpha, deterministic local commands such as
+`manuscript/`. In the current alpha, deterministic local commands such as
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
 gates, `report`, `review:report`, Markdown/HTML export, and `done:no-export` are
-config-root aware. Full typed review execution, candidate revisions, template
-project switching, and EPUB/PDF-oriented `done` remain template-first while the
-installed CLI matures.
+config-root aware. Candidate-loop command routing also works for accepted issue
+listing, dry-run candidate previews, dry-run comparisons, dry-run taste gates,
+merge previews, and static audited apply. Full typed review execution,
+model-backed candidate generation/judging, template project switching, and
+EPUB/PDF-oriented `done` remain template-first while the installed CLI matures.
 
 ## 2. Fill In The Core Files
 
