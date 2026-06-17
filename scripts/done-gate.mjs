@@ -6,6 +6,9 @@ import path from "node:path";
 import { ensureProtocolReady } from "./lib/cli-runtime.mjs";
 import { scanReviewErrors } from "./lib/review-errors.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { runGateCli } from "./gate.mjs";
+
+const DONE_SCHEMA = "manuscript-lab.done-gate.v1";
 
 const options = normalizeOptions(parseArgs(process.argv.slice(2)));
 if (options.help) {
@@ -23,17 +26,33 @@ const exportFormats = requiredExportFormats(options);
 const errors = [];
 const warnings = [];
 
-const checkResult = unloaded ? skippedResult() : runNode(["scripts/doccheck.mjs", "--static-only"], { capture: true });
-if (checkResult.status !== 0) errors.push("Static document checks failed.");
-
-const auditResult = runNode(["scripts/template-audit.mjs", "--strict"], { capture: true, cwd: discovery.packageRoot });
-if (auditResult.status !== 0) errors.push("Reusable template audit failed.");
-
-const contextAuditResult = runNode(["scripts/context-audit.mjs", "--strict"], { capture: true, cwd: discovery.packageRoot });
-if (contextAuditResult.status !== 0) errors.push("Context hygiene audit failed.");
+const projectSyncResult = unloaded || installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "sync-project", "--json"], { capture: true });
+if (!unloaded && !installedMode && projectSyncResult.status !== 0) {
+  errors.push("Project filesystem sync failed. Run npm run project:sync.");
+}
 
 const exportResult = options["skip-exports"] || unloaded ? null : runNode(["scripts/export-manuscript.mjs", ...exportArgs(options, exportFormats)], { capture: true });
 if (exportResult && exportResult.status !== 0) errors.push(`Reader export failed${childSummary(exportResult)}. Run ${installedMode ? "mlab export" : "npm run export"}.`);
+
+const manuscriptGate = unloaded ? null : runDoneGate(["manuscript", "--profile", options.profile || "done", "--json", "--write"]);
+if (manuscriptGate?.result) appendGateFindings(manuscriptGate.result);
+else if (!unloaded) errors.push(manuscriptGate?.error || "Manuscript gate failed without a result.");
+
+const exportGate = options["skip-exports"] || unloaded
+  ? null
+  : runDoneGate(["export", "--profile", options.profile || "done", "--formats", exportFormats.join(","), "--json", "--write"]);
+if (exportGate?.result) appendGateFindings(exportGate.result);
+else if (!options["skip-exports"] && !unloaded) errors.push(exportGate?.error || "Export gate failed without a result.");
+
+const finalProjectSyncResult = unloaded || installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "sync-project", "--json"], { capture: true });
+if (!unloaded && !installedMode && finalProjectSyncResult.status !== 0) {
+  errors.push("Final project filesystem sync failed after writing gate artifacts. Run npm run project:sync.");
+}
+
+const finalProjectVerifyResult = unloaded || installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "verify-projects", "--json"], { capture: true });
+if (!unloaded && !installedMode && finalProjectVerifyResult.status !== 0) {
+  errors.push("Final project filesystem verification failed after writing gate artifacts.");
+}
 
 const statusResult = runNode(["scripts/harness-status.mjs", "--json"], { capture: true });
 let status = null;
@@ -57,30 +76,34 @@ if (reviewScan.failures.length) {
   else errors.push(message);
 }
 
-const projectSyncResult = unloaded || installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "sync-project", "--json"], { capture: true });
-if (!unloaded && !installedMode && projectSyncResult.status !== 0) {
-  errors.push("Project filesystem sync failed. Run npm run project:sync.");
-}
-
-const projectResult = installedMode ? skippedResult() : runNode(["scripts/story-workspace.mjs", "verify-projects", "--json"], { capture: true });
-if (!installedMode && projectResult.status !== 0) {
-  errors.push("Project filesystem verification failed. Run npm run project:sync.");
-}
-
+const projectFilesystemCheck = unloaded || installedMode
+  ? "skipped"
+  : finalProjectVerifyResult.status === 0 && gateRequirementCheck(manuscriptGate?.result, "project.filesystem_verified", false);
+const statusValue = gateExitStatus([manuscriptGate?.result, exportGate?.result], errors);
 const result = {
-  pass: errors.length === 0,
+  schema_version: DONE_SCHEMA,
+  pass: statusValue.exitCode === 0,
+  status: statusValue.status,
+  exit_code: statusValue.exitCode,
   timestamp: new Date().toISOString(),
   checks: {
-    static: checkResult.status === 0,
-    template_audit: auditResult.status === 0,
-    context_audit: contextAuditResult.status === 0,
-    exports: options["skip-exports"] || unloaded ? "skipped" : exportResult?.status === 0,
+    static: gateRequirementCheck(manuscriptGate?.result, "doccheck.static_all_pass", unloaded ? "skipped" : null),
+    template_audit: gateRequirementCheck(manuscriptGate?.result, "harness.templates_clean", unloaded ? "skipped" : null),
+    context_audit: gateRequirementCheck(manuscriptGate?.result, "harness.context_clean", unloaded ? "skipped" : null),
+    exports: options["skip-exports"] || unloaded ? "skipped" : Boolean(exportResult?.status === 0 && exportGate?.result?.ready),
     status: statusResult.status === 0,
-    project_sync: unloaded || installedMode ? "skipped" : projectSyncResult.status === 0,
-    project_filesystem: installedMode ? "skipped" : projectResult.status === 0,
-    review_errors: unloaded ? "skipped" : reviewScan.failures.length === 0,
+    project_sync: unloaded || installedMode ? "skipped" : projectSyncResult.status === 0 && finalProjectSyncResult.status === 0,
+    project_filesystem: projectFilesystemCheck,
+    review_errors: gateRequirementCheck(manuscriptGate?.result, "reviews.no_latest_errors", unloaded ? "skipped" : null),
   },
   export_formats: options["skip-exports"] || unloaded ? [] : exportFormats,
+  gates: {
+    manuscript: publicGateResult(manuscriptGate?.result),
+    export: publicGateResult(exportGate?.result),
+  },
+  artifacts: {
+    gates: [manuscriptGate?.result?.artifacts, exportGate?.result?.artifacts].filter(Boolean),
+  },
   errors,
   warnings,
 };
@@ -91,7 +114,7 @@ if (options.json) {
   printText(result);
 }
 
-process.exit(result.pass ? 0 : 1);
+process.exit(result.exit_code);
 
 function validateStatus(status) {
   if (status.workspace_state?.status === "unloaded") return;
@@ -109,7 +132,7 @@ function validateStatus(status) {
   if (status.issues?.deferred > 0) errors.push(`Deferred issues remain: ${status.issues.deferred}`);
 
   const activeDrafts = (status.drafts ?? []).filter((draft) => draft.status !== "todo");
-  if (!activeDrafts.length) warnings.push("No active non-todo draft sections found.");
+  if (!activeDrafts.length && !manuscriptGate?.result) warnings.push("No active non-todo draft sections found.");
 
   if (options["require-done"]) {
     for (const draft of activeDrafts) {
@@ -125,6 +148,61 @@ function validateStatus(status) {
     }
   }
 
+}
+
+function runDoneGate(args) {
+  const outcome = runGateCli(args, {
+    cwd: process.cwd(),
+    command: `${installedMode ? "mlab" : "npm run"} gate -- ${args.map(shellToken).join(" ")}`,
+  });
+  return {
+    status: outcome.exitCode,
+    result: outcome.result,
+    error: outcome.stderr || outcome.stdout || "",
+  };
+}
+
+function appendGateFindings(gate) {
+  if (!gate) return;
+  for (const error of gate.errors ?? []) errors.push(`${gate.gate_id}: ${error}`);
+  for (const warning of gate.warnings ?? []) warnings.push(`${gate.gate_id}: ${warning}`);
+  for (const req of gate.requirements ?? []) {
+    if (!["fail", "error"].includes(req.status)) continue;
+    const message = `${gate.gate_id}/${req.id}: ${req.message}`;
+    if (options["warn-review-errors"] && req.id === "reviews.no_latest_errors") warnings.push(message);
+    else errors.push(message);
+  }
+}
+
+function gateRequirementCheck(gate, id, fallback = false) {
+  if (!gate) return fallback ?? false;
+  const req = (gate.requirements ?? []).find((item) => item.id === id);
+  if (!req) return fallback ?? false;
+  if (req.status === "skip") return "skipped";
+  return req.status === "pass" || req.status === "warn";
+}
+
+function gateExitStatus(gates, gateErrors) {
+  if (gateErrors.length) {
+    const hasEngineError = gates.some((gate) => gate?.exit_code === 2 || gate?.status === "error");
+    return { status: hasEngineError ? "error" : "fail", exitCode: hasEngineError ? 2 : 1 };
+  }
+  return { status: "pass", exitCode: 0 };
+}
+
+function publicGateResult(gate) {
+  if (!gate) return null;
+  return {
+    run_id: gate.run_id,
+    gate_id: gate.gate_id,
+    profile: gate.profile,
+    status: gate.status,
+    ready: gate.ready,
+    exit_code: gate.exit_code,
+    target: gate.target,
+    summary: gate.summary,
+    artifacts: gate.artifacts ?? {},
+  };
 }
 
 function requiredExportFormats(rawOptions) {
@@ -245,13 +323,11 @@ Usage:
   node scripts/done-gate.mjs [options]
 
 Checks:
-  - static document checks pass
-  - strict template audit passes
-  - strict context hygiene audit passes
+  - manuscript-ready gate passes and writes state/gates artifacts
   - reader exports are regenerated unless --skip-exports is set
-  - all runtime packets are fresh
-  - no open or deferred issues remain
-  - latest persisted review runs have no errors
+  - export-ready gate passes and writes state/gates artifacts unless exports are skipped
+  - static checks, runtime freshness, issues, latest review errors, template hygiene,
+    context hygiene, and project filesystem verification are enforced through gates
   - active project filesystem is synced and verified under projects/active/
   - configured export formats exist unless --skip-exports is set
 
@@ -264,10 +340,15 @@ Options:
   --export-out dir   Override export output directory
   --include-todo-exports
                      Include todo draft shells when regenerating exports
+  --profile name     Gate profile label to record. Default: done
   --require-done     Require every active section status to be done
   --warn-review-errors
                      Report persisted review run errors as warnings instead of failures
   --json             Print machine-readable output
   --help             Show this help
 `);
+}
+
+function shellToken(value) {
+  return /^[A-Za-z0-9_./:=+-]+$/.test(value) ? value : JSON.stringify(value);
 }

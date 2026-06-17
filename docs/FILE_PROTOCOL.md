@@ -3,9 +3,8 @@
 Status: draft protocol target for install-anywhere Manuscript Lab projects.
 
 This file defines the v1 project shape that future `mlab` commands should
-validate and migrate toward. It also explains how the current template-first
-repository maps onto that shape while the package-installed CLI is still being
-designed.
+validate. It also explains how the current template-first repository maps onto
+that shape while the package-installed CLI is still being designed.
 
 ## Goals
 
@@ -38,7 +37,9 @@ live and how tools should interpret them.
 
 Unless this document says otherwise, config paths use forward slashes and are
 relative paths. `root` is relative to the config directory. All other path fields
-are relative to the project root.
+are relative to the project root. Portable v1 config rejects absolute paths,
+Windows drive paths such as `C:/...`, UNC paths, backslashes, and paths that
+escape their owning root.
 
 ## Config Shape
 
@@ -60,7 +61,7 @@ The v1 config file is JSON.
 
 | Field | Type | Semantics |
 | --- | --- | --- |
-| `schemaVersion` | integer | Required. Must be `1` for this protocol. Tools must reject unsupported versions with a migration message rather than guessing. |
+| `schemaVersion` | integer | Required. Must be `1` for this protocol. Tools must reject unsupported versions with a clear upgrade message rather than guessing. |
 | `profile` | string | Required. Selects a profile such as `generic`, `fiction`, `whitepaper`, `technical`, or another installed profile. The profile changes policy, not the basic file layout. |
 | `root` | string | Required. Directory containing the project files. `.` is valid. Absolute paths and paths that escape the config directory are invalid in portable v1 projects. |
 | `draftGlob` | string | Required. Glob for section draft files, relative to the project root. The baseline value is `draft/*.md`. |
@@ -72,8 +73,15 @@ The v1 config file is JSON.
 | Field | Type | Semantics |
 | --- | --- | --- |
 | `profileOptions` | object | Optional profile-specific settings. Unknown keys should warn unless the selected profile declares that it accepts them. |
+| `sourcesDir` | string | Optional directory for the source manifest, relative to the project root. The baseline value is `sources`. |
+| `tasteDir` | string | Optional directory for project taste files, relative to the project root. The baseline value is `taste`. |
+| `checks` | object | Optional check-suite selection or profile defaults. Unknown object keys are profile- or command-owned until this document defines a stable schema. |
+| `reviews` | object | Optional review-suite selection or profile defaults. Unknown object keys are profile- or command-owned until this document defines a stable schema. |
+| `model` | object | Optional model preference metadata. Secrets must stay in environment variables or `.env`, not in config. |
 
-Additional top-level fields are reserved. v1 tools may preserve unknown fields
+Additional top-level fields are reserved. Current v0.x tools warn and ignore
+unknown top-level fields. Stable v1 may make reserved top-level fields blocking
+errors once compatibility policy is finalized. Tools may preserve unknown fields
 when rewriting the config, but they should not depend on them unless this
 document is updated.
 
@@ -199,9 +207,9 @@ An active template-first project can be interpreted as this implicit config:
 ```
 
 `profile` is not currently stored in `projects/registry.json` or
-`projects/active/<slug>/project.json`. Migration should ask for a profile or
-default to `generic`. Existing story scaffolds may choose `fiction` when the
-operator requests that profile.
+`projects/active/<slug>/project.json`. Template-first compatibility defaults to
+`generic`. Existing story scaffolds may choose `fiction` when the operator
+requests that profile.
 
 Reusable harness files remain outside the protocol project root:
 
@@ -267,21 +275,25 @@ Validation should:
 
 1. Locate `manuscript-lab.config.json`, or synthesize an implicit config for a
    current template-first repo with a registered active project.
-2. Parse JSON and require `schemaVersion: 1`.
-3. Require `profile`, `root`, `draftGlob`, `stateDir`, and `exportsDir`.
-4. Reject absolute paths and paths that escape the config directory or project
-   root.
-5. Verify that the project root exists, unless validation is running in an init
+2. Parse JSON without executing code and report malformed config as a protocol
+   error, not a stack trace.
+3. Require integer `schemaVersion: 1`.
+4. Require `profile`, `root`, `draftGlob`, `stateDir`, and `exportsDir`.
+5. Reject absolute paths, Windows drive paths, UNC paths, backslashes, and paths
+   that escape the config directory or project root.
+6. Warn for reserved unknown top-level fields and for unknown built-in
+   `profileOptions` keys.
+7. Verify that the project root exists, unless validation is running in an init
    planning mode.
-6. Verify required project files and directories.
-7. Verify that draft files matched by `draftGlob` have parseable section
+8. Verify required project files and directories.
+9. Verify that draft files matched by `draftGlob` have parseable section
    contracts when they contain contracts.
-8. Verify that section contract `checks` IDs exist in `checks/suite.json` or in
+10. Verify that section contract `checks` IDs exist in `checks/suite.json` or in
    the selected profile's check registry.
-9. Verify that section contract `reviews` IDs exist in `reviews/suite.json` or
+11. Verify that section contract `reviews` IDs exist in `reviews/suite.json` or
    in the selected profile's review registry.
-10. Treat generated artifact directories as derived state, not source text.
-11. In template-first mode, verify that the active project registry, workspace
+12. Treat generated artifact directories as derived state, not source text.
+13. In template-first mode, verify that the active project registry, workspace
     manifest, and root mounts agree.
 
 Validation output should be machine-readable by default or available through a
@@ -291,29 +303,14 @@ Validation output should be machine-readable by default or available through a
 - warning: supported compatibility behavior or likely cleanup work
 - info: discovered layout and inferred defaults
 
-## Migration Expectations
+## Version Compatibility
 
-`mlab migrate` should make protocol transitions explicit and reversible. It
-should never silently move manuscript files or delete generated work.
-
-Migration should:
-
-1. Print a plan before writing, including source paths, destination paths, and
-   any compatibility aliases.
-2. Create `manuscript-lab.config.json` when a project has an inferable v1 shape.
-3. Preserve current template-first usage by allowing `root` to point at
-   `projects/active/<slug>/workspace`.
-4. Support an install-anywhere migration that copies or moves the project root
-   to a configured directory such as `manuscript/`.
-5. Preserve `exports/`, `state/issues/`, `state/runtime/`, `state/candidates/`,
-   `state/revision-audits/`, and model-call logs unless the operator explicitly
-   chooses to regenerate or prune them.
-6. Record any lossy or manual step as a blocking migration issue.
-7. Require an explicit target version for schema upgrades once versions beyond
-   `1` exist.
+v1 is a fresh-start protocol for config-first projects. Existing template clones
+remain supported as a compatibility mode, but installed-package projects should
+be initialized directly with `mlab init`.
 
 Older tools should fail closed when they see a newer `schemaVersion`. Newer
-tools may read older versions only through a named migrator.
+tools may read older versions only through an explicit compatibility path.
 
 ## Profile Hooks
 
@@ -343,7 +340,6 @@ required evidence gates. Each profile owns validation of its own options.
 - v1 tools should accept the current mounted-root workflow as a compatibility
   layer, but should report the active workspace as the canonical project root.
 - v1 tools should prefer explicit config over inferred template-first metadata.
-- v1 tools should preserve root symlinks created by `project:mount` unless the
-  operator is deliberately migrating away from template-first usage.
+- v1 tools should preserve root symlinks created by `project:mount`.
 - v1 tools should keep generic harness files free of project-specific content.
 - v1 tools should keep credentials outside project files and profile templates.

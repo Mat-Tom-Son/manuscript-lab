@@ -21,6 +21,7 @@ const archiveStateDirs = [
   "revision-audits",
   "revision-plans",
   "runtime",
+  "gates",
   "style",
   "candidates",
   "truth",
@@ -33,6 +34,7 @@ const archiveStateDirs = [
 ];
 const generatedStateDirs = [
   "runtime",
+  "gates",
   "reviews",
   "revision-audits",
   "revision-plans",

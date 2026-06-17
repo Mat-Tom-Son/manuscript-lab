@@ -13,6 +13,8 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-evidence-spine
 try {
   testClaimsListFiltersAndGate();
   testCitationsCheckAndReport();
+  testRiskAwareUnsupportedClaims();
+  testSourceManifestValidationAndResolution();
   testSourcesAddIsIdempotent();
   console.log("evidence-spine tests passed");
 } finally {
@@ -30,11 +32,18 @@ function testClaimsListFiltersAndGate() {
   assert.equal(parsed.blocker_count, 2);
   assert.deepEqual(parsed.claims.map((claim) => claim.claim), ["Unsupported intro fact", "Supported intro fact with missing source"]);
   assert(parsed.claims[1].blocker_reasons.includes("unregistered-source:missing-source"));
+  assert.equal(parsed.claims[0].kind, "factual");
+  assert.equal(parsed.claims[0].severity, "blocking");
+  assert(parsed.requirements.some((requirement) => requirement.id === "evidence.claims.no_blocking_claims" && requirement.status === "fail"));
 
   const supported = runEvidence(["claims", "list", "--status", "supported", "--json"], { cwd: workspace });
   assert.equal(supported.status, 0, supported.stderr || supported.stdout);
   const supportedParsed = JSON.parse(supported.stdout);
   assert.equal(supportedParsed.count, 3);
+
+  const byKind = runEvidence(["claims", "list", "--unsupported", "--kind", "factual", "--section", "draft/01-intro.md", "--json"], { cwd: workspace });
+  assert.equal(byKind.status, 0, byKind.stderr || byKind.stdout);
+  assert.equal(JSON.parse(byKind.stdout).count, 2);
 }
 
 function testCitationsCheckAndReport() {
@@ -47,17 +56,103 @@ function testCitationsCheckAndReport() {
   assert.equal(parsed.files.length, 1);
   assert(parsed.markers.some((marker) => marker.id === "alpha" && marker.state === "resolved-source"));
   assert(parsed.markers.some((marker) => marker.id === "supported-claim" && marker.state === "resolved-claim"));
+  assert(parsed.markers.some((marker) => marker.id === "supported-claim" && marker.resolution?.type === "claim"));
   assert(parsed.issues.some((issue) => issue.kind === "citation_needed"));
   assert(parsed.issues.some((issue) => issue.kind === "unresolved_cite" && issue.cite_id === "missing-citation"));
-  assert(parsed.issues.some((issue) => issue.kind === "claim_blocker" && issue.claim_id === "missing-source-claim"));
+  assert(parsed.issues.some((issue) => issue.kind === "claim_source_unregistered" && issue.claim_id === "missing-source-claim"));
+  assert(parsed.requirements.some((requirement) => requirement.id === "evidence.citations.resolve_markers" && requirement.status === "fail"));
 
   const report = runEvidence(["evidence", "report", "draft/01-intro.md", "--json"], { cwd: workspace });
   assert.equal(report.status, 0, report.stderr || report.stdout);
   const reportParsed = JSON.parse(report.stdout);
   assert.equal(reportParsed.claims.by_status.supported, 2);
   assert.equal(reportParsed.claims.by_status.unsupported, 1);
+  assert.equal(reportParsed.claims.by_kind.factual, 3);
   assert.equal(reportParsed.claims.by_source.alpha, 1);
   assert(reportParsed.citations.by_state["resolved-source"] >= 1);
+  assert(reportParsed.issue_counts.by_requirement["evidence.claims.no_blocking_claims"] >= 1);
+}
+
+function testRiskAwareUnsupportedClaims() {
+  const workspace = path.join(tmp, "risk-aware");
+  const project = writeProject(workspace);
+  write(
+    path.join(project, "state/claims.md"),
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Notes |\n|---|---|---|---|---|---|---|---|\n| low-risk | Low stakes unsupported fact | draft/01-intro.md | | unsupported | low | factual | triage later |\n| high-risk | High stakes unsupported fact | draft/01-intro.md | | unsupported | high | factual | blocks release |\n",
+  );
+
+  const all = runEvidence(["claims", "list", "--unsupported", "--json", "--gate"], { cwd: workspace });
+  assert.equal(all.status, 1);
+  const allParsed = JSON.parse(all.stdout);
+  assert.equal(allParsed.count, 2);
+  assert.equal(allParsed.blocker_count, 1);
+  assert.equal(allParsed.warning_count, 1);
+  assert.equal(allParsed.claims.find((claim) => claim.id === "low-risk").severity, "warning");
+  assert.equal(allParsed.claims.find((claim) => claim.id === "high-risk").severity, "blocking");
+
+  const lowOnly = runEvidence(["claims", "list", "--unsupported", "--risk", "low", "--json", "--gate"], { cwd: workspace });
+  assert.equal(lowOnly.status, 0, lowOnly.stderr || lowOnly.stdout);
+  const lowParsed = JSON.parse(lowOnly.stdout);
+  assert.equal(lowParsed.count, 1);
+  assert.equal(lowParsed.blocker_count, 0);
+  assert.equal(lowParsed.claims[0].id, "low-risk");
+
+  write(
+    path.join(project, "state/claims.md"),
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Citation | Notes |\n|---|---|---|---|---|---|---|---|---|\n| cite-missing | Supported fact with missing citation | draft/01-intro.md | `alpha` | supported | high | factual | missing | source exists |\n",
+  );
+  const citationState = runEvidence(["claims", "list", "--status", "supported", "--json"], { cwd: workspace });
+  assert.equal(citationState.status, 0, citationState.stderr || citationState.stdout);
+  const citationParsed = JSON.parse(citationState.stdout);
+  assert.equal(citationParsed.count, 1);
+  assert.equal(citationParsed.claims[0].citation.status, "missing");
+  assert(citationParsed.issues.some((issue) => issue.kind === "claim_citation_missing" && issue.claim_id === "cite-missing"));
+}
+
+function testSourceManifestValidationAndResolution() {
+  const workspace = path.join(tmp, "source-validation");
+  const project = writeProject(workspace);
+  write(
+    path.join(project, "sources/index.md"),
+    "# Source Index\n\n| Key | Type | Title | Location | Accessed | Status | Citation | Notes |\n|---|---|---|---|---|---|---|---|\n| `alpha` | notes | Alpha Notes | `sources/alpha.md` | 2026-06-16 | usable | Alpha Notes. | Fixture. |\n| `beta` | notes | Beta Notes | `sources/beta.md` | 2026-06-16 | needs-review | Beta Notes. | Review. |\n| `gamma` | notes | Gamma Notes | `sources/gamma.md` | 2026-06-16 | rejected | Gamma Notes. | Rejected. |\n| `delta` | notes | Delta Notes | `sources/delta.md` | 2026-06-16 | usable | | Missing bibliography. |\n| `dupe` | notes | First Dupe | `sources/dupe-a.md` | 2026-06-16 | usable | First Dupe. | Duplicate. |\n| `dupe` | notes | Second Dupe | `sources/dupe-b.md` | 2026-06-16 | usable | Second Dupe. | Duplicate. |\n\n- legacy-key: Legacy source note.\n",
+  );
+  write(path.join(project, "sources/beta.md"), "# Beta\n");
+  write(path.join(project, "sources/gamma.md"), "# Gamma\n");
+  write(path.join(project, "sources/delta.md"), "# Delta\n");
+  write(path.join(project, "sources/dupe-a.md"), "# Dupe A\n");
+  write(path.join(project, "sources/dupe-b.md"), "# Dupe B\n");
+  write(
+    path.join(project, "state/claims.md"),
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Notes |\n|---|---|---|---|---|---|---|---|\n| supported-claim | Supported intro fact | draft/01-intro.md | `alpha` | supported | medium | factual | p. 1 |\n",
+  );
+  write(
+    path.join(project, "draft/01-intro.md"),
+    `<!--
+id: 01-intro
+kind: document.section
+status: draft
+target_words: 20
+purpose: Exercise source validation.
+acceptance:
+  - Uses source statuses.
+-->
+# Intro
+
+Good source [cite:alpha], review source [cite:beta], rejected source [cite:gamma],
+missing bibliography [cite:delta], duplicate key [cite:dupe], and legacy key [cite:legacy-key].
+`,
+  );
+
+  const check = runEvidence(["citations", "check", "draft/01-intro.md", "--json", "--gate"], { cwd: workspace });
+  assert.equal(check.status, 1);
+  const parsed = JSON.parse(check.stdout);
+  assert(parsed.markers.some((marker) => marker.id === "alpha" && marker.resolution?.status === "usable"));
+  assert(parsed.issues.some((issue) => issue.kind === "source_needs_review" && issue.source === "beta" && issue.severity === "warning"));
+  assert(parsed.issues.some((issue) => issue.kind === "unusable_source" && issue.source === "gamma" && issue.severity === "blocking"));
+  assert(parsed.issues.some((issue) => issue.kind === "missing_bibliography" && issue.source === "delta"));
+  assert(parsed.issues.some((issue) => issue.kind === "source_key_duplicate" && issue.source === "dupe"));
+  assert(parsed.issues.some((issue) => issue.kind === "source_legacy_metadata" && issue.source === "legacy-key"));
+  assert(parsed.requirements.some((requirement) => requirement.id === "evidence.sources.cited_usable" && requirement.status === "fail"));
 }
 
 function testSourcesAddIsIdempotent() {
@@ -112,7 +207,7 @@ function writeProject(workspace) {
   write(path.join(project, "sources/alpha.md"), "# Alpha\n");
   write(
     path.join(project, "state/claims.md"),
-    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Notes |\n|---|---|---|---|---|---|---|\n| supported-claim | Supported intro fact | draft/01-intro.md | `alpha` | supported | medium | ok |\n| unsupported-intro | Unsupported intro fact | draft/01-intro.md | | unsupported | high | needs source |\n| missing-source-claim | Supported intro fact with missing source | draft/01-intro.md | `missing-source` | supported | high | bad source |\n| next-review | Review next fact | draft/02-next.md | | needs-review | medium | review |\n| not-needed | Common context | draft/01-intro.md | | not-needed | low | ok |\n| alpha-direct | Direct source backed fact | draft/02-next.md | `alpha` | supported | low | ok |\n",
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Notes |\n|---|---|---|---|---|---|---|---|\n| supported-claim | Supported intro fact | draft/01-intro.md | `alpha` | supported | medium | factual | ok |\n| unsupported-intro | Unsupported intro fact | draft/01-intro.md | | unsupported | high | factual | needs source |\n| missing-source-claim | Supported intro fact with missing source | draft/01-intro.md | `missing-source` | supported | high | factual | bad source |\n| next-review | Review next fact | draft/02-next.md | | needs-review | medium | factual | review |\n| not-needed | Common context | draft/01-intro.md | | not-needed | low | interpretive | ok |\n| alpha-direct | Direct source backed fact | draft/02-next.md | `alpha` | supported | low | factual | ok |\n",
   );
   write(
     path.join(project, "draft/01-intro.md"),

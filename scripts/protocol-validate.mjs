@@ -26,6 +26,7 @@ const result = {
   drafts: validation.drafts,
   errors: validation.errors,
   warnings: validation.warnings,
+  hints: discovery.hints ?? [],
 };
 
 if (options.json) {
@@ -80,6 +81,11 @@ function printText(result) {
   if (result.warnings.length) {
     console.warn("\nWarnings:");
     for (const warning of result.warnings) console.warn(`- ${warning}`);
+  }
+
+  if (result.hints.length) {
+    console.log("\nHints:");
+    for (const hint of result.hints) console.log(`- ${hint}`);
   }
 }
 

@@ -45,7 +45,7 @@ export function executeEvidenceCommand(argv, options = {}) {
 function executeClaimsList(args, options) {
   const parsed = parseFlags(args, {
     booleans: new Set(["json", "gate", "unsupported"]),
-    values: new Set(["section", "status"]),
+    values: new Set(["section", "status", "risk", "kind"]),
   });
   rejectPositionals(parsed.positionals, "claims list does not accept positional arguments.");
   const result = listClaimsCommand({
@@ -54,6 +54,8 @@ function executeClaimsList(args, options) {
     unsupported: parsed.flags.unsupported,
     section: parsed.flags.section,
     statuses: parsed.flags.status,
+    risks: parsed.flags.risk,
+    kinds: parsed.flags.kind,
   });
   const stdout = parsed.flags.json ? `${JSON.stringify(result, null, 2)}\n` : renderClaimsText(result);
   const exitCode = parsed.flags.gate && result.blocker_count > 0 ? 1 : 0;
@@ -74,13 +76,14 @@ function executeCitationsCheck(args, options) {
 
 function executeEvidenceReport(args, options) {
   const parsed = parseFlags(args, {
-    booleans: new Set(["json"]),
+    booleans: new Set(["json", "gate"]),
     values: new Set(),
   });
   if (parsed.positionals.length > 1) throw new EvidenceSpineError("evidence report accepts at most one target.", { exitCode: 2 });
   const result = evidenceReportCommand({ cwd: options.cwd, target: parsed.positionals[0] });
   const stdout = parsed.flags.json ? `${JSON.stringify(result, null, 2)}\n` : renderEvidenceReportText(result);
-  return { exitCode: 0, stdout, stderr: "" };
+  const exitCode = parsed.flags.gate && !result.ok ? 1 : 0;
+  return { exitCode, stdout, stderr: "" };
 }
 
 function executeSourcesAdd(args, options) {
@@ -115,6 +118,8 @@ function parseFlags(args, spec) {
       const value = inlineValue != null ? inlineValue : args[++index];
       if (value == null || value.startsWith("--")) throw new EvidenceSpineError(`Option --${rawName} requires a value.`, { exitCode: 2 });
       if (rawName === "status") flags.status = [...(flags.status ?? []), value];
+      else if (rawName === "risk") flags.risk = [...(flags.risk ?? []), value];
+      else if (rawName === "kind") flags.kind = [...(flags.kind ?? []), value];
       else flags[rawName] = value;
       continue;
     }
@@ -130,9 +135,9 @@ function rejectPositionals(positionals, message) {
 
 function helpText() {
   return `Usage:
-  node scripts/evidence-spine.mjs claims list [--unsupported] [--section <id-or-path>] [--status <status>] [--json] [--gate]
+  node scripts/evidence-spine.mjs claims list [--unsupported] [--section <id-or-path>] [--status <status>] [--risk <risk>] [--kind <kind>] [--json] [--gate]
   node scripts/evidence-spine.mjs citations check [target] [--json] [--gate]
-  node scripts/evidence-spine.mjs evidence report [target] [--json]
+  node scripts/evidence-spine.mjs evidence report [target] [--json] [--gate]
   node scripts/evidence-spine.mjs sources add <local-file> [--json]
 `;
 }

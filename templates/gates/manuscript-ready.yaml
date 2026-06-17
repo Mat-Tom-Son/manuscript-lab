@@ -1,0 +1,51 @@
+# Example gate config shape. The current deterministic engine has built-in
+# defaults; this template documents stable requirement IDs for future overrides.
+gate:
+  schema_version: manuscript-lab.gate-config.v1
+  id: manuscript-ready
+  version: 1
+  scope: manuscript
+  applies_to:
+    include:
+      - manuscript
+  profiles:
+    default:
+      requires:
+        - id: project.required_files_present
+          severity: block
+          sensor: protocol_project
+        - id: outline.sections_resolve
+          severity: block
+          sensor: outline
+        - id: sections.ready
+          severity: block
+          sensor: section_ready
+        - id: citations.ready
+          severity: block
+          sensor: citation_ready
+        - id: runtime.all_fresh
+          severity: block
+          sensor: runtime_packet
+        - id: issues.none_open_or_deferred
+          severity: block
+          sensor: issue_ledger
+        - id: reviews.no_latest_errors
+          severity: block
+          sensor: review_errors
+        - id: doccheck.static_all_pass
+          severity: block
+          sensor: static_document_check
+        - id: harness.templates_clean
+          severity: block
+          sensor: template_audit
+        - id: harness.context_clean
+          severity: block
+          sensor: context_audit
+        - id: project.filesystem_verified
+          severity: block
+          sensor: project_filesystem
+  overrides:
+    allowed: true
+    require_actor: true
+    require_reason: true
+    max_age_days: 14

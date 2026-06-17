@@ -282,7 +282,6 @@ Commands to add:
 
 ```bash
 mlab validate
-mlab migrate
 mlab next
 mlab report
 ```
@@ -602,14 +601,14 @@ issues. Generate candidates. Merge safely. Gate exports.
 
 ## Release Posture
 
-The GitHub repo can keep moving as a template-first public project while the
-install-anywhere design matures.
+The GitHub repo can keep moving as a template-friendly public project while the
+install-anywhere workflow stays boring and reproducible.
 
 Recommended release line:
 
 - `0.1.x`: public template, docs, doctor, hygiene, onboarding, sample fixture
 - `0.2.x`: CI, protocol v1 draft, gate spec, install-anywhere design
-- `0.3.x`: installable package alpha
+- `0.3.x`: installable package workflow
 - `0.4.x`: gate engine and profile validation
 - `0.5.x`: claim/source spine
 - `1.0.0`: stable protocol, install-anywhere CLI, gates, issues, candidates,

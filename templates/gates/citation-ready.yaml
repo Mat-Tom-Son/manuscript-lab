@@ -2,31 +2,31 @@
 # defaults; this template documents stable requirement IDs for future overrides.
 gate:
   schema_version: manuscript-lab.gate-config.v1
-  id: section-ready
+  id: citation-ready
   version: 1
-  scope: section
+  scope: citation
   applies_to:
     include:
+      - manuscript
       - draft/*.md
   profiles:
     default:
       requires:
-        - id: contract.valid
+        - id: claims.no_empty_placeholders
           severity: block
-          sensor: section_contract
-        - id: runtime.fresh
+          sensor: citation_scan
+        - id: claims.no_unsupported_markers
           severity: block
-          sensor: runtime_packet
-        - id: doccheck.static_pass
+          sensor: claims_register
+        - id: claims.source_keys_exist
           severity: block
-          sensor: doccheck_static
-        - id: issues.no_blockers
+          sensor: claims_register
+        - id: sources.index_valid
           severity: block
-          sensor: issue_ledger
-      warns:
-        - id: reviews.latest_clean
-          severity: warn
-          sensor: review_errors
+          sensor: source_index
+        - id: sources.no_missing_files
+          severity: block
+          sensor: source_index
   overrides:
     allowed: true
     require_actor: true

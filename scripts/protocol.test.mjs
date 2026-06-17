@@ -5,7 +5,7 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { spawnSync } from "node:child_process";
-import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { discoverProtocol, protocolPaths, validateProtocolConfig } from "./lib/protocol.mjs";
 import { parseContractList, parseSectionContract } from "./lib/section-contract.mjs";
 
 const repoRoot = process.cwd();
@@ -16,7 +16,11 @@ try {
   testInstalledWorkspaceValidation();
   testNestedRootDiscovery();
   testProtocolPaths();
+  testConfigValidationWarningsAndTypes();
+  testWindowsAndBackslashPathsFail();
   testEscapingConfigFails();
+  testInvalidJsonConfigFailsCleanly();
+  testProjectFreeValidateShowsHints();
   console.log("protocol tests passed");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -100,6 +104,107 @@ function testEscapingConfigFails() {
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.ok, false);
   assert(parsed.errors.some((error) => /root/.test(error) && /escape/.test(error)));
+}
+
+function testConfigValidationWarningsAndTypes() {
+  const configDir = path.join(tmp, "config-validation");
+  mkdir(configDir);
+  const base = {
+    schemaVersion: 1,
+    profile: "whitepaper",
+    root: "manuscript",
+    draftGlob: "draft/*.md",
+    stateDir: "state",
+    exportsDir: "exports",
+    profileOptions: {},
+  };
+
+  const unknown = validateProtocolConfig({ ...base, extraTopLevel: true, profileOptions: { title: "Known", surprise: true } }, { configDir });
+  assert.deepEqual(unknown.errors, []);
+  assert(unknown.warnings.some((warning) => /Unknown config field.*extraTopLevel/.test(warning)));
+  assert(unknown.warnings.some((warning) => /Unknown profileOptions field.*surprise/.test(warning)));
+
+  const typed = validateProtocolConfig(
+    {
+      ...base,
+      schemaVersion: "1",
+      profile: "",
+      profileOptions: [],
+      checks: [],
+      reviews: "default",
+      model: "openrouter",
+    },
+    { configDir },
+  );
+  assert(typed.errors.some((error) => /schemaVersion must be integer 1/.test(error)));
+  assert(typed.errors.some((error) => /profile must be a non-empty string/.test(error)));
+  assert(typed.errors.some((error) => /profileOptions must be an object/.test(error)));
+  assert(typed.errors.some((error) => /checks must be an object/.test(error)));
+  assert(typed.errors.some((error) => /reviews must be an object/.test(error)));
+  assert(typed.errors.some((error) => /model must be an object/.test(error)));
+}
+
+function testWindowsAndBackslashPathsFail() {
+  const configDir = path.join(tmp, "windows-paths");
+  mkdir(configDir);
+  const base = {
+    schemaVersion: 1,
+    profile: "whitepaper",
+    root: "manuscript",
+    draftGlob: "draft/*.md",
+    stateDir: "state",
+    exportsDir: "exports",
+  };
+  const cases = [
+    ["root", "C:/Users/mat/manuscript", /Windows drive paths/],
+    ["root", "\\\\server\\share", /UNC paths|forward slashes/],
+    ["draftGlob", "draft\\*.md", /forward slashes/],
+    ["stateDir", "..\\state", /forward slashes/],
+  ];
+
+  for (const [field, value, pattern] of cases) {
+    const validation = validateProtocolConfig({ ...base, [field]: value }, { configDir });
+    assert(
+      validation.errors.some((error) => error.includes(`Config ${field}`) && pattern.test(error)),
+      `${field}=${value} should fail with ${pattern}; got ${validation.errors.join("; ")}`,
+    );
+  }
+}
+
+function testInvalidJsonConfigFailsCleanly() {
+  const workspace = path.join(tmp, "invalid-json");
+  mkdir(workspace);
+  write(path.join(workspace, "manuscript-lab.config.json"), "{ nope\n");
+
+  const result = runValidate(["--json"], { cwd: workspace });
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "");
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mode, "installed");
+  assert.equal(parsed.config, null);
+  assert(parsed.errors.some((error) => /not valid JSON/.test(error)));
+}
+
+function testProjectFreeValidateShowsHints() {
+  const workspace = path.join(tmp, "no-project");
+  mkdir(workspace);
+
+  const result = runValidate(["--json"], { cwd: workspace });
+  assert.equal(result.status, 1);
+  assert.equal(result.stderr, "");
+  const parsed = JSON.parse(result.stdout);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mode, "none");
+  assert(parsed.errors.some((error) => /No Manuscript Lab project found/.test(error)));
+  assert(parsed.hints.some((hint) => /mlab init --profile/.test(hint)));
+  assert(parsed.hints.some((hint) => /mlab doctor --no-project/.test(hint)));
+
+  const text = runValidate([], { cwd: workspace });
+  assert.equal(text.status, 1);
+  assert.match(text.stdout, /Hints:/);
+  assert.match(text.stdout, /mlab init --profile/);
+  assert.match(text.stdout, /mlab doctor --no-project/);
 }
 
 function writeProject(workspace) {

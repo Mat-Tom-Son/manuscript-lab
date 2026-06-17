@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import { spawnSync } from "node:child_process";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
@@ -45,6 +46,7 @@ export function runGateCli(rawArgs, env = {}) {
   if (options.help) {
     return { exitCode: 0, stdout: `${helpText()}\n`, stderr: "", result: null };
   }
+  options.cwd = cwd;
 
   if (options.unknown.length) {
     const result = errorResult({
@@ -162,6 +164,15 @@ export function evaluateGate({ gateId, targetArg = "", discovery, options = {}, 
       now,
     });
   }
+  if (gateId === "export-ready") {
+    return evaluateExportReady({
+      discovery,
+      options,
+      command,
+      startedAt,
+      now,
+    });
+  }
   return errorResult({
     gateId,
     scope: scopeForGate(gateId),
@@ -172,7 +183,7 @@ export function evaluateGate({ gateId, targetArg = "", discovery, options = {}, 
 }
 
 function evaluateSectionReady({ discovery, targetArg, options = {}, command = "", startedAt = toIso(new Date()), now = new Date() }) {
-  const resolved = resolveSectionTarget(discovery, targetArg);
+  const resolved = resolveSectionTarget(discovery, targetArg, options);
   if (resolved.error) {
     return errorResult({
       gateId: "section-ready",
@@ -504,10 +515,11 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     status: result.status,
     failures: result.requirements.filter((req) => req.severity === "block" && ["fail", "error"].includes(req.status)).map((req) => req.id),
   }));
+  if (!activeDrafts.length) warnings.push("No active non-todo draft sections found.");
   requirements.push(requirement({
     id: "sections.ready",
     sensor: "section_ready",
-    status: activeDrafts.length ? passFail(failedSections.length === 0) : "fail",
+    status: activeDrafts.length ? passFail(failedSections.length === 0) : "pass",
     message: !activeDrafts.length
       ? "No active non-todo draft sections found."
       : failedSections.length
@@ -580,6 +592,52 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     evidence: reviews.error ? { error: reviews.error } : { count: reviews.failures.length, failures: reviews.failures },
   }));
 
+  const staticCheck = runPackageNode(discovery, "scripts/doccheck.mjs", ["--static-only"], { cwd: discovery.manuscriptRoot });
+  requirements.push(commandRequirement({
+    id: "doccheck.static_all_pass",
+    sensor: "static_document_check",
+    result: staticCheck,
+    passMessage: "Static document checks passed for the manuscript.",
+    failMessage: "Static document checks failed for the manuscript.",
+  }));
+
+  const templateAudit = runPackageNode(discovery, "scripts/template-audit.mjs", ["--strict"], { cwd: discovery.packageRoot });
+  requirements.push(commandRequirement({
+    id: "harness.templates_clean",
+    sensor: "template_audit",
+    result: templateAudit,
+    passMessage: "Strict template audit passed.",
+    failMessage: "Strict template audit failed.",
+  }));
+
+  const contextAudit = runPackageNode(discovery, "scripts/context-audit.mjs", ["--strict"], { cwd: discovery.packageRoot });
+  requirements.push(commandRequirement({
+    id: "harness.context_clean",
+    sensor: "context_audit",
+    result: contextAudit,
+    passMessage: "Strict context hygiene audit passed.",
+    failMessage: "Strict context hygiene audit failed.",
+  }));
+
+  const projectVerification = discovery.mode === "installed"
+    ? null
+    : runPackageNode(discovery, "scripts/story-workspace.mjs", ["verify-projects", "--json"], { cwd: discovery.workspaceRoot });
+  requirements.push(projectVerification
+    ? commandRequirement({
+      id: "project.filesystem_verified",
+      sensor: "project_filesystem",
+      result: projectVerification,
+      passMessage: "Project filesystem verifies.",
+      failMessage: "Project filesystem verification failed.",
+    })
+    : requirement({
+      id: "project.filesystem_verified",
+      sensor: "project_filesystem",
+      status: "skip",
+      message: "Skipped in config-first installed mode.",
+      evidence: { mode: discovery.mode },
+    }));
+
   return finalizeResult({
     gateId: "manuscript-ready",
     scope: "manuscript",
@@ -601,6 +659,177 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
       claims: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "claims.md")),
       sources: hashFileIfExists(path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md")),
       issue_ledger: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "issues/issue-ledger.json")),
+    },
+  });
+}
+
+function evaluateExportReady({ discovery, options = {}, command = "", startedAt = toIso(new Date()), now = new Date() }) {
+  const exportsDir = exportsDirFor(discovery);
+  const exportRoot = path.join(discovery.manuscriptRoot, exportsDir);
+  const manifestFile = path.join(exportRoot, "manifest.json");
+  const manifest = readExportManifest(manifestFile, discovery);
+  const formats = requiredExportFormats(options);
+  const manifestOutputs = Array.isArray(manifest.data?.outputs) ? manifest.data.outputs : [];
+  const discoveredOutputs = listExportOutputs(discovery, exportRoot);
+  const outputsByFormat = new Map();
+  for (const output of [...discoveredOutputs, ...manifestOutputs.map((output) => normalizeManifestOutput(output, discovery))]) {
+    if (!output.format || outputsByFormat.has(output.format)) continue;
+    outputsByFormat.set(output.format, output);
+  }
+  const missingFormats = formats.filter((format) => !outputsByFormat.has(format));
+  const requiredOutputs = formats.map((format) => outputsByFormat.get(format)).filter(Boolean);
+  const missingFiles = [];
+  const emptyFiles = [];
+  for (const output of requiredOutputs) {
+    const full = path.resolve(discovery.manuscriptRoot, output.file);
+    if (isOutside(full, discovery.manuscriptRoot)) {
+      missingFiles.push({ format: output.format, file: output.file, reason: "path escapes project root" });
+      continue;
+    }
+    if (!fs.existsSync(full)) {
+      missingFiles.push({ format: output.format, file: output.file, reason: "file does not exist" });
+      continue;
+    }
+    const size = fs.statSync(full).size;
+    if (size <= 0) emptyFiles.push({ format: output.format, file: output.file, size });
+  }
+
+  const freshness = manifest.data ? exportFreshness(discovery, manifest.data, requiredOutputs) : { status: "missing-manifest", stale_inputs: [], old_outputs: [] };
+  const hiddenOverride = exportOverrideVisibility(manifest.data);
+  const manuscriptResult = evaluateManuscriptReady({
+    discovery,
+    options,
+    command: "manuscript-ready manuscript",
+    startedAt,
+    now,
+  });
+  const requirements = [];
+  const warnings = [...(discovery.warnings ?? [])];
+
+  requirements.push(requirement({
+    id: "manuscript.ready",
+    sensor: "manuscript_ready",
+    status: manuscriptResult.status === "error" ? "error" : passFail(manuscriptResult.ready),
+    message: manuscriptResult.ready ? "Manuscript readiness passed." : "Manuscript readiness failed.",
+    evidence: {
+      status: manuscriptResult.status,
+      failures: manuscriptResult.requirements.filter((req) => ["fail", "error"].includes(req.status)).map((req) => req.id),
+    },
+  }));
+
+  requirements.push(requirement({
+    id: "export.manifest_present",
+    sensor: "export_manifest",
+    status: manifest.error ? "error" : passFail(Boolean(manifest.data)),
+    message: manifest.error
+      ? manifest.error
+      : manifest.data
+        ? "Export manifest is present and parseable."
+        : `Export manifest is missing: ${normalizeRel(path.posix.join(exportsDir, "manifest.json"))}`,
+    evidence: {
+      path: normalizeRel(path.posix.join(exportsDir, "manifest.json")),
+      exists: fs.existsSync(manifestFile),
+      schema_version: manifest.data?.schema_version ?? "",
+      export_id: manifest.data?.export_id ?? "",
+    },
+  }));
+
+  requirements.push(requirement({
+    id: "export.command_passed",
+    sensor: "export_manifest",
+    status: manifest.data ? passFail(manifestOutputs.length > 0) : "skip",
+    message: manifest.data
+      ? manifestOutputs.length
+        ? "Export manifest records a completed export command."
+        : "Export manifest contains no outputs."
+      : "Skipped because the export manifest is missing or unreadable.",
+    evidence: {
+      output_count: manifestOutputs.length,
+      created_at: manifest.data?.created_at ?? "",
+      export_id: manifest.data?.export_id ?? "",
+    },
+  }));
+
+  requirements.push(requirement({
+    id: "export.formats_present",
+    sensor: "export_files",
+    status: passFail(missingFormats.length === 0),
+    message: missingFormats.length
+      ? `Missing required export formats: ${missingFormats.join(", ")}`
+      : "All required export formats are present.",
+    evidence: {
+      required_formats: formats,
+      present_formats: [...outputsByFormat.keys()].sort(),
+      missing_formats: missingFormats,
+      outputs: requiredOutputs.map(publicExportOutput),
+    },
+  }));
+
+  requirements.push(requirement({
+    id: "export.files_nonempty",
+    sensor: "export_files",
+    status: passFail(missingFiles.length === 0 && emptyFiles.length === 0 && requiredOutputs.length === formats.length),
+    message: missingFiles.length || emptyFiles.length
+      ? "One or more required export files are missing or empty."
+      : "Required export files exist and are nonempty.",
+    evidence: {
+      missing_files: missingFiles,
+      empty_files: emptyFiles,
+      outputs: requiredOutputs.map(publicExportOutput),
+    },
+  }));
+
+  requirements.push(requirement({
+    id: "export.generated_after_inputs",
+    sensor: "export_manifest",
+    status: manifest.data ? passFail(freshness.status === "fresh") : "skip",
+    message: manifest.data
+      ? freshness.status === "fresh"
+        ? "Exports match manifest input hashes or are newer than source inputs."
+        : "Exports are stale relative to current source inputs."
+      : "Skipped because the export manifest is missing or unreadable.",
+    evidence: freshness,
+  }));
+
+  requirements.push(requirement({
+    id: "export.no_dirty_override",
+    sensor: "export_manifest",
+    status: manifest.data ? passFail(!hiddenOverride.hidden) : "skip",
+    message: manifest.data
+      ? hiddenOverride.hidden
+        ? "Export manifest records an override without visible override details."
+        : "Export manifest has no hidden gate override."
+      : "Skipped because the export manifest is missing or unreadable.",
+    evidence: hiddenOverride,
+  }));
+
+  return finalizeResult({
+    gateId: "export-ready",
+    scope: "export",
+    target: {
+      kind: "export",
+      id: "manuscript",
+      path: exportsDir,
+      sha256: hashJson({
+        manifest: hashFileIfExists(manifestFile),
+        outputs: requiredOutputs.map((output) => ({ format: output.format, file: output.file, sha256: hashFileIfExists(path.join(discovery.manuscriptRoot, output.file)) })),
+      }),
+    },
+    command,
+    startedAt,
+    finishedAt: toIso(now),
+    profile: options.profile ?? DEFAULT_PROFILE,
+    requirements,
+    warnings,
+    inputHashes: {
+      config: hashDiscoveryConfig(discovery),
+      manifest: hashFileIfExists(manifestFile),
+      manuscript_gate: hashJson({
+        status: manuscriptResult.status,
+        target: manuscriptResult.target?.sha256 ?? null,
+        failures: manuscriptResult.requirements.filter((req) => ["fail", "error"].includes(req.status)).map((req) => req.id),
+      }),
+      exports: hashJson(requiredOutputs.map((output) => ({ format: output.format, file: output.file, sha256: hashFileIfExists(path.join(discovery.manuscriptRoot, output.file)) }))),
     },
   });
 }
@@ -724,6 +953,168 @@ function requirement({ id, severity = "block", sensor, status, message, evidence
   };
 }
 
+function commandRequirement({ id, sensor, result, passMessage, failMessage }) {
+  const failed = result.error || result.status !== 0;
+  return requirement({
+    id,
+    sensor,
+    status: result.error ? "error" : passFail(!failed),
+    message: failed ? failMessage : passMessage,
+    evidence: commandEvidence(result),
+  });
+}
+
+function requiredExportFormats(options = {}) {
+  const raw = options.formats || "md,html,epub,pdf";
+  const formats = String(raw)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+  const allowed = new Set(["md", "html", "epub", "pdf"]);
+  return [...new Set(formats.filter((format) => allowed.has(format)))];
+}
+
+function runPackageNode(discovery, scriptRel, args = [], { cwd = discovery.manuscriptRoot } = {}) {
+  const script = path.join(discovery.packageRoot, scriptRel);
+  const result = spawnSync(process.execPath, [script, ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  return {
+    status: result.status ?? (result.error ? 2 : 1),
+    signal: result.signal ?? null,
+    error: result.error?.message ?? "",
+    stdout: result.stdout ?? "",
+    stderr: result.stderr ?? "",
+  };
+}
+
+function commandEvidence(result) {
+  return {
+    exit_code: result.status,
+    signal: result.signal,
+    error: result.error,
+    stdout: summarizeOutput(result.stdout),
+    stderr: summarizeOutput(result.stderr),
+  };
+}
+
+function summarizeOutput(value) {
+  return String(value ?? "")
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .slice(0, 12);
+}
+
+function readExportManifest(file, discovery) {
+  if (!fs.existsSync(file)) return { data: null, error: "" };
+  try {
+    const data = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (data?.schema_version !== "manuscript-lab.export-manifest.v1") {
+      return { data, error: `Unexpected export manifest schema: ${data?.schema_version ?? "(missing)"}` };
+    }
+    return { data, error: "" };
+  } catch (error) {
+    return { data: null, error: `Could not parse ${displayProjectPath(file, discovery)}: ${error.message}` };
+  }
+}
+
+function listExportOutputs(discovery, exportRoot) {
+  if (!fs.existsSync(exportRoot)) return [];
+  const allowed = new Set(["md", "html", "epub", "pdf"]);
+  return fs
+    .readdirSync(exportRoot, { withFileTypes: true })
+    .filter((entry) => entry.isFile())
+    .map((entry) => {
+      const format = path.extname(entry.name).slice(1).toLowerCase();
+      if (!allowed.has(format)) return null;
+      const file = path.join(exportRoot, entry.name);
+      return {
+        format,
+        file: displayProjectPath(file, discovery),
+        size: fs.statSync(file).size,
+        sha256: sha256File(file),
+      };
+    })
+    .filter(Boolean);
+}
+
+function normalizeManifestOutput(output, discovery) {
+  const rawFile = String(output?.file ?? "");
+  const full = path.isAbsolute(rawFile) ? path.resolve(rawFile) : path.resolve(discovery.manuscriptRoot, rawFile);
+  const file = path.isAbsolute(rawFile) && isOutside(full, discovery.manuscriptRoot)
+    ? normalizeRel(rawFile)
+    : displayProjectPath(full, discovery);
+  return {
+    format: String(output?.format ?? path.extname(file).slice(1)).toLowerCase(),
+    file,
+    size: Number(output?.size ?? 0),
+    sha256: output?.sha256 ?? null,
+  };
+}
+
+function publicExportOutput(output) {
+  return {
+    format: output.format,
+    file: output.file,
+    size: output.size ?? null,
+    sha256: output.sha256 ?? null,
+  };
+}
+
+function exportFreshness(discovery, manifest, outputs) {
+  const inputHashes = manifest.input_hashes && typeof manifest.input_hashes === "object" ? manifest.input_hashes : {};
+  const staleInputs = [];
+  const inputMtimes = [];
+
+  for (const [rel, expectedHash] of Object.entries(inputHashes)) {
+    const full = path.resolve(discovery.manuscriptRoot, rel);
+    if (isOutside(full, discovery.manuscriptRoot)) {
+      staleInputs.push({ file: rel, reason: "path escapes project root" });
+      continue;
+    }
+    if (!fs.existsSync(full)) {
+      staleInputs.push({ file: rel, reason: "input file is missing" });
+      continue;
+    }
+    inputMtimes.push(fs.statSync(full).mtimeMs);
+    if (sha256File(full) !== expectedHash) staleInputs.push({ file: rel, reason: "hash mismatch" });
+  }
+
+  const newestInput = inputMtimes.length ? Math.max(...inputMtimes) : 0;
+  const oldOutputs = newestInput
+    ? outputs.flatMap((output) => {
+      const full = path.resolve(discovery.manuscriptRoot, output.file);
+      if (isOutside(full, discovery.manuscriptRoot) || !fs.existsSync(full)) return [];
+      return fs.statSync(full).mtimeMs >= newestInput ? [] : [{ format: output.format, file: output.file }];
+    })
+    : [];
+
+  const hashFresh = Object.keys(inputHashes).length > 0 && staleInputs.length === 0;
+  const mtimeFresh = newestInput > 0 && oldOutputs.length === 0 && outputs.length > 0;
+  return {
+    status: hashFresh || mtimeFresh ? "fresh" : "stale",
+    input_hashes_checked: Object.keys(inputHashes).length,
+    stale_inputs: staleInputs,
+    old_outputs: oldOutputs,
+    newest_input_mtime: newestInput || null,
+  };
+}
+
+function exportOverrideVisibility(manifest) {
+  const overrideVisible = Boolean(manifest?.gate_override || manifest?.override || (Array.isArray(manifest?.overrides) && manifest.overrides.length));
+  const overrideClaimed = manifest?.gate_enforced === "overridden" || manifest?.gate_overridden === true || manifest?.overridden === true;
+  return {
+    gate_enforced: manifest?.gate_enforced ?? null,
+    source_dirty: manifest?.source_dirty ?? null,
+    override_claimed: Boolean(overrideClaimed),
+    override_visible: overrideVisible,
+    hidden: Boolean(overrideClaimed && !overrideVisible),
+  };
+}
+
 function inferGate(positionals) {
   const [first, second] = positionals;
   if (!first) return { error: "Missing gate target. Pass a draft path, citation, citations, or manuscript." };
@@ -739,6 +1130,10 @@ function inferGate(positionals) {
 
   if (first === "manuscript" || first === "manuscript-ready") {
     return { gateId: "manuscript-ready", targetArg: "manuscript" };
+  }
+
+  if (first === "export" || first === "exports" || first === "export-ready") {
+    return { gateId: "export-ready", targetArg: "exports" };
   }
 
   if (/\.md$/i.test(first) || normalizeRel(first).startsWith("draft/")) {
@@ -757,6 +1152,11 @@ function parseArgs(args) {
     profile: DEFAULT_PROFILE,
     config: "",
     workspace: "",
+    formats: "md,html,epub,pdf",
+    staticOnly: false,
+    allowOverrides: false,
+    noOverrides: false,
+    ci: false,
     unknown: [],
   };
 
@@ -766,27 +1166,62 @@ function parseArgs(args) {
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--json") parsed.json = true;
     else if (arg === "--write") parsed.write = true;
-    else if (arg === "--profile" || arg === "--config" || arg === "--workspace") {
+    else if (arg === "--static-only") parsed.staticOnly = true;
+    else if (arg === "--allow-overrides") parsed.allowOverrides = true;
+    else if (arg === "--no-overrides") parsed.noOverrides = true;
+    else if (arg === "--ci") parsed.ci = true;
+    else if (["--profile", "--config", "--workspace", "--formats", "--format", "--export-formats"].includes(arg)) {
       const value = args[index + 1] ?? "";
       if (!value || value.startsWith("--")) {
         parsed.unknown.push(`${arg} requires a value`);
       } else {
-        parsed[arg.slice(2)] = value;
+        parsed[formatOptionKey(arg)] = value;
         index += 1;
       }
     } else if (arg.startsWith("--profile=")) parsed.profile = arg.slice("--profile=".length);
     else if (arg.startsWith("--config=")) parsed.config = arg.slice("--config=".length);
     else if (arg.startsWith("--workspace=")) parsed.workspace = arg.slice("--workspace=".length);
+    else if (arg.startsWith("--formats=")) parsed.formats = arg.slice("--formats=".length);
+    else if (arg.startsWith("--format=")) parsed.formats = arg.slice("--format=".length);
+    else if (arg.startsWith("--export-formats=")) parsed.formats = arg.slice("--export-formats=".length);
     else if (arg.startsWith("--")) parsed.unknown.push(arg);
     else parsed.positionals.push(arg);
+  }
+
+  const invalidFormats = invalidExportFormats(parsed.formats);
+  if (invalidFormats.length) parsed.unknown.push(`Unsupported export format: ${invalidFormats.join(", ")}`);
+  if (!requiredExportFormats(parsed).length) parsed.unknown.push("--formats requires at least one format");
+  if (parsed.ci) {
+    parsed.json = true;
+    parsed.staticOnly = true;
+    parsed.noOverrides = true;
+    if (parsed.profile === DEFAULT_PROFILE) parsed.profile = "ci";
   }
 
   return parsed;
 }
 
-function resolveSectionTarget(discovery, targetArg) {
+function formatOptionKey(arg) {
+  if (arg === "--format" || arg === "--formats" || arg === "--export-formats") return "formats";
+  return arg.slice(2);
+}
+
+function invalidExportFormats(raw) {
+  const allowed = new Set(["md", "html", "epub", "pdf"]);
+  return String(raw ?? "")
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean)
+    .filter((format) => !allowed.has(format));
+}
+
+function resolveSectionTarget(discovery, targetArg, options = {}) {
   if (!targetArg) return { error: "section-ready requires a draft path." };
-  const fullPath = path.resolve(discovery.manuscriptRoot, targetArg);
+  const projectCandidate = path.resolve(discovery.manuscriptRoot, targetArg);
+  const cwdCandidate = path.resolve(options.cwd ?? discovery.manuscriptRoot, targetArg);
+  const fullPath = !fs.existsSync(projectCandidate) && !isOutside(cwdCandidate, discovery.manuscriptRoot)
+    ? cwdCandidate
+    : projectCandidate;
   if (isOutside(fullPath, discovery.manuscriptRoot)) {
     return { error: `Target path must stay inside the manuscript root: ${targetArg}` };
   }
@@ -1136,6 +1571,10 @@ function sourcesDirFor(discovery) {
   return normalizeRel(discovery.config?.sourcesDir ?? "sources");
 }
 
+function exportsDirFor(discovery) {
+  return normalizeRel(discovery.config?.exportsDir ?? "exports");
+}
+
 function stateRel(discovery, rel) {
   return normalizeRel(path.posix.join(stateDirFor(discovery), rel));
 }
@@ -1195,6 +1634,7 @@ function scopeForGate(gateId) {
   if (gateId === "section-ready") return "section";
   if (gateId === "citation-ready") return "citation";
   if (gateId === "manuscript-ready") return "manuscript";
+  if (gateId === "export-ready") return "export";
   return "unknown";
 }
 
@@ -1204,6 +1644,7 @@ function fallbackTarget(inferred) {
   }
   if (inferred.gateId === "citation-ready") return { kind: "citation", id: "citations", sha256: null };
   if (inferred.gateId === "manuscript-ready") return { kind: "manuscript", id: "manuscript", sha256: null };
+  if (inferred.gateId === "export-ready") return { kind: "export", id: "manuscript", path: "exports", sha256: null };
   return { kind: "unknown", id: "unknown", sha256: null };
 }
 
@@ -1220,6 +1661,7 @@ Usage:
   node scripts/gate.mjs citation [--json] [--write]
   node scripts/gate.mjs citations [--json] [--write]
   node scripts/gate.mjs manuscript [--json] [--write]
+  node scripts/gate.mjs export [--formats md,html,epub,pdf] [--json] [--write]
 
 Options:
   --json              Print the full gate result JSON.
@@ -1227,6 +1669,9 @@ Options:
   --profile <name>    Record the selected profile name. The first slice uses deterministic defaults.
   --config <path>     Discover a config-first project from this config path.
   --workspace <path>  Discover a project from this workspace.
+  --formats <list>    Required export formats for export-ready. Default: md,html,epub,pdf.
+  --static-only       Accepted for CI/profile compatibility; gates are deterministic by default.
+  --ci                Shorthand for --json --static-only --profile ci --no-overrides.
   --help              Show this help.`;
 }
 

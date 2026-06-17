@@ -16,6 +16,24 @@ issues, the sample candidate winner, diff audit presence, and exports in one
 place. The fixture is config-first, so those commands inspect the fixture
 itself instead of the active template project.
 
+To see the failure path, run the deliberately broken whitepaper fixture:
+
+```bash
+cd examples/broken-whitepaper
+../../bin/manuscript-lab.mjs validate
+../../bin/manuscript-lab.mjs check --static-only
+../../bin/manuscript-lab.mjs claims list --unsupported
+../../bin/manuscript-lab.mjs citations check draft/01-market.md
+../../bin/manuscript-lab.mjs issues list --status open
+../../bin/manuscript-lab.mjs gate manuscript --write
+../../bin/manuscript-lab.mjs report --write
+```
+
+Expected shape: protocol validation passes, then local checks report
+unsupported claims, citation placeholders, a missing citation target, an open
+blocker issue, missing runtime packets, and not-ready gate/report output. This
+fixture does not call models or the network.
+
 ## 1. Choose A Project Shape
 
 The template workflow is the broadest path today. Use it when you are working
@@ -48,12 +66,12 @@ The default scaffold is still fiction-oriented when `--kind` is omitted. Use
 `--kind document.section` for essays, technical docs, research notes,
 whitepapers, or other non-fiction projects.
 
-The install-anywhere alpha is for a separate writing repo with Manuscript Lab as
-a dev dependency. From a packed local package or future registry package:
+The install-anywhere workflow is for a separate writing repo with Manuscript Lab
+as a dev dependency. From the registry package:
 
 ```bash
 npm init -y
-npm install -D /path/to/manuscript-lab-0.9.0.tgz
+npm install -D manuscript-lab
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -68,7 +86,7 @@ npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
-`manuscript/`. In the current alpha, deterministic local commands such as
+`manuscript/`. Deterministic local commands such as
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
 gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
 export gates are config-root aware. Typed review execution and the
@@ -181,6 +199,17 @@ npm run issues -- list --status open
 ```
 
 Reviews create issues. Triage those issues before revising.
+
+The public wrapper aliases keep the same behavior with friendlier names:
+
+```bash
+mlab review draft/01-opening.md --dry-run --panel prose.clean
+mlab review report draft/01-opening.md
+mlab issues list --status open
+mlab revise draft/01-opening.md --issue <issue-id> --candidates 3 --dry-run
+mlab compare draft/01-opening.md --run <candidate-run-id> --dry-run
+mlab merge draft/01-opening.md --run <candidate-run-id>
+```
 
 ## 7. Export
 

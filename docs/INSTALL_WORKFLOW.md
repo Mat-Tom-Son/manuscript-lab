@@ -1,7 +1,7 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." v0.9 is the current installed-package alpha checkpoint:
+workflow." v1 is the installed-package release-candidate checkpoint:
 config-first `mlab init`; deterministic validation, evidence, citation, gate,
 status, compose, static check, report generation, review-report, configurable
 `done` gates, Markdown/HTML export, model-shaped review/revision smoke
@@ -10,15 +10,14 @@ global install smoke coverage.
 
 ## Decision
 
-Manuscript Lab is template-first with an install-anywhere alpha.
+Manuscript Lab supports template-first and install-anywhere workflows.
 
 - The repository remains the broadest product surface for current releases.
-- `package.json` stays `private: true`.
+- `package.json` is publishable on the v1 release branch.
 - The local `manuscript-lab` / `mlab` wrapper supports template clones and the
   config-first init path.
 - Existing `npm run ...` commands stay canonical for template users.
-- npm registry publishing remains disabled until registry/one-off `npx`
-  behavior and migration are ready.
+- npm registry publishing still requires the final account-bound registry smoke.
 
 The install-anywhere target is a package-assets CLI, not a postinstall copy of
 the whole harness.
@@ -39,8 +38,8 @@ Unsupported choices:
 - No global package that assumes the global install directory is the project
   root.
 - No npm publish until root-aware command coverage includes registry/one-off
-  `npx` behavior, migration, and a deliberate decision about installed
-  multi-project switching.
+  `npx` behavior and a deliberate decision about installed multi-project
+  switching.
 
 ## Current Template-First Workflow
 
@@ -67,13 +66,13 @@ root from a caller workspace root.
 
 ## Install-Anywhere Target
 
-The alpha adoption path from a packed local package is:
+The registry adoption path is:
 
 ```bash
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.9.0.tgz
+npm install -D manuscript-lab
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -133,9 +132,9 @@ state, sources, exports, and project config under the workspace/manuscript root.
 ## `npx` And `mlab` UX
 
 `manuscript-lab` and `mlab` remain equivalent bin names. `mlab` is the primary
-docs name once npm support is real.
+docs name for the package workflow.
 
-The current alpha supports the deterministic local loop:
+The package workflow supports the deterministic local loop:
 
 ```bash
 npx mlab status
@@ -160,17 +159,20 @@ npx mlab merge:winner draft/01-intro.md --run <candidate-run-id> --apply --audit
 ```
 
 The target CLI should later grow to the full command family, including richer
-`doctor`, migration, and registry/one-off `npx` smokes. Template project
-switching commands are compatibility commands for template clones; in installed
-or no-project contexts, the wrapper refuses them instead of creating legacy
-`projects/` state in the caller workspace.
+`doctor` and registry/one-off `npx` smokes. Template project switching commands
+are compatibility commands for template clones; in installed or no-project
+contexts, the wrapper refuses them instead of creating legacy `projects/` state
+in the caller workspace.
 
 Behavior by install mode:
 
-- local dev dependency: `npx mlab` uses the project-local package and is the
-  default docs/CI path.
+- local dev dependency: `npx mlab` or `npm exec -- mlab` uses the project-local
+  package and is the default docs/CI path.
 - one-off `npx`: allowed for `init`, `doctor`, `validate`, and help commands,
-  but should warn when no project-local dependency exists.
+  but should warn when no project-local dependency exists. Local release testing
+  can approximate this with a packed tarball via
+  `npm exec --package=/path/to/manuscript-lab.tgz -- mlab ...`; real
+  public-registry proof still requires npm auth and a published candidate.
 - global install: smoke-tested from a temporary npm prefix for project-free
   diagnostics, config-first init, validation, evidence gates, and template-only
   command refusal. Project-local installs remain the reproducible CI path.
@@ -296,48 +298,26 @@ Profiles can set scaffold defaults, gate defaults, and section-contract
 defaults. They should not make hidden project-specific choices after init. Once
 files are created, the user's files and config are the source of truth.
 
-## Migration
+## Fresh-Start Policy
 
-Migration has two jobs: keep existing template clones working and give users a
-controlled path to installed-package projects.
+v1 assumes fresh config-first projects for installed-package usage. Existing
+template clones remain supported through template compatibility commands, but
+the installed workflow does not need to move or rewrite old workspaces.
 
 Supported states:
 
 - template clone with no config: continue to work with `npm run ...` and the
   local wrapper.
-- template clone with config: commands can opt into install-anywhere discovery
-  while retaining root-mounted project files.
 - installed project: config-first, package-assets CLI, no copied harness
   scripts.
 
-Future migration command:
-
-```bash
-mlab migrate --from template --root manuscript --dry-run
-mlab migrate --from template --root manuscript --apply
-```
-
-Migration should:
-
-- inventory current root project files, active project registry, generated
-  state, exports, sources, and ignored private files
-- write a dry-run plan before moving anything
-- create `manuscript-lab.config.json`
-- preserve existing project content and generated state unless the user asks for
-  a cleanup
-- support an in-place mode with `"root": "."` for users who do not want a
-  `manuscript/` subdirectory yet
-- avoid deleting template scripts or docs; removal from a user clone is a
-  separate manual cleanup
-- run `mlab doctor` and `mlab validate` after applying
-
-The migration command should be conservative because manuscripts are user data.
-It should prefer refusal with a clear plan over surprising rewrites.
+Users who want the installed layout can initialize a new project with
+`mlab init --profile <profile> --root <root>` and deliberately bring over only
+the files they want to keep.
 
 ## Tests
 
-Do not set `private: false` until the remaining command-surface tests exist and
-pass in CI.
+Do not publish until the remaining command-surface tests exist and pass in CI.
 
 Installed tarball e2e now lives in `scripts/install-init.test.mjs` and runs
 under `npm test`:
@@ -347,7 +327,7 @@ npm pack
 tmpdir=$(mktemp -d)
 cd "$tmpdir"
 npm init -y
-npm install /path/to/manuscript-lab-*.tgz
+npm install --save-dev /path/to/manuscript-lab-*.tgz
 npx mlab init --profile whitepaper --root manuscript --title "Packed Project"
 npx mlab validate
 npx mlab claims list --json
@@ -374,20 +354,23 @@ The test must assert:
 - generated export manifests stay under the configured manuscript root
 - generated reports stay under the configured manuscript root
 - package assets are read from the installed tarball
+- project-local `npm exec -- mlab validate`, `check`, and `gate` use the
+  installed dev dependency
+- local one-off `npm exec --package=/path/to/manuscript-lab.tgz -- mlab`
+  exercises help, version, project-free doctor, project-free validate hints,
+  config-first init, and validate without creating `package.json` or
+  `node_modules/` in the caller workspace
 - no active project, source text, generated state, or secret-bearing file enters
   the tarball
 
 Additional required tests before npm publishing:
 
 - registry/one-off `npx` smoke for `help`, `version`, `init`, `doctor`,
-  `validate`, and a minimal gate/report loop from the published package
-- project-local dependency smoke that matches the future public registry path:
-  `npm install -D manuscript-lab`, `npx mlab validate`, `npx mlab check`,
-  `npx mlab gate draft/01-opening.md --json`
-- config schema validation and unknown-key behavior
+  `validate`, and a minimal gate/report loop from the published package. This
+  is intentionally not attempted by local tests because it needs npm registry
+  access and release-candidate auth.
 - legacy template-mode smoke so template-first usage does not regress
-- migration dry-run fixture and apply fixture
-- Windows path fixture for root discovery and configured relative paths
+- Windows CI coverage for the existing Windows path fixtures, if available
 
 ## Release Gates
 
@@ -408,8 +391,8 @@ Before the package can be published:
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow
-- `package.json` is changed from `private: true` only in the release PR that
-  also contains the installed-package tests
+- `package.json` is publishable only in the release PR that also contains the
+  installed-package tests
 - `npm pack --dry-run` output is reviewed in the release PR
 
 Recommended release line:
@@ -417,7 +400,7 @@ Recommended release line:
 - `0.1.x`: template-first public repo
 - `0.2.x`: protocol/config/root-discovery design and tests
 - `0.3.x`: deterministic protocol, evidence, and gate commands
-- `0.4.x`: install-anywhere init alpha behind documented caveats
+- `0.4.x`: install-anywhere init behind documented caveats
 - `0.5.x`: root-aware installed deterministic command loop
 - `0.6.x`: export manifests and unified reports
 - `0.7.x`: candidate arena root-awareness
@@ -428,7 +411,7 @@ Recommended release line:
 
 ## Close Criteria For Issue #2
 
-This design plus the v0.9 alpha closes the first implementation slices of issue
+This design plus the v1 release-candidate work closes the implementation slices of issue
 #2:
 
 - npm install should operate from package assets, with `init` writing only
@@ -437,11 +420,11 @@ This design plus the v0.9 alpha closes the first implementation slices of issue
 - global install remains a convenience layer, not the reproducible project
   workflow
 - npm publishing remains unsupported until installed-package coverage includes
-  registry/one-off `npx` behavior and migration
+  registry/one-off `npx` behavior
 
-The next implementation follow-up should make migration and one-off `npx` paths
-respect the same root-discovery/config layer already used by validate,
-evidence, citations, gate, status, compose, check, review-report, report
-generation, review-run, Markdown/HTML export, configurable `done` export gates,
-export manifests, template-only command refusal, temporary-prefix global
-installs, and the candidate/revision command surface.
+The next implementation follow-up should make one-off `npx` paths respect the
+same root-discovery/config layer already used by validate, evidence, citations,
+gate, status, compose, check, review-report, report generation, review-run,
+Markdown/HTML export, configurable `done` export gates, export manifests,
+template-only command refusal, temporary-prefix global installs, and the
+candidate/revision command surface.

@@ -12,6 +12,7 @@ const alwaysRun = [
   "scripts/gate-engine.test.mjs",
   "scripts/install-init.test.mjs",
   "scripts/install-codex-skill.test.mjs",
+  "scripts/cli-wrapper.test.mjs",
   "scripts/packlist.test.mjs",
   "scripts/validate-codex-skill.mjs",
   "scripts/word-usage.test.mjs",
