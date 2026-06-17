@@ -9,6 +9,11 @@
           "deepseek/deepseek-v4-flash",
           "google/gemini-3.1-flash-lite"
         ],
+        "room.table_read": [
+          "qwen/qwen3.7-plus",
+          "deepseek/deepseek-v4-flash",
+          "google/gemini-3.1-flash-lite"
+        ],
         "line.editor": [
           "anthropic/claude-haiku-4.5",
           "qwen/qwen3.6-flash",
@@ -52,6 +57,10 @@
       "description": "Small reliable clean-context panel for post-revision verification.",
       "passes": {
         "cold.reader": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "room.table_read": [
           "qwen/qwen3.7-plus",
           "google/gemini-3.1-flash-lite"
         ],
@@ -100,6 +109,9 @@
         "cold.reader": [
           "lightning:lightning-ai/deepseek-v4-pro"
         ],
+        "room.table_read": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
         "line.editor": [
           "lightning:lightning-ai/deepseek-v4-pro"
         ],
@@ -122,6 +134,10 @@
       "description": "Lightning AI broader opinion/taste panel for model variety under one credit account.",
       "passes": {
         "cold.reader": [
+          "lightning:lightning-ai/deepseek-v4-pro",
+          "lightning:lightning-ai/gpt-oss-120b"
+        ],
+        "room.table_read": [
           "lightning:lightning-ai/deepseek-v4-pro",
           "lightning:lightning-ai/gpt-oss-120b"
         ],

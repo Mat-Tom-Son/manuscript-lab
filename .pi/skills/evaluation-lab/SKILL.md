@@ -15,6 +15,13 @@ The preferred primitive is:
 issue -> candidate revisions -> blind pairwise comparison -> taste arbiter gate -> merge winner -> verify no regressions
 ```
 
+When the right fix is not yet shaped, insert a writers-room option layer before
+candidate generation:
+
+```text
+issue or section question -> room blue-sky -> showrunner decision -> beat board or fix-options -> candidate revisions
+```
+
 Use `npm run diff:audit -- --before <file> --after <file> [--issue <issue_id>]` after a targeted revision or candidate merge when a before snapshot is available.
 
 Use `npm run done:no-export` before claiming evaluation-lab maintenance is complete. Use `npm run done` after applying manuscript changes and exporting reader copies.
@@ -30,6 +37,29 @@ npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id>
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id>
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id> --apply --audit
 ```
+
+Use room commands before candidate generation when the work needs productive
+friction rather than immediate prose:
+
+```bash
+npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
+npm run room -- break draft/<section>.md --run <room-run-id>
+npm run room -- table-read draft/<section>.md
+npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+```
+
+Use Chorus when the experiment is prose-production method rather than issue-fix
+revision:
+
+```bash
+npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- report draft/<section>.md
+```
+
+Chorus output is provisional until a human edits or a future apply command
+changes `draft/`. Compare it against a solo-frontier baseline before treating it
+as a default production path.
 
 Model calls route through `scripts/lib/model-provider.mjs`. Prefix judge or reviewer models with `lightning:` or `openrouter:` when mixing providers, and read `docs/MODEL_PROVIDERS.md` before changing panels.
 

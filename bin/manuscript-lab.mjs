@@ -13,6 +13,7 @@ const pkg = readPackageJson();
 
 const commands = {
   "check": ["scripts/doccheck.mjs"],
+  "chorus": ["scripts/chorus-runner.mjs"],
   "citations": ["scripts/evidence-spine.mjs", "citations"],
   "claims": ["scripts/evidence-spine.mjs", "claims"],
   "compare:candidates": ["scripts/compare-candidates.mjs"],
@@ -35,6 +36,7 @@ const commands = {
   "review:report": ["scripts/review-report.mjs"],
   "review:run": ["scripts/review-runner.mjs"],
   "merge:winner": ["scripts/merge-winner.mjs"],
+  "room": ["scripts/room-runner.mjs"],
   "status": ["scripts/harness-status.mjs"],
   "story": ["scripts/story-workspace.mjs"],
   "style:signals": ["scripts/style-calibration.mjs", "signals"],
@@ -236,12 +238,17 @@ Common commands:
   validate
   status
   compose -- draft/<section>.md
+  chorus run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
   check --static-only
   claims list --unsupported
   citations check draft/<section>.md
   evidence report
   gate draft/<section>.md
   report --write
+  room blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+  room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
+  room break draft/<section>.md --run <room-run-id>
+  room table-read draft/<section>.md
   export --formats md,html --slug my-project
   done:no-export
   done
@@ -254,6 +261,21 @@ Review and revision:
   compare draft/<section>.md --run <candidate-run-id> --dry-run
   merge draft/<section>.md --run <candidate-run-id>
   audit --before before.md --after draft/<section>.md --static-only
+
+Writers' room:
+  room blue-sky draft/<section>.md --json
+  room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
+  room break draft/<section>.md --run <room-run-id>
+  room table-read draft/<section>.md
+  room report draft/<section>.md
+
+Prose ensemble:
+  chorus plan draft/<section>.md --beats 4
+  chorus run draft/<section>.md --json
+  chorus sample draft/<section>.md --run <chorus-run-id>
+  chorus judge draft/<section>.md --run <chorus-run-id>
+  chorus assemble draft/<section>.md --run <chorus-run-id>
+  chorus report draft/<section>.md
 
 Compatibility command names:
   review:run

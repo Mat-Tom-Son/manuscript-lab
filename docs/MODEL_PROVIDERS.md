@@ -125,6 +125,39 @@ npm run review:run -- --passes cold.reader --models lightning:lightning-ai/gpt-o
 npm run review:run -- --passes narrative.taste --models lightning:lightning-ai/glm-5 draft/<section>.md
 ```
 
+## Writers' Room
+
+Room runs are deterministic unless `--models` is provided. Use provider-prefixed
+IDs to cast independent roles across Lightning and OpenRouter:
+
+```bash
+npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus --roles story_engine,reader_advocate
+npm run room -- table-read draft/<section>.md
+npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+```
+
+`room blue-sky` records model/provider metadata in `role-casts.json` and
+per-role outputs under `state/room/<section-id>/<run-id>/independent/`. The
+table-read command prepares the packet; the optional `room.table_read` review
+pass uses the normal review/model-panel infrastructure and issue-ledger flow.
+
+## Chorus
+
+Chorus runs are local-seed/deterministic unless `--models` is provided. Use
+provider-prefixed IDs to fan out beat-level prose candidates:
+
+```bash
+npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- sample draft/<section>.md --run <chorus-run-id> --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- report draft/<section>.md
+```
+
+Model-backed sampling records candidate metadata under
+`state/chorus/<section-id>/<run-id>/candidates/` and model-call audit entries
+with `operation: chorus.sample`. The MVP uses a pick-only judgment strategy and
+does not modify `draft/`.
+
 ## Checks And Audits
 
 Override check models:

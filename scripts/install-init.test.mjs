@@ -285,7 +285,9 @@ function assertProjectScaffold(workspace) {
     "manuscript/sources/index.md",
     "manuscript/state/status.md",
     "manuscript/state/claims.md",
+    "manuscript/state/chorus/README.md",
     "manuscript/state/issues/issue-ledger.json",
+    "manuscript/state/room/README.md",
     "manuscript/state/truth/entities.json",
     "manuscript/taste/TASTE.md",
   ]) {
@@ -347,10 +349,87 @@ function assertInstalledCommandSurface(workspace, runner) {
     const report = assertJsonCommand(runner, ["review:report", "--json"], { cwd });
     assert.equal(report.totals.runs, 0);
 
+    const chorusRunId = `packed-chorus-${index + 1}`;
+    const chorusTarget = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
+    const chorus = assertJsonCommand(runner, ["chorus", "run", chorusTarget, "--run-id", chorusRunId, "--beats", "2", "--json"], { cwd });
+    assert.equal(chorus.ok, true);
+    assert.equal(chorus.target, "draft/01-opening.md");
+    assert.equal(chorus.run_dir, `state/chorus/01-opening/${chorusRunId}`);
+    assert.equal(chorus.beat_count, 2);
+    assert.equal(chorus.candidate_count, 2);
+    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "manifest.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "voice-pack.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "assembled.md")));
+
+    const roomRunId = `packed-room-${index + 1}`;
+    const roomTarget = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
+    const room = assertJsonCommand(runner, ["room", "blue-sky", roomTarget, "--run-id", roomRunId, "--json"], { cwd });
+    assert.equal(room.ok, true);
+    assert.equal(room.target, "draft/01-opening.md");
+    assert.equal(room.run_dir, `state/room/01-opening/${roomRunId}`);
+    assert(fs.existsSync(path.join(manuscriptRoot, room.run_dir, "room-packet.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, room.run_dir, "manifest.json")));
+
+    const breakBeforeDecision = runner(["room", "break", roomTarget, "--run", roomRunId, "--json"], { cwd });
+    assert.equal(breakBeforeDecision.status, 1, breakBeforeDecision.stderr || breakBeforeDecision.stdout);
+    assert.match(breakBeforeDecision.stdout, /requires selected idea cards/);
+
+    const decision = assertJsonCommand(
+      runner,
+      ["room", "decide", roomTarget, "--run", roomRunId, "--select", "idea-001", "--reason", "Installed room smoke.", "--json"],
+      { cwd },
+    );
+    assert.deepEqual(decision.selected, ["idea-001"]);
+
+    const beatBoard = assertJsonCommand(runner, ["room", "break", roomTarget, "--run", roomRunId, "--json"], { cwd });
+    assert.equal(beatBoard.beat_count, 1);
+    assert(fs.existsSync(path.join(manuscriptRoot, room.run_dir, "output", "beat-board.json")));
+
+    const tableRead = assertJsonCommand(runner, ["room", "table-read", roomTarget, "--run-id", `packed-table-read-${index + 1}`, "--json"], { cwd });
+    assert.equal(tableRead.review_command, "mlab review:run --passes room.table_read draft/01-opening.md");
+    assert(fs.existsSync(path.join(manuscriptRoot, tableRead.files.checklist)));
+
+    const statusAfterLabs = assertJsonCommand(runner, ["status", "--json"], { cwd });
+    const roomStatusRun = statusAfterLabs.room_runs.find((run) => run.run_id === roomRunId);
+    assert(roomStatusRun, `status should include room run ${roomRunId}`);
+    assert.equal(roomStatusRun.kind, "room");
+    assert.equal(roomStatusRun.operation, "blue_sky");
+    assert.equal(roomStatusRun.target, "draft/01-opening.md");
+    assert.equal(roomStatusRun.files.manifest, `state/room/01-opening/${roomRunId}/manifest.json`);
+    assert.equal(roomStatusRun.files.beat_board_json, `state/room/01-opening/${roomRunId}/output/beat-board.json`);
+
+    const tableReadStatusRun = statusAfterLabs.room_runs.find((run) => run.run_id === `packed-table-read-${index + 1}`);
+    assert(tableReadStatusRun, "status should include table-read room run");
+    assert.equal(tableReadStatusRun.operation, "table_read");
+    assert.equal(tableReadStatusRun.files.checklist, `state/room/01-opening/packed-table-read-${index + 1}/output/table-read-checklist.md`);
+
+    const chorusStatusRun = statusAfterLabs.chorus_runs.find((run) => run.run_id === chorusRunId);
+    assert(chorusStatusRun, `status should include chorus run ${chorusRunId}`);
+    assert.equal(chorusStatusRun.kind, "chorus");
+    assert.equal(chorusStatusRun.operation, "chorus");
+    assert.equal(chorusStatusRun.target, "draft/01-opening.md");
+    assert.equal(chorusStatusRun.files.report, `state/chorus/01-opening/${chorusRunId}/CHORUS_REPORT.md`);
+    assert.equal(chorusStatusRun.files.assembled, `state/chorus/01-opening/${chorusRunId}/assembled.md`);
+
     const projectReport = assertJsonCommand(runner, ["report", "--json"], { cwd });
     assert.equal(projectReport.schema_version, "manuscript-lab.report.v1");
     assert.equal(fs.realpathSync(projectReport.project.manuscript_root), fs.realpathSync(manuscriptRoot));
     assert.equal(projectReport.summary.sections.total, 2);
+    assert(projectReport.summary.room_runs >= 2, "report should count room runs");
+    assert(projectReport.summary.chorus_runs >= 1, "report should count chorus runs");
+    assert(projectReport.summary.room_runs_by_operation.blue_sky >= 1, "report should group room operations");
+    assert(projectReport.summary.room_runs_by_operation.table_read >= 1, "report should group table-read operations");
+    assert(projectReport.summary.chorus_runs_by_status.assembled >= 1, "report should group chorus statuses");
+    assert(projectReport.room_runs.some((run) => run.run_id === roomRunId && run.files.beat_board_md));
+    assert(projectReport.chorus_runs.some((run) => run.run_id === chorusRunId && run.files.assembled));
+
+    const projectReportHtml = runner(["report", "--html"], { cwd });
+    assert.equal(projectReportHtml.status, 0, projectReportHtml.stderr || projectReportHtml.stdout);
+    assert.match(projectReportHtml.stdout, /Creative Labs/);
+    assert.match(projectReportHtml.stdout, new RegExp(roomRunId));
+    assert.match(projectReportHtml.stdout, new RegExp(chorusRunId));
+    assert.match(projectReportHtml.stdout, /blue_sky/);
+    assert.match(projectReportHtml.stdout, /state\/chorus\/01-opening\/packed-chorus-/);
 
     const done = assertJsonCommand(runner, ["done:no-export", "--json"], { cwd });
     assert.equal(done.pass, true, JSON.stringify(done, null, 2));
@@ -408,8 +487,14 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(writtenReport.artifacts.json, "reports/latest.json");
   assert.equal(writtenReport.artifacts.html, "reports/latest.html");
   assert.equal(writtenReport.export_manifest.file, "exports/manifest.json");
+  assert(writtenReport.summary.room_runs >= 6, "written report should include room and table-read runs from all cwd cases");
+  assert(writtenReport.summary.chorus_runs >= 3, "written report should include chorus runs from all cwd cases");
   assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.json")));
   assert(fs.existsSync(path.join(manuscriptRoot, "reports", "latest.html")));
+  const writtenHtml = fs.readFileSync(path.join(manuscriptRoot, "reports", "latest.html"), "utf8");
+  assert.match(writtenHtml, /Creative Labs/);
+  assert.match(writtenHtml, /packed-room-1/);
+  assert.match(writtenHtml, /packed-chorus-1/);
   assert(fs.existsSync(path.join(manuscriptRoot, "state", "runtime", "01-opening", "context.json")));
   assert.equal(fs.existsSync(path.join(workspace, "state")), false, "commands should not write state at workspace root");
   assert.equal(fs.existsSync(path.join(workspace, "reports")), false, "commands should not write reports at workspace root");

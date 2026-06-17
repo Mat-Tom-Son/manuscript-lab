@@ -153,6 +153,26 @@
       "max_issues": 10
     },
     {
+      "id": "room.table_read",
+      "label": "Room Table Read Sensor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "*"
+      ],
+      "context_pack": "blind.section_only",
+      "models": [
+        "qwen/qwen3.7-plus"
+      ],
+      "prompt": "reviews/prompts/room-table-read.md",
+      "blocking": false,
+      "min_confidence": 0.45,
+      "max_issues": 7
+    },
+    {
       "id": "continuity",
       "label": "Continuity Editor",
       "stage": [

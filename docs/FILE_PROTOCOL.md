@@ -154,8 +154,12 @@ Durable state:
 
 Generated or derived artifacts:
 
+- `state/chorus/`: Chorus prose ensemble runs, beat specs, candidate prose,
+  pick judgments, provisional assemblies, metrics, and reports.
 - `state/runtime/`: composed runtime packets.
 - `state/reviews/`: review run records and reports.
+- `state/room/`: writers' room run packets, role outputs, decisions, beat
+  boards, and table-read artifacts.
 - `state/revision-plans/`: accepted-issue revision plans.
 - `state/candidates/`: candidate revision runs.
 - `state/revision-audits/`: diff audit records.

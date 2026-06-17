@@ -1,6 +1,6 @@
 {
   "name": "manuscript-lab",
-  "version": "1.0.3",
+  "version": "1.1.0",
   "private": false,
   "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
   "license": "MIT",
@@ -50,6 +50,7 @@
     "check:list": "node scripts/doccheck.mjs --list-model-checks",
     "check:model": "node scripts/doccheck.mjs --model-checks",
     "check:static": "node scripts/doccheck.mjs --static-only",
+    "chorus": "node scripts/chorus-runner.mjs",
     "citations": "node scripts/evidence-spine.mjs citations",
     "claims": "node scripts/evidence-spine.mjs claims",
     "compose": "node scripts/compose-context.mjs",
@@ -101,6 +102,7 @@
     "review:model": "node scripts/model-review.mjs",
     "review:report": "node scripts/review-report.mjs",
     "review:run": "node scripts/review-runner.mjs",
+    "room": "node scripts/room-runner.mjs",
     "style:fingerprint": "node scripts/style-calibration.mjs fingerprint",
     "style:signals": "node scripts/style-calibration.mjs signals",
     "style:test": "node scripts/style-calibration.test.mjs",

@@ -30,8 +30,10 @@ const stateEntries = [
   "revision-audits",
   "revision-plans",
   "runtime",
+  "room",
   "style",
   "candidates",
+  "chorus",
   "truth",
   "taste",
   "model-calls",
@@ -52,6 +54,8 @@ try {
   assertSymlink("draft");
   assertSymlink("state/status.md");
   assertSymlink("state/issues");
+  assertSymlink("state/room");
+  assertSymlink("state/chorus");
 
   const workspace = path.join(root, "projects", "active", slug, "workspace");
   assert(fs.existsSync(path.join(workspace, "PROJECT.md")), "project workspace should contain PROJECT.md");

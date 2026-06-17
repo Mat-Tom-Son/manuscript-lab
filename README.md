@@ -29,6 +29,10 @@ repo keeps them in files:
 - section contracts in `draft/*.md`
 - project context in `PROJECT.md`, `brief.md`, `outline.md`, `style.md`, and `taste/`
 - compiled runtime packets in `state/runtime/`
+- Chorus beat-level prose ensemble runs, provisional assemblies, and metrics in
+  `state/chorus/`
+- writers' room packets, idea cards, decisions, beat boards, and table-read
+  artifacts in `state/room/`
 - typed review findings in `state/issues/`
 - candidate revisions in `state/candidates/`
 - exports and export manifests in `exports/`
@@ -146,6 +150,14 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room blue-sky draft/01-opening.md
+npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
+npx mlab room break draft/01-opening.md --run <room-run-id>
+npx mlab room table-read draft/01-opening.md
+npx mlab room report draft/01-opening.md
+npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus report draft/01-opening.md
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -164,8 +176,11 @@ status, compose, static checks, claims/citations/evidence, gates, reports,
 typed review runs, `review:report`, Markdown/HTML export, and `done` with
 configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
-comparison, taste gates, merge previews, and diff audits. Template project
-switching commands are guarded as template-clone compatibility commands.
+comparison, taste gates, merge previews, diff audits, writers' room runs under
+`state/room/`, and Chorus prose ensemble runs under `state/chorus/`. `status`
+and `report` surface recent Room and Chorus artifacts as part of the cockpit.
+Template project switching commands are guarded as template-clone compatibility
+commands.
 
 ## Daily Loop
 
@@ -185,6 +200,40 @@ npm run done:no-export
 ```
 
 Use `npm run done` when you expect reader exports.
+
+## Chorus
+
+Use Chorus when the question is not just what a section should do, but how its
+prose might sound with more variance than a single model pass:
+
+```bash
+npm run chorus -- plan draft/01-opening.md --beats 4
+npm run chorus -- plan draft/01-opening.md --from-room <room-run-id>
+npm run chorus -- run draft/01-opening.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- report draft/01-opening.md
+```
+
+Chorus writes provisional beat candidates, pick judgments, metrics, and
+`assembled.md` under `state/chorus/<section-id>/<run-id>/`. It does not modify
+`draft/` in the MVP.
+
+## Writers' Room
+
+Use the room protocol when a section needs better options before drafting or a
+read-aloud energy pass after revision:
+
+```bash
+npm run room -- blue-sky draft/01-opening.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run room -- decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
+npm run room -- break draft/01-opening.md --run <room-run-id>
+npm run room -- table-read draft/01-opening.md
+npm run room -- report draft/01-opening.md
+```
+
+Room artifacts land under `state/room/<section-id>/<run-id>/`. The command
+generates options, decisions, beat boards, and table-read packets; it does not
+rewrite manuscript prose. A materialized room beat board can seed Chorus with
+`npm run chorus -- plan draft/01-opening.md --from-room <room-run-id>`.
 
 ## Evidence And Gates
 

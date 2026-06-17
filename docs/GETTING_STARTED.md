@@ -76,6 +76,14 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room blue-sky draft/01-opening.md
+npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
+npx mlab room break draft/01-opening.md --run <room-run-id>
+npx mlab room table-read draft/01-opening.md
+npx mlab room report draft/01-opening.md
+npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus report draft/01-opening.md
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -90,9 +98,11 @@ That creates `manuscript-lab.config.json` plus a user-owned scaffold under
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
 gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
 export gates are config-root aware. Typed review execution and the
-candidate-loop commands also work in install-anywhere projects. Template project
-switching commands are template-clone compatibility commands and refuse outside
-the template clone root while the installed CLI matures.
+candidate-loop commands also work in install-anywhere projects. Room and Chorus
+commands are deterministic without API keys; pass provider-prefixed `--models`
+when you want Lightning/OpenRouter-backed generation. Template project switching
+commands are template-clone compatibility commands and refuse outside the
+template clone root while the installed CLI matures.
 
 ## 2. Fill In The Core Files
 

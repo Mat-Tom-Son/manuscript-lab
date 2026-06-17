@@ -1,5 +1,27 @@
 # Changelog
 
+## Unreleased
+
+## 1.1.0 - 2026-06-17
+
+- Added a writers' room workflow research memo mapping industry room practices
+  to future Manuscript Lab commands, prompts, and durable artifacts.
+- Added the `room` protocol command for blue-sky role cards, showrunner
+  decisions, beat-board materialization, table-read packets, and room reports
+  under `state/room/`.
+- Added the `room.table_read` typed review sensor, Lightning/OpenRouter panel
+  routes, Pi room prompts, project scaffold support for `state/room/`, and
+  root-aware room command smoke coverage.
+- Added the first Chorus prose ensemble MVP: `npm run chorus` / `mlab chorus`
+  can plan beat-level voice experiments, sample local/mock/model-backed
+  candidates, pick provisional beat prose, assemble `state/chorus/` output, and
+  report runs without modifying `draft/`.
+- Promoted Room and Chorus into first-class package surfaces: `status` and
+  `report` now expose recent runs and artifact links, project lifecycle commands
+  mount/archive their state, generated next-step hints are `mlab`-aware in
+  installed workspaces, Pi prompt coverage includes report/plan entrypoints, and
+  installed-package smoke tests assert the cockpit/report integration.
+
 ## 1.0.3 - 2026-06-17
 
 - Cleaned public changelog wording so the v1 history stays focused on fresh

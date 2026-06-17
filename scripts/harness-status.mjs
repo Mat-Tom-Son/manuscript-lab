@@ -25,6 +25,8 @@ const issueLedger = loadJson(paths.stateAbs("issues/issue-ledger.json"), { issue
 const issueStats = summarizeIssues(issueLedger.issues ?? []);
 const exports = unloaded ? [] : listExports();
 const candidateRuns = listCandidateRuns();
+const roomRuns = unloaded ? [] : listRoomRuns();
+const chorusRuns = unloaded ? [] : listChorusRuns();
 const nextDraft = drafts.find((draft) => draft.status === "todo" && draft.file.startsWith("draft/"));
 const activeReview = drafts.find((draft) => ["review", "revise"].includes(draft.status) && draft.words > 50);
 const activeDraft = drafts.find((draft) => draft.status === "draft" && draft.words > 50);
@@ -41,6 +43,8 @@ const summary = {
   runtime_packets: summarizeRuntimePackets(drafts),
   issues: issueStats,
   candidate_runs: candidateRuns,
+  room_runs: roomRuns,
+  chorus_runs: chorusRuns,
   project_workspace: projectWorkspace,
   exports,
   suggested_next: suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }),
@@ -170,6 +174,117 @@ function listCandidateRuns() {
   return runs.sort((a, b) => b.modified_at.localeCompare(a.modified_at)).slice(0, 5);
 }
 
+function listRoomRuns() {
+  const rootDir = paths.stateAbs("room");
+  if (!fs.existsSync(rootDir)) return [];
+
+  const runs = [];
+  for (const sectionEntry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    if (!sectionEntry.isDirectory()) continue;
+    const sectionDir = path.join(rootDir, sectionEntry.name);
+    for (const runEntry of fs.readdirSync(sectionDir, { withFileTypes: true })) {
+      if (!runEntry.isDirectory()) continue;
+      const runDir = path.join(sectionDir, runEntry.name);
+      const manifest = loadJson(path.join(runDir, "manifest.json"), null) ?? loadJson(path.join(runDir, "room-packet.json"), null);
+      if (!manifest) continue;
+      const cards = fs.existsSync(path.join(runDir, "idea-cards.jsonl")) ? readJsonl(path.join(runDir, "idea-cards.jsonl")) : [];
+      const beatBoard = loadJson(path.join(runDir, "output/beat-board.json"), null);
+      const stat = fs.statSync(runDir);
+      const files = presentFiles(runDir, {
+        manifest: "manifest.json",
+        packet: "room-packet.json",
+        report: "ROOM_REPORT.md",
+        decision: "decision.json",
+        beat_board_json: "output/beat-board.json",
+        beat_board_md: "output/beat-board.md",
+        checklist: "output/table-read-checklist.md",
+        reader_text: "output/reader-text.md",
+      });
+      runs.push({
+        kind: "room",
+        section_id: manifest.section_id ?? sectionEntry.name,
+        run_id: manifest.run_id ?? runEntry.name,
+        status: manifest.status ?? "unknown",
+        operation: manifest.operation ?? "",
+        target: manifest.target?.file ?? "",
+        path: displayPath(runDir),
+        created_at: manifest.created_at ?? "",
+        completed_at: manifest.completed_at ?? "",
+        cards: cards.length,
+        selected: cards.filter((card) => card.status === "selected").length,
+        parked: cards.filter((card) => card.status === "parked").length,
+        rejected: cards.filter((card) => card.status === "rejected").length,
+        beats: beatBoard?.beats?.length ?? 0,
+        error_count: Number(manifest.error_count ?? 0),
+        cluster_count: Number(manifest.cluster_count ?? 0),
+        files,
+        modified_at: stat.mtime.toISOString(),
+      });
+    }
+  }
+
+  return runs.sort((a, b) => b.modified_at.localeCompare(a.modified_at)).slice(0, 10);
+}
+
+function listChorusRuns() {
+  const rootDir = paths.stateAbs("chorus");
+  if (!fs.existsSync(rootDir)) return [];
+
+  const runs = [];
+  for (const sectionEntry of fs.readdirSync(rootDir, { withFileTypes: true })) {
+    if (!sectionEntry.isDirectory()) continue;
+    const sectionDir = path.join(rootDir, sectionEntry.name);
+    for (const runEntry of fs.readdirSync(sectionDir, { withFileTypes: true })) {
+      if (!runEntry.isDirectory()) continue;
+      const runDir = path.join(sectionDir, runEntry.name);
+      const manifest = loadJson(path.join(runDir, "manifest.json"), null);
+      if (!manifest) continue;
+      const beatPlan = loadJson(path.join(runDir, "beat-plan.json"), { beats: [] });
+      const metrics = loadJson(path.join(runDir, "metrics.json"), {});
+      const stat = fs.statSync(runDir);
+      const files = presentFiles(runDir, {
+        manifest: "manifest.json",
+        beat_plan: "beat-plan.json",
+        voice_pack: "voice-pack.json",
+        roster: "roster.json",
+        metrics: "metrics.json",
+        report: "CHORUS_REPORT.md",
+        assembled: "assembled.md",
+      });
+      runs.push({
+        kind: "chorus",
+        section_id: manifest.section_id ?? sectionEntry.name,
+        run_id: manifest.run_id ?? runEntry.name,
+        status: manifest.status ?? "unknown",
+        operation: manifest.operation ?? "chorus",
+        target: manifest.target?.file ?? "",
+        path: displayPath(runDir),
+        created_at: manifest.created_at ?? "",
+        completed_at: manifest.completed_at ?? "",
+        beats: beatPlan.beats?.length ?? Number(manifest.beat_count ?? 0),
+        candidates: Number(metrics.candidate_count ?? manifest.sampled_candidate_count ?? 0),
+        committed: Number(metrics.committed_beat_count ?? manifest.judged_beat_count ?? 0),
+        missing_beats: metrics.missing_beats ?? manifest.missing_beats ?? [],
+        assembled: fs.existsSync(path.join(runDir, "assembled.md")),
+        selected_models: metrics.selected_models ?? {},
+        files,
+        modified_at: stat.mtime.toISOString(),
+      });
+    }
+  }
+
+  return runs.sort((a, b) => b.modified_at.localeCompare(a.modified_at)).slice(0, 10);
+}
+
+function presentFiles(runDir, spec) {
+  const files = {};
+  for (const [key, rel] of Object.entries(spec)) {
+    const full = path.join(runDir, rel);
+    if (fs.existsSync(full)) files[key] = displayPath(full);
+  }
+  return files;
+}
+
 function readProjectWorkspace() {
   if (discovery.mode === "installed") {
     return {
@@ -237,7 +352,7 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
     const [target] = Object.keys(issueStats.open_by_target);
     return [
       "Triage open issues before revising.",
-      target ? `npm run issues -- list --status open --target ${target}` : "npm run issues -- list --status open",
+      target ? labCommand("issues", `list --status open --target ${target}`) : labCommand("issues", "list --status open"),
       target ? `npm run plan:revision -- ${target}` : "npm run issues -- stats",
     ];
   }
@@ -245,15 +360,15 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
   if (activeReview?.file && runtimeNeedsCompose(activeReview)) {
     return [
       `Refresh the runtime packet for the section currently in ${activeReview.status}: ${activeReview.file}`,
-      `npm run compose -- ${activeReview.file}`,
-      `npm run check -- ${activeReview.file}`,
+      labCommand("compose", activeReview.file),
+      labCommand("check", activeReview.file),
     ];
   }
 
   if (nextDraft?.file && runtimeNeedsCompose(nextDraft)) {
     return [
       `Compile the runtime packet for the next planned section: ${nextDraft.file}`,
-      `npm run compose -- ${nextDraft.file}`,
+      labCommand("compose", nextDraft.file),
       `/doc-write ${nextDraft.file}`,
     ];
   }
@@ -261,16 +376,16 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
   if (activeDraft?.file && runtimeNeedsCompose(activeDraft)) {
     return [
       `Refresh the runtime packet for the active section: ${activeDraft.file}`,
-      `npm run compose -- ${activeDraft.file}`,
-      `npm run check -- ${activeDraft.file}`,
+      labCommand("compose", activeDraft.file),
+      labCommand("check", activeDraft.file),
     ];
   }
 
   if (activeReview?.file) {
     return [
       `Finish the section currently in ${activeReview.status}: ${activeReview.file}`,
-      `npm run review:run -- --dry-run --panel prose.clean ${activeReview.file}`,
-      `npm run check -- ${activeReview.file}`,
+      labCommand("review:run", `--dry-run --panel prose.clean ${activeReview.file}`),
+      labCommand("check", activeReview.file),
     ];
   }
 
@@ -278,19 +393,19 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
     return [
       `Draft the next planned section: ${nextDraft.file}`,
       `/doc-write ${nextDraft.file}`,
-      `npm run check -- ${nextDraft.file}`,
+      labCommand("check", nextDraft.file),
     ];
   }
 
   if (activeDraft?.file) {
     return [
       `Review or continue the active section: ${activeDraft.file}`,
-      `npm run review:run -- --dry-run --panel prose.clean ${activeDraft.file}`,
-      `npm run check -- ${activeDraft.file}`,
+      labCommand("review:run", `--dry-run --panel prose.clean ${activeDraft.file}`),
+      labCommand("check", activeDraft.file),
     ];
   }
 
-  return ["Run final checks and export.", "npm run check -- --static-only", "npm run export"];
+  return ["Run final checks and export.", labCommand("check", "--static-only"), labCommand("export")];
 }
 
 function printText(data) {
@@ -315,7 +430,7 @@ function printText(data) {
       console.log(`- ${packet.section_id}: ${packet.status}${visible}${stale} -> ${packet.path}`);
     }
   } else {
-    console.log("- none yet; run npm run compose -- draft/<section>.md");
+    console.log(`- none yet; run ${labCommand("compose", "draft/<section>.md")}`);
   }
   console.log("");
 
@@ -339,7 +454,32 @@ function printText(data) {
       console.log(`- ${run.section_id}: ${run.status}${decision}${taste}${applied} -> ${run.path}`);
     }
   } else {
-    console.log("- none yet; run npm run revise:candidates -- draft/<section>.md --issue <issue-id>");
+    console.log(`- none yet; run ${labCommand("revise:candidates", "draft/<section>.md --issue <issue-id>")}`);
+  }
+  console.log("");
+
+  console.log("Room Runs:");
+  if (data.room_runs.length) {
+    for (const run of data.room_runs) {
+      const decision = run.selected || run.parked || run.rejected ? `, selected ${run.selected}, parked ${run.parked}, rejected ${run.rejected}` : "";
+      const beats = run.beats ? `, ${run.beats} beat(s)` : "";
+      const artifact = run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
+      console.log(`- ${run.section_id}: ${run.operation || "room"} ${run.status}${decision}${beats} -> ${artifact}`);
+    }
+  } else {
+    console.log(`- none yet; run ${labCommand("room", "blue-sky draft/<section>.md")}`);
+  }
+  console.log("");
+
+  console.log("Chorus Runs:");
+  if (data.chorus_runs.length) {
+    for (const run of data.chorus_runs) {
+      const assembled = run.assembled ? ", assembled" : "";
+      const artifact = run.files?.report || run.files?.assembled || run.path;
+      console.log(`- ${run.section_id}: ${run.operation || "chorus"} ${run.status}, ${run.beats} beat(s), ${run.candidates} candidate(s), ${run.committed} committed${assembled} -> ${artifact}`);
+    }
+  } else {
+    console.log(`- none yet; run ${labCommand("chorus", "run draft/<section>.md")}`);
   }
   console.log("");
 
@@ -536,11 +676,29 @@ function formatBytes(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+function labCommand(command, args = "") {
+  const suffix = args ? ` ${args}` : "";
+  if (discovery.mode === "installed") return `mlab ${command}${suffix}`;
+  return args ? `npm run ${command} -- ${args}` : `npm run ${command}`;
+}
+
 function loadJson(file, fallback) {
   try {
     return JSON.parse(read(file));
   } catch {
     return fallback;
+  }
+}
+
+function readJsonl(file) {
+  try {
+    return read(file)
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean)
+      .map((line) => JSON.parse(line));
+  } catch {
+    return [];
   }
 }
 

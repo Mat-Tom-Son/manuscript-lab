@@ -47,8 +47,16 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 |---|---|
 | `/doc-status` | `npm run status` |
 | `/doc-compose draft/<section>.md` | `npm run compose -- draft/<section>.md` |
+| `/doc-chorus-plan draft/<section>.md --beats 4` | `npm run chorus -- plan draft/<section>.md --beats 4` |
+| `/doc-chorus-run draft/<section>.md` | `npm run chorus -- run draft/<section>.md` |
+| `/doc-chorus-report draft/<section>.md` | `npm run chorus -- report draft/<section>.md` |
 | `/doc-write draft/<section>.md` | compose, edit `draft/<section>.md`, then `npm run check` |
 | `/doc-review-section draft/<section>.md` | `npm run review:run -- --panel prose.clean draft/<section>.md` |
+| `/doc-room-blue-sky draft/<section>.md` | `npm run room -- blue-sky draft/<section>.md` |
+| `/doc-room-decide draft/<section>.md --run <id> --select idea-001` | `npm run room -- decide draft/<section>.md --run <id> --select idea-001` |
+| `/doc-room-break draft/<section>.md --run <id>` | `npm run room -- break draft/<section>.md --run <id>` |
+| `/doc-room-table-read draft/<section>.md` | `npm run room -- table-read draft/<section>.md` |
+| `/doc-room-report draft/<section>.md` | `npm run room -- report draft/<section>.md` |
 | `/doc-triage-issues draft/<section>.md` | `npm run issues -- list --status open --target draft/<section>.md` |
 | `/doc-revise-candidates draft/<section>.md --issue <id>` | `npm run revise:candidates -- draft/<section>.md --issue <id>` |
 | `/doc-compare-candidates draft/<section>.md --run <id>` | `npm run compare:candidates -- draft/<section>.md --run <id>` |
@@ -66,7 +74,11 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 - `taste/`: project-specific aesthetic constitution, voice/taste profile, reader contract, genre promise, failure modes, motifs, and exemplar memory.
 - `draft/`: manuscript text and section contracts.
 - `state/status.md`: section status table.
+- `state/chorus/`: Chorus beat-level prose ensemble runs, provisional
+  assemblies, candidate prose, metrics, and reports.
 - `state/runtime/`: generated runtime packets for section operations.
+- `state/room/`: writers' room run packets, idea cards, decisions, beat boards,
+  and table-read artifacts.
 - `state/truth/`: machine-readable truth state for future observe/settle workflows.
 - `state/projections/`: human-readable projections generated from truth state.
 - `state/continuity.md`: canon, timeline, characters, terms, and open loops.
@@ -91,7 +103,7 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 Keep the loop controlled:
 
 ```text
-compose -> draft -> checks -> typed reviews -> triage -> revision plan -> revise or candidate arena -> verify -> export -> done gate
+compose -> room, when useful -> chorus, when useful -> draft -> checks -> typed reviews -> triage -> revision plan -> revise or candidate arena -> verify -> export -> done gate
 ```
 
 Do not revise from raw reviewer chatter. Reviews are sensors. The issue ledger is the decision surface.
@@ -102,13 +114,16 @@ Do not revise from raw reviewer chatter. Reviews are sensors. The issue ledger i
 2. Pick one section.
 3. Read its section contract at the top of the draft file.
 4. Run `npm run compose -- draft/<section>.md` to compile the context, rules, criteria, and trace.
-5. Run static checks before touching model calls.
-6. Run typed reviews only when the prose is worth reviewing.
-7. Triage issues explicitly: accept, reject, defer, merge, convert to check, or manual review.
-8. Revise only from accepted decisions. For consequential revisions, use the candidate arena and taste arbiter before applying a patch.
-9. Run final checks and export when the section or project is ready to share.
-10. Run `npm run project:sync`.
-11. Run `npm run done` before declaring the pass complete, or `npm run done:no-export` when exports are outside the task.
+5. If direction is still cheap to change, use `npm run room -- blue-sky`, `decide`, and `break` before drafting.
+6. If voice material is the question, use `npm run chorus -- run draft/<section>.md`; inspect `state/chorus/` before editing `draft/`.
+7. Run static checks before touching model calls.
+8. Run typed reviews only when the prose is worth reviewing.
+9. Triage issues explicitly: accept, reject, defer, merge, convert to check, or manual review.
+10. Revise only from accepted decisions. For consequential revisions, use the candidate arena and taste arbiter before applying a patch.
+11. Use `npm run room -- table-read draft/<section>.md` when reader energy, pacing, or audible turns matter.
+12. Run final checks and export when the section or project is ready to share.
+13. Run `npm run project:sync`.
+14. Run `npm run done` before declaring the pass complete, or `npm run done:no-export` when exports are outside the task.
 
 For review-only work, open issues may be the intended output. Do not close them merely to pass the done gate.
 

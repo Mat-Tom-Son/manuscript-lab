@@ -76,6 +76,14 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room blue-sky draft/01-opening.md
+npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
+npx mlab room break draft/01-opening.md --run <room-run-id>
+npx mlab room table-read draft/01-opening.md
+npx mlab room report draft/01-opening.md
+npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
+npx mlab chorus report draft/01-opening.md
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -138,6 +146,14 @@ The package workflow supports the deterministic local loop:
 ```bash
 npx mlab status
 npx mlab compose draft/01-intro.md
+npx mlab room blue-sky draft/01-intro.md
+npx mlab room decide draft/01-intro.md --run <room-run-id> --select idea-001 --reason "..."
+npx mlab room break draft/01-intro.md --run <room-run-id>
+npx mlab room table-read draft/01-intro.md
+npx mlab room report draft/01-intro.md
+npx mlab chorus plan draft/01-intro.md --from-room <room-run-id>
+npx mlab chorus run draft/01-intro.md --from-room <room-run-id>
+npx mlab chorus report draft/01-intro.md
 npx mlab check --static-only draft/01-intro.md
 npx mlab report --write
 npx mlab review:report --json
@@ -145,8 +161,10 @@ npx mlab export --formats md,html --include-todo --slug draft
 npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
-It also has root-aware command routing and packed-tarball smoke coverage for the
-first candidate-loop slice:
+It also has root-aware command routing and packed-tarball smoke coverage for
+the first Room/Chorus and candidate-loop slices. Room and Chorus run
+deterministically without provider keys; pass provider-prefixed `--models`
+values when you want Lightning/OpenRouter-backed generation.
 
 ```bash
 npx mlab issues list --status accepted
@@ -330,6 +348,11 @@ npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
 npx mlab status --json
 npx mlab compose draft/01-opening.md --json
+npx mlab room blue-sky draft/01-opening.md --json
+npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..." --json
+npx mlab room break draft/01-opening.md --run <room-run-id> --json
+npx mlab room table-read draft/01-opening.md --json
+npx mlab chorus run draft/01-opening.md --from-room <room-run-id> --json
 npx mlab check --static-only --json draft/01-opening.md
 npx mlab report --write --json
 npx mlab review:report --json
@@ -348,6 +371,8 @@ The test must assert:
 - generated state and exports stay under configured paths
 - generated export manifests stay under the configured manuscript root
 - generated reports stay under the configured manuscript root
+- generated Room and Chorus artifacts stay under the configured manuscript root
+  and surface through `status --json`, `report --json`, and report HTML
 - package assets are read from the installed tarball
 - project-local `npm exec -- mlab validate`, `check`, and `gate` use the
   installed dev dependency
@@ -355,8 +380,9 @@ The test must assert:
   exercises help, version, project-free doctor, project-free validate hints,
   config-first init, and validate without creating `package.json` or
   `node_modules/` in the caller workspace
-- no active project, source text, generated state, or secret-bearing file enters
-  the tarball
+- no active project, private source text, root generated state, or
+  secret-bearing file enters the tarball; public example fixture artifacts are
+  intentional package contents
 
 Additional release smoke:
 
@@ -373,7 +399,7 @@ Before a package release:
 - `npm run template:audit -- --strict` passes
 - `npm run context:audit -- --strict` passes
 - `npm run doctor -- --no-network` passes without packaging failures
-- installed-tarball init/validate/evidence/gate/status/compose/check/export,
+- installed-tarball init/validate/evidence/gate/status/compose/room/chorus/check/export,
   export-manifest, and configurable `done` export-gate e2e passes in CI
 - root-aware installed-package smoke covers the model-backed revision command
   surface

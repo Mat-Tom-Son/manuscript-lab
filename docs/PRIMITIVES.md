@@ -34,8 +34,13 @@ public command vocabulary:
 mlab validate
 mlab status
 mlab compose draft/<section>.md
+mlab chorus run draft/<section>.md --beats 4
 mlab check --static-only draft/<section>.md
 mlab review draft/<section>.md --dry-run --panel prose.clean
+mlab room blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+mlab room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
+mlab room break draft/<section>.md --run <room-run-id>
+mlab room table-read draft/<section>.md
 mlab review report draft/<section>.md
 mlab issues list --status open
 mlab revise draft/<section>.md --issue <issue-id> --candidates 3 --dry-run
@@ -102,7 +107,8 @@ Maintains `projects/registry.json`, `projects/active/<slug>/workspace/`, project
 npm run status
 ```
 
-Shows section status, word counts, runtime packet freshness, issue counts, exports, and the next likely command.
+Shows section status, word counts, runtime packet freshness, issue counts,
+recent Room/Chorus runs, exports, and the next likely command.
 
 ### Validate
 
@@ -133,6 +139,29 @@ state/runtime/<section-id>/
 ```
 
 Use this before writing, reviewing, revising, or verifying a section.
+
+### Chorus Prose Ensemble
+
+```bash
+npm run chorus -- plan draft/<section>.md --beats 4
+npm run chorus -- plan draft/<section>.md --from-room <room-run-id>
+npm run chorus -- run draft/<section>.md
+npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- sample draft/<section>.md --run <chorus-run-id>
+npm run chorus -- judge draft/<section>.md --run <chorus-run-id>
+npm run chorus -- assemble draft/<section>.md --run <chorus-run-id>
+npm run chorus -- report draft/<section>.md
+mlab chorus run draft/<section>.md --json
+```
+
+Runs the first Chorus prose-production protocol. `plan` builds a voice pack and
+beat plan from section context, style, taste, and optionally a room beat board.
+`run` samples candidate prose per beat, uses a pick-only MVP judgment strategy,
+and assembles provisional prose under `state/chorus/<section-id>/<run-id>/`.
+
+Chorus does not modify `draft/` in this MVP. Read `CHORUS_REPORT.md` and
+`assembled.md`, then decide whether the output should inform a later manual edit,
+candidate arena, or section contract change.
 
 ### Context Audit
 
@@ -206,9 +235,9 @@ node bin/manuscript-lab.mjs report --html
 
 Summarizes Manuscript Lab readiness as text, JSON, or HTML. The report combines
 status, evidence, manuscript gate results, review-run summaries, accepted
-issues, candidate winners, diff audit presence, model-call counts, exports, and
-suggested next steps. `--write` stores `reports/latest.json` and
-`reports/latest.html` under the manuscript root.
+issues, candidate winners, diff audit presence, model-call counts, exports,
+recent Room/Chorus runs, and suggested next steps. `--write` stores
+`reports/latest.json` and `reports/latest.html` under the manuscript root.
 
 ### Review
 
@@ -221,6 +250,32 @@ mlab review report draft/<section>.md
 ```
 
 Runs typed editorial sensors. Reviews create durable issues; they do not decide revisions by themselves.
+
+### Writers' Room
+
+```bash
+npm run room -- blue-sky draft/<section>.md
+npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reject idea-002 --park idea-003 --reason "..."
+npm run room -- break draft/<section>.md --run <room-run-id>
+npm run room -- table-read draft/<section>.md
+npm run room -- report draft/<section>.md
+mlab room blue-sky draft/<section>.md --json
+```
+
+Runs a file-backed writers' room protocol. `blue-sky` creates independent role
+outputs, idea cards, clusters, stress tests, visible-file manifests, and a room
+report under `state/room/<section-id>/<run-id>/`. `decide` records the human
+showrunner call. `break` refuses undecided runs by default and materializes
+selected cards into `output/beat-board.json` and `beat-board.md`. `table-read`
+prepares a read-aloud packet and points to the optional `room.table_read` review
+sensor.
+
+The command is deterministic by default. Pass provider-prefixed model IDs with
+`--models` to fan roles across Lightning, OpenRouter, or custom model routes.
+Room runs generate options and beat boards; they do not rewrite manuscript prose.
+Use `chorus plan --from-room <room-run-id>` when an accepted room beat board
+should seed a prose ensemble pass.
 
 ### Issues
 

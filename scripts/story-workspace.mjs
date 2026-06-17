@@ -21,9 +21,11 @@ const archiveStateDirs = [
   "revision-audits",
   "revision-plans",
   "runtime",
+  "room",
   "gates",
   "style",
   "candidates",
+  "chorus",
   "truth",
   "taste",
   "model-calls",
@@ -34,11 +36,13 @@ const archiveStateDirs = [
 ];
 const generatedStateDirs = [
   "runtime",
+  "room",
   "gates",
   "reviews",
   "revision-audits",
   "revision-plans",
   "candidates",
+  "chorus",
   "style",
   "taste",
   "model-calls",
@@ -345,9 +349,11 @@ function ensureRequiredScaffoldDirs() {
     "taste/accepted_patches",
     "taste/rejected_patches",
     "state",
+    "state/chorus",
     "state/issues",
     "state/runtime",
     "state/reviews",
+    "state/room",
     "state/revision-audits",
     "state/revision-plans",
     "state/candidates",
@@ -361,9 +367,11 @@ function ensureRequiredScaffoldDirs() {
   ]) {
     ensureDir(dir);
   }
+  ensureReadme("state/chorus/README.md", "Chorus prose ensemble artifacts live here.\n");
   ensureReadme("state/issues/README.md", "Issue ledger artifacts live here.\n");
   ensureReadme("state/runtime/README.md", "Composed runtime packets live here.\n");
   ensureReadme("state/reviews/README.md", "Review run artifacts live here.\n");
+  ensureReadme("state/room/README.md", "Writers' room protocol artifacts live here.\n");
   ensureReadme("state/revision-audits/README.md", "Revision diff audit artifacts live here.\n");
   ensureReadme("state/revision-plans/README.md", "Revision plan artifacts live here.\n");
   ensureReadme("state/candidates/README.md", "Revision candidate arena artifacts live here.\n");
@@ -518,6 +526,7 @@ function syncActiveProject({ slug, title, reason = "sync", restoredFrom = "" }) 
     ensureAbsoluteDir(workspaceDir);
   }
 
+  ensureWorkspaceStateSurface(workspaceDir);
   installProjectMount({ slug: normalizedSlug, title, projectPath: projectDirRel, workspacePath });
   ensureProjectLogs({ logsDir, workspacePath });
 
@@ -1121,6 +1130,11 @@ function copyActiveWorkspaceTo(destinationRoot) {
   for (const file of coreStateFiles) copyRelToRoot(path.join("state", file), destinationRoot);
   for (const dir of archiveStateDirs) copyRelToRoot(path.join("state", dir), destinationRoot);
   for (const file of projectDocFiles()) copyRelToRoot(file, destinationRoot);
+}
+
+function ensureWorkspaceStateSurface(workspaceDir) {
+  ensureAbsoluteDir(path.join(workspaceDir, "state"));
+  for (const dir of archiveStateDirs) ensureAbsoluteDir(path.join(workspaceDir, "state", dir));
 }
 
 function copyArchiveToWorkspace(sourceArchiveRoot, destinationRoot) {

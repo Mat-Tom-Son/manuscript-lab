@@ -8,6 +8,8 @@ const alwaysRun = [
   "scripts/model-call-report.test.mjs",
   "scripts/doctor.test.mjs",
   "scripts/protocol.test.mjs",
+  "scripts/chorus-runner.test.mjs",
+  "scripts/room-runner.test.mjs",
   "scripts/evidence-spine.test.mjs",
   "scripts/gate-engine.test.mjs",
   "scripts/install-init.test.mjs",

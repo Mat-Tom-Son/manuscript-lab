@@ -94,6 +94,12 @@ function buildReport() {
     },
     revision_trail: revisionTrail.summary,
     candidate_runs: (status.candidate_runs ?? []).length,
+    room_runs: (status.room_runs ?? []).length,
+    room_runs_by_status: countBy(status.room_runs ?? [], (run) => run.status || "unknown"),
+    room_runs_by_operation: countBy(status.room_runs ?? [], (run) => run.operation || "unknown"),
+    chorus_runs: (status.chorus_runs ?? []).length,
+    chorus_runs_by_status: countBy(status.chorus_runs ?? [], (run) => run.status || "unknown"),
+    chorus_runs_by_operation: countBy(status.chorus_runs ?? [], (run) => run.operation || "unknown"),
     model_calls: modelCalls.count,
     exports: (status.exports ?? []).length,
   };
@@ -129,6 +135,8 @@ function buildReport() {
     },
     revision_trail: revisionTrail,
     candidate_runs: status.candidate_runs ?? [],
+    room_runs: status.room_runs ?? [],
+    chorus_runs: status.chorus_runs ?? [],
     model_calls: modelCalls,
     exports: status.exports ?? [],
     export_manifest: exportManifest,
@@ -442,6 +450,8 @@ function printText(report) {
   console.log(`- claims: ${report.summary.claims.total} total, ${report.summary.claims.blockers} blocker(s)`);
   console.log(`- reviews: ${report.summary.reviews.runs} run(s), ${report.summary.reviews.errors} error(s)`);
   console.log(`- revision trail: ${report.summary.revision_trail.accepted_issues} accepted issue(s), ${report.summary.revision_trail.candidate_runs} candidate run(s), ${report.summary.revision_trail.audits} audit(s)`);
+  console.log(`- room runs: ${report.summary.room_runs}`);
+  console.log(`- chorus runs: ${report.summary.chorus_runs}`);
   console.log(`- model calls: ${report.summary.model_calls}`);
   console.log(`- exports: ${report.summary.exports}`);
   if (report.export_manifest?.file) console.log(`- export manifest: ${report.export_manifest.file}`);
@@ -453,6 +463,21 @@ function printText(report) {
   if (report.blockers.length) {
     for (const item of report.blockers.slice(0, 12)) console.log(`- ${item.type}: ${item.message}`);
     if (report.blockers.length > 12) console.log(`- ... ${report.blockers.length - 12} more`);
+  } else {
+    console.log("- none");
+  }
+
+  console.log("");
+  console.log("Creative Labs:");
+  if (report.room_runs.length || report.chorus_runs.length) {
+    for (const run of report.room_runs.slice(0, 5)) {
+      const artifact = run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
+      console.log(`- room/${run.run_id}: ${run.operation || "room"} ${run.status} on ${run.target || run.section_id} -> ${artifact}`);
+    }
+    for (const run of report.chorus_runs.slice(0, 5)) {
+      const artifact = run.files?.report || run.files?.assembled || run.path;
+      console.log(`- chorus/${run.run_id}: ${run.operation || "chorus"} ${run.status} on ${run.target || run.section_id} -> ${artifact}`);
+    }
   } else {
     console.log("- none");
   }
@@ -496,6 +521,22 @@ function renderHtml(report) {
         )
         .join("\n")
     : `<tr><td colspan="5">No candidate runs.</td></tr>`;
+  const roomRows = report.room_runs.length
+    ? report.room_runs
+        .map(
+          (run) =>
+            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "room")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.cards}</td><td>${run.selected}</td><td>${run.beats}</td><td>${artifactLinks(run.files, ["report", "decision", "beat_board_md", "checklist", "reader_text"])}</td></tr>`,
+        )
+        .join("\n")
+    : `<tr><td colspan="9">No room runs.</td></tr>`;
+  const chorusRows = report.chorus_runs.length
+    ? report.chorus_runs
+        .map(
+          (run) =>
+            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "chorus")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.beats}</td><td>${run.candidates}</td><td>${run.committed}</td><td>${escapeHtml(run.assembled ? "yes" : "no")}</td><td>${artifactLinks(run.files, ["report", "assembled", "beat_plan", "voice_pack", "metrics"])}</td></tr>`,
+        )
+        .join("\n")
+    : `<tr><td colspan="10">No Chorus runs.</td></tr>`;
 
   return `<!doctype html>
 <html lang="en">
@@ -540,6 +581,8 @@ function renderHtml(report) {
       <div class="metric"><strong>${report.summary.claims.blockers}</strong> claim blockers</div>
       <div class="metric"><strong>${report.summary.revision_trail.accepted_issues}</strong> accepted issues</div>
       <div class="metric"><strong>${report.summary.revision_trail.candidate_runs}</strong> candidate runs</div>
+      <div class="metric"><strong>${report.summary.room_runs}</strong> room runs</div>
+      <div class="metric"><strong>${report.summary.chorus_runs}</strong> Chorus runs</div>
       <div class="metric"><strong>${report.summary.revision_trail.audits}</strong> diff audits</div>
       <div class="metric"><strong>${report.summary.model_calls}</strong> model calls</div>
     </section>
@@ -564,6 +607,16 @@ function renderHtml(report) {
     <table>
       <thead><tr><th>Candidate Run</th><th>Issues</th><th>Winner</th><th>Audits</th><th>Applied</th></tr></thead>
       <tbody>${candidateRows}</tbody>
+    </table>
+
+    <h2>Creative Labs</h2>
+    <table>
+      <thead><tr><th>Room Run</th><th>Operation</th><th>Target</th><th>Status</th><th>Updated</th><th>Cards</th><th>Selected</th><th>Beats</th><th>Artifacts</th></tr></thead>
+      <tbody>${roomRows}</tbody>
+    </table>
+    <table>
+      <thead><tr><th>Chorus Run</th><th>Operation</th><th>Target</th><th>Status</th><th>Updated</th><th>Beats</th><th>Candidates</th><th>Committed</th><th>Assembled</th><th>Artifacts</th></tr></thead>
+      <tbody>${chorusRows}</tbody>
     </table>
 
     <h2>Exports</h2>
@@ -591,6 +644,13 @@ function countBy(values, keyFn) {
     counts[key] = (counts[key] ?? 0) + 1;
   }
   return Object.fromEntries(Object.entries(counts).sort(([left], [right]) => left.localeCompare(right)));
+}
+
+function artifactLinks(files = {}, order = []) {
+  const items = order
+    .filter((key) => files?.[key])
+    .map((key) => `<span><code>${escapeHtml(key)}</code>: <code>${escapeHtml(files[key])}</code></span>`);
+  return items.length ? items.join("<br>") : `<code>${escapeHtml(files?.path || "")}</code>`;
 }
 
 function displayPath(file) {

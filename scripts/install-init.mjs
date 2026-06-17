@@ -207,9 +207,11 @@ function ensureScaffoldDirs(root, { written }) {
     "taste/accepted_patches",
     "taste/rejected_patches",
     "state",
+    "state/chorus",
     "state/issues",
     "state/runtime",
     "state/reviews",
+    "state/room",
     "state/revision-audits",
     "state/revision-plans",
     "state/candidates",
@@ -225,12 +227,14 @@ function ensureScaffoldDirs(root, { written }) {
   }
 
   const readmes = {
+    "state/chorus/README.md": "Chorus prose ensemble artifacts live here.\n",
     "style/README.md": "Project-local style artifacts live here.\n",
     "taste/accepted_patches/README.md": "Accepted taste examples live here.\n",
     "taste/rejected_patches/README.md": "Rejected taste examples live here.\n",
     "state/issues/README.md": "Issue ledger artifacts live here.\n",
     "state/runtime/README.md": "Composed runtime packets live here.\n",
     "state/reviews/README.md": "Review run artifacts live here.\n",
+    "state/room/README.md": "Writers' room protocol artifacts live here.\n",
     "state/revision-audits/README.md": "Revision diff audit artifacts live here.\n",
     "state/revision-plans/README.md": "Revision plan artifacts live here.\n",
     "state/candidates/README.md": "Revision candidate arena artifacts live here.\n",
