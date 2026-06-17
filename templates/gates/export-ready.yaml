@@ -1,0 +1,45 @@
+# Example gate config shape. The current deterministic engine has built-in
+# defaults; this template documents stable requirement IDs for future overrides.
+gate:
+  schema_version: manuscript-lab.gate-config.v1
+  id: export-ready
+  version: 1
+  scope: export
+  applies_to:
+    include:
+      - exports
+  profiles:
+    default:
+      requires:
+        - id: manuscript.ready
+          severity: block
+          sensor: manuscript_ready
+        - id: export.manifest_present
+          severity: block
+          sensor: export_manifest
+        - id: export.command_passed
+          severity: block
+          sensor: export_manifest
+        - id: export.formats_present
+          severity: block
+          sensor: export_files
+        - id: export.files_nonempty
+          severity: block
+          sensor: export_files
+        - id: export.generated_after_inputs
+          severity: block
+          sensor: export_manifest
+        - id: export.no_dirty_override
+          severity: block
+          sensor: export_manifest
+  options:
+    default_formats:
+      - md
+      - html
+      - epub
+      - pdf
+  overrides:
+    allowed: true
+    require_actor: true
+    require_reason: true
+    max_age_days: 14

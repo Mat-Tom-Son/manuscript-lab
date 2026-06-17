@@ -43,7 +43,7 @@ export function initInstalledProject(options = {}) {
   if (root === ".") throw new Error("Project root must be a subdirectory such as manuscript.");
   if (RESERVED_ROOTS.has(root.split("/")[0])) throw new Error(`Project root "${root}" is reserved for package or tool files.`);
   if (!["whitepaper", "document"].includes(profile)) {
-    throw new Error(`Unsupported profile "${profile}". The install-anywhere alpha supports "whitepaper".`);
+    throw new Error(`Unsupported profile "${profile}". The install-anywhere workflow supports "whitepaper".`);
   }
 
   const title = normalizeTitle(options.title ?? DEFAULT_TITLE);

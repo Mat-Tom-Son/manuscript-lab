@@ -27,6 +27,11 @@ const OPTIONAL_CONFIG_FIELDS = new Set([
   "reviews",
   "model",
 ]);
+const BUILT_IN_PROFILE_OPTIONS = new Map([
+  ["generic", new Set()],
+  ["whitepaper", new Set(["title", "sections", "kind", "targetWords"])],
+  ["document", new Set(["title", "sections", "kind", "targetWords"])],
+]);
 
 export function discoverProtocol(options = {}) {
   const packageRoot = path.resolve(options.packageRoot ?? path.join(path.dirname(fileURLToPath(import.meta.url)), "..", ".."));
@@ -36,9 +41,24 @@ export function discoverProtocol(options = {}) {
 
   if (configPath) {
     const configDir = path.dirname(configPath);
-    const config = readJson(configPath);
+    let config = null;
+    try {
+      config = readJson(configPath);
+    } catch (error) {
+      return {
+        mode: "installed",
+        packageRoot,
+        workspaceRoot: configDir,
+        manuscriptRoot: configDir,
+        configPath,
+        config: null,
+        errors: [`Config file is not valid JSON: ${displayPath(configPath, configDir)} (${error.message})`],
+        warnings: [],
+        hints: ["Fix manuscript-lab.config.json, then rerun `mlab validate`."],
+      };
+    }
     const configValidation = validateProtocolConfig(config, { configDir });
-    const manuscriptRoot = configValidation.projectRoot ?? path.resolve(configDir, String(config.root ?? "."));
+    const manuscriptRoot = configValidation.projectRoot ?? configDir;
     return {
       mode: "installed",
       packageRoot,
@@ -48,6 +68,7 @@ export function discoverProtocol(options = {}) {
       config,
       errors: configValidation.errors,
       warnings: configValidation.warnings,
+      hints: [],
     };
   }
 
@@ -74,6 +95,7 @@ export function discoverProtocol(options = {}) {
       },
       errors: [],
       warnings: ["No manuscript-lab.config.json found; using template-first compatibility mode."],
+      hints: [],
     };
   }
 
@@ -84,8 +106,9 @@ export function discoverProtocol(options = {}) {
     manuscriptRoot: start,
     configPath: null,
     config: null,
-    errors: ["No Manuscript Lab project found. Run mlab init or create manuscript-lab.config.json."],
+    errors: [`No Manuscript Lab project found from ${start}.`],
     warnings: [],
+    hints: projectFreeHints(),
   };
 }
 
@@ -93,6 +116,7 @@ export function validateProtocolProject(discovery) {
   const errors = [...(discovery.errors ?? [])];
   const warnings = [...(discovery.warnings ?? [])];
   if (!discovery.config) return { ok: false, errors, warnings, drafts: [] };
+  if (errors.length) return { ok: false, errors, warnings, drafts: [] };
 
   const projectRoot = discovery.manuscriptRoot;
   if (!fs.existsSync(projectRoot)) {
@@ -172,8 +196,18 @@ export function validateProtocolConfig(config, { configDir }) {
     if (!(field in config)) errors.push(`Config missing required field: ${field}`);
   }
 
-  if (config.schemaVersion !== 1) {
-    errors.push(`Unsupported schemaVersion "${config.schemaVersion}". Expected 1.`);
+  if ("schemaVersion" in config) {
+    if (!Number.isInteger(config.schemaVersion)) {
+      errors.push("Config schemaVersion must be integer 1.");
+    } else if (config.schemaVersion !== 1) {
+      errors.push(`Unsupported schemaVersion "${config.schemaVersion}". Expected 1.`);
+    }
+  }
+
+  if ("profile" in config) {
+    if (typeof config.profile !== "string" || !config.profile.trim()) {
+      errors.push("Config profile must be a non-empty string.");
+    }
   }
 
   for (const key of Object.keys(config)) {
@@ -203,8 +237,23 @@ export function validateProtocolConfig(config, { configDir }) {
     if (message) errors.push(`Config ${field} is invalid: ${message}`);
   }
 
-  if ("profileOptions" in config && !isPlainObject(config.profileOptions)) {
-    errors.push("Config profileOptions must be an object when present.");
+  if ("profileOptions" in config) {
+    if (!isPlainObject(config.profileOptions)) {
+      errors.push("Config profileOptions must be an object when present.");
+    } else if (typeof config.profile === "string") {
+      const declaredOptions = BUILT_IN_PROFILE_OPTIONS.get(config.profile);
+      if (declaredOptions) {
+        for (const key of Object.keys(config.profileOptions)) {
+          if (!declaredOptions.has(key)) warnings.push(`Unknown profileOptions field for profile "${config.profile}" ignored in v0.x: ${key}`);
+        }
+      }
+    }
+  }
+
+  for (const field of ["checks", "reviews", "model"]) {
+    if (field in config && !isPlainObject(config[field])) {
+      errors.push(`Config ${field} must be an object when present.`);
+    }
   }
 
   return { errors, warnings, projectRoot };
@@ -323,12 +372,22 @@ export function readJson(file) {
 export function validatePortableRelativePath(value, { allowGlob = false, allowDot = false } = {}) {
   if (!value || typeof value !== "string") return "must be a non-empty relative path";
   if (allowDot && value === ".") return "";
-  if (path.isAbsolute(value)) return "absolute paths are not portable";
-  const normalized = normalizeRel(path.posix.normalize(value.replace(/\\/g, "/")));
+  if (/^[A-Za-z]:($|[\\/])/.test(value)) return "Windows drive paths are not portable";
+  if (value.startsWith("\\\\") || value.startsWith("//")) return "UNC paths are not portable";
+  if (value.includes("\\")) return "use forward slashes, not backslashes";
+  if (path.isAbsolute(value) || path.posix.isAbsolute(value)) return "absolute paths are not portable";
+  const normalized = normalizeRel(path.posix.normalize(value));
   if (!allowGlob && normalized.includes("*")) return "globs are not allowed here";
   if (!allowGlob && /[*?[\]{}]/.test(normalized)) return "wildcards are not allowed here";
   if (normalized === ".." || normalized.startsWith("../") || normalized.includes("/../")) return "path must not escape the project root";
   return "";
+}
+
+function projectFreeHints() {
+  return [
+    "Run `mlab init --profile whitepaper --root manuscript --title \"My Project\"` to create a config-first project.",
+    "Run `mlab doctor --no-project` for package diagnostics without a project.",
+  ];
 }
 
 function findUpward(start, name) {

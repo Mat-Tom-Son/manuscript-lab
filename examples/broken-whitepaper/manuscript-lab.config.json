@@ -1,0 +1,10 @@
+{
+  "schemaVersion": 1,
+  "profile": "whitepaper",
+  "root": ".",
+  "draftGlob": "draft/*.md",
+  "stateDir": "state",
+  "exportsDir": "exports",
+  "sourcesDir": "sources",
+  "tasteDir": "taste"
+}

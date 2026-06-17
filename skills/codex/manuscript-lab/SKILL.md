@@ -22,7 +22,8 @@ writing. Do useful work in files, verify it, and leave the repo shippable.
    - command surface: `docs/PRIMITIVES.md`
    - onboarding: `README.md`, `docs/GETTING_STARTED.md`
    - model routing: `docs/MODEL_PROVIDERS.md`
-   - release/CI/package posture: `docs/OPEN_SOURCE_READINESS.md`, `docs/CI.md`
+   - release/CI/package posture: `docs/V1_RELEASE_PLAN.md`,
+     `docs/INSTALL_WORKFLOW.md`, `docs/CI.md`
 4. Identify whether the task is harness work, writing-project work, release
    work, or agent-adapter work.
 

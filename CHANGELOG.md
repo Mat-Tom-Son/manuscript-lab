@@ -1,6 +1,30 @@
 # Changelog
 
-## Unreleased
+## 1.0.1 - 2026-06-17
+
+- Fixed project-free `mlab doctor --no-network` so public one-off registry
+  smokes in blank directories report missing project/git context as diagnostics
+  instead of failing the command before `mlab init`.
+
+## 1.0.0 - 2026-06-17
+
+- Removed migration from the v1/npm-publishing path; v1 now assumes fresh
+  config-first installed projects while preserving template-clone compatibility.
+- Added a v1 release plan, stronger config validation, project-free validation
+  hints, project-local install smoke coverage, and local one-off `npm exec`
+  package smoke coverage.
+- Added public CLI aliases for review, revision, comparison, merge, and audit
+  workflows while preserving compatibility command names.
+- Added deterministic `export-ready` gate templates and broadened
+  `manuscript-ready` / `done:no-export` gate integration with persisted gate
+  artifacts and final project filesystem sync.
+- Broadened evidence reporting with richer claim/source normalization,
+  risk/status-aware issue output, citation resolution, source validation, and
+  `claims list` filters.
+- Added a deterministic broken-whitepaper fixture for demonstrating useful
+  not-ready output without model or network calls.
+- Excluded generated example `.doccheck` artifacts from package contents and
+  extended packlist coverage.
 
 ## 0.9.0 - 2026-06-17
 

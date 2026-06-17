@@ -1,5 +1,15 @@
 # Claim Record Template
 
+Markdown register row:
+
+```markdown
+| ID | Claim | Section | Locator | Kind | Source | Source Locator | Status | Risk | Citation | Notes |
+|---|---|---|---|---|---|---|---|---|---|---|
+| claim-000 | Write the claim exactly enough that another reader can find it. | draft/00-section.md | heading: Section heading | factual | `source-key` | p. 1 | unsupported | medium | [citation-needed:claim-000] | Explain current evidence state. |
+```
+
+Structured record shape:
+
 ```yaml
 id: claim-000
 schema_version: 1

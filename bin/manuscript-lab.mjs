@@ -9,8 +9,6 @@ import { discoverProtocol } from "../scripts/lib/protocol.mjs";
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
 const args = process.argv.slice(2);
-const command = args[0] || "help";
-const rest = args[1] === "--" ? args.slice(2) : args.slice(1);
 const pkg = readPackageJson();
 
 const commands = {
@@ -49,16 +47,27 @@ const commands = {
 };
 
 const aliases = {
+  "audit": ["scripts/revision-diff-audit.mjs"],
+  "compare": ["scripts/compare-candidates.mjs"],
   "init": ["scripts/story-workspace.mjs", "init"],
+  "merge": ["scripts/merge-winner.mjs"],
   "new": ["scripts/story-workspace.mjs", "init"],
   "project:init": ["scripts/story-workspace.mjs", "init"],
   "project:list": ["scripts/story-workspace.mjs", "list-projects"],
   "project:sync": ["scripts/story-workspace.mjs", "sync-project"],
   "project:verify": ["scripts/story-workspace.mjs", "verify-projects"],
+  "revise": ["scripts/revision-candidates.mjs"],
+  "review": ["scripts/review-runner.mjs"],
+  "review-report": ["scripts/review-report.mjs"],
   "story:init": ["scripts/story-workspace.mjs", "init"],
   "story:restore": ["scripts/story-workspace.mjs", "restore"],
   "story:unload": ["scripts/story-workspace.mjs", "unload"],
 };
+
+const invocation = resolveInvocation(args);
+const command = invocation.command;
+const rest = invocation.rest;
+
 const templateOnlyCommands = new Set([
   "project",
   "story",
@@ -110,6 +119,57 @@ const result = spawnSync(process.execPath, [path.join(packageRoot, script), ...s
 });
 
 process.exit(result.status ?? 1);
+
+function resolveInvocation(rawArgs) {
+  const rawCommand = rawArgs[0] || "help";
+  const rawRest = rawArgs[1] === "--" ? rawArgs.slice(2) : rawArgs.slice(1);
+  const subcommands = {
+    "compare": { "candidates": "compare" },
+    "merge": { "winner": "merge" },
+    "revise": { "candidates": "revise" },
+    "review": { "report": "review:report", "run": "review" },
+  };
+  const subcommand = rawRest[0];
+  const mappedCommand = subcommands[rawCommand]?.[subcommand];
+  if (mappedCommand) {
+    return { command: mappedCommand, rest: normalizePublicArgs(mappedCommand, rawRest.slice(1)) };
+  }
+  return { command: rawCommand, rest: normalizePublicArgs(rawCommand, rawRest) };
+}
+
+function normalizePublicArgs(commandName, commandArgs) {
+  const normalized = [];
+  for (let index = 0; index < commandArgs.length; index += 1) {
+    const arg = commandArgs[index];
+    if ((commandName === "revise" || commandName === "revise:candidates") && arg === "--candidates") {
+      normalized.push("--n");
+      continue;
+    }
+    if ((commandName === "revise" || commandName === "revise:candidates") && arg.startsWith("--candidates=")) {
+      normalized.push(`--n=${arg.slice("--candidates=".length)}`);
+      continue;
+    }
+    if ((commandName === "merge" || commandName === "merge:winner") && arg === "--winner") {
+      normalized.push("--candidate");
+      const value = commandArgs[index + 1];
+      if (value && !value.startsWith("--")) {
+        normalized.push(normalizeCandidateId(value));
+        index += 1;
+      }
+      continue;
+    }
+    if ((commandName === "merge" || commandName === "merge:winner") && arg.startsWith("--winner=")) {
+      normalized.push(`--candidate=${normalizeCandidateId(arg.slice("--winner=".length))}`);
+      continue;
+    }
+    normalized.push(arg);
+  }
+  return normalized;
+}
+
+function normalizeCandidateId(value) {
+  return /^[a-z]$/i.test(value) ? `candidate-${value.toLowerCase()}` : value;
+}
 
 function installAnywhereInitRequest(commandName, commandArgs) {
   return commandName === "init" && commandArgs.some((arg) => arg === "--profile" || arg === "--root" || arg.startsWith("--profile=") || arg.startsWith("--root="));
@@ -171,8 +231,8 @@ Usage:
 
 Common commands:
   version
+  doctor --no-network
   init --profile whitepaper --root manuscript --title "My Whitepaper"
-  project:init --title "My Project" --slug my-project --sections 4 --kind document.section
   validate
   status
   compose -- draft/<section>.md
@@ -182,19 +242,30 @@ Common commands:
   evidence report
   gate draft/<section>.md
   report --write
-  revise:candidates draft/<section>.md --issue <issue-id> --dry-run
-  compare:candidates draft/<section>.md --run <candidate-run-id> --dry-run
-  taste:arbiter draft/<section>.md --run <candidate-run-id> --dry-run
-  merge:winner draft/<section>.md --run <candidate-run-id>
-  doctor
-  review:run -- --dry-run --panel prose.clean draft/<section>.md
-  issues list
-  words -- draft/<section>.md
-  export -- --slug my-project
+  export --formats md,html --slug my-project
   done:no-export
   done
 
+Review and revision:
+  review draft/<section>.md --dry-run --panel prose.clean
+  review report draft/<section>.md
+  issues list
+  revise draft/<section>.md --issue <issue-id> --candidates 3 --dry-run
+  compare draft/<section>.md --run <candidate-run-id> --dry-run
+  merge draft/<section>.md --run <candidate-run-id>
+  audit --before before.md --after draft/<section>.md --static-only
+
+Compatibility command names:
+  review:run
+  review:report
+  revise:candidates
+  compare:candidates
+  merge:winner
+  diff:audit
+  words -- draft/<section>.md
+
 Project commands (template clone compatibility only):
+  project:init --title "My Project" --slug my-project --sections 4 --kind document.section
   project:init
   story:init
   story:restore
@@ -204,13 +275,13 @@ Project commands (template clone compatibility only):
   project:verify
 
 The npm scripts remain the broadest template interface. This wrapper also
-supports the install-anywhere alpha for config-first workspaces.`);
+supports the install-anywhere workflow for config-first workspaces.`);
 }
 
 function printInitHelp() {
   console.log(`manuscript-lab init
 
-Install-anywhere alpha:
+Install-anywhere workflow:
   mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 
 Template clone compatibility:

@@ -31,9 +31,9 @@ Route:
 
 1. Preserve public truth: do not describe future commands as shipped.
 2. Link from `README.md` when the doc should be discoverable.
-3. Update `docs/OPEN_SOURCE_READINESS.md` when packaging or release posture
-   changes.
-4. Update `CHANGELOG.md` under `Unreleased`.
+3. Update `docs/V1_RELEASE_PLAN.md` or `docs/INSTALL_WORKFLOW.md` when
+   packaging or release posture changes.
+4. Update `CHANGELOG.md` in the current release section or under `Unreleased`.
 5. Run `npm run template:audit -- --strict` and
    `npm run context:audit -- --strict`.
 

@@ -67,8 +67,8 @@ Config loading order should be:
    `--format`.
 
 Stable requirement IDs are part of the public contract. Rename them only with a
-migration path, because result artifacts, CI annotations, and overrides refer to
-them.
+compatibility path, because result artifacts, CI annotations, and overrides
+refer to them.
 
 Minimal shape:
 
@@ -232,6 +232,11 @@ Exit codes:
 
 ## Initial Gates
 
+The current v1 branch implementation is deterministic and uses built-in gate
+defaults. Template configs under `templates/gates/` document stable requirement
+IDs for future project overrides; the engine does not require model credentials
+or network access.
+
 ### `section-ready`
 
 Use this gate when deciding whether one section can move forward in the workflow
@@ -292,9 +297,17 @@ Initial deterministic requirements:
 - `issues.none_open_or_deferred`: no open or deferred issues remain unless the
   profile explicitly allows advisory debt.
 - `reviews.no_latest_errors`: persisted latest review runs have no errors.
+- `doccheck.static_all_pass`: full static document checks pass.
 - `project.filesystem_verified`: the active project workspace verifies.
 - `harness.context_clean`: strict context hygiene audit passes.
 - `harness.templates_clean`: strict template audit passes.
+
+In config-first installed mode, `project.filesystem_verified` is skipped because
+there is no template `projects/active/` registry to verify.
+
+Fresh-start projects with no active non-`todo` sections are allowed to pass this
+gate with a warning. Export generation still fails unless it can produce at
+least one reader-facing chapter.
 
 ### `export-ready`
 
@@ -304,7 +317,8 @@ reader-facing release artifacts.
 Initial deterministic requirements:
 
 - `manuscript.ready`: the manuscript passed the configured manuscript gate.
-- `export.command_passed`: the export command completed successfully.
+- `export.command_passed`: the export manifest records at least one output from
+  a completed export command.
 - `export.formats_present`: required formats exist, such as Markdown, HTML,
   EPUB, and PDF.
 - `export.files_nonempty`: required export files are nonempty.
@@ -397,7 +411,7 @@ Recommended flags:
 | `--static-only` | Disable live model-backed sensors. |
 | `--allow-overrides` | Apply matching override artifacts. |
 | `--no-overrides` | Refuse overrides even if config allows them. |
-| `--format <list>` | Limit export formats for export gates. |
+| `--formats <list>` | Limit export formats for export gates. `--format` and `--export-formats` are accepted aliases. |
 | `--ci` | Shorthand for JSON output, deterministic sensors, no interactive prompts, and no overrides. |
 
 The command should infer `section-ready` when passed `draft/*.md`, infer
@@ -431,6 +445,14 @@ state requirements.
 
 This preserves the current user-facing habit while making readiness reusable by
 agents, CI jobs, export commands, and future UIs.
+
+Current `scripts/done-gate.mjs` alignment:
+
+- runs template-mode project sync before final gates when applicable
+- regenerates exports unless `--skip-exports` / `done:no-export` is used
+- runs `manuscript-ready --profile done --json --write`
+- runs `export-ready --profile done --formats <required> --json --write` when exports are required
+- keeps the historical done-gate JSON fields (`pass`, `checks`, `export_formats`, `errors`, `warnings`) and adds `schema_version`, `status`, `exit_code`, `gates`, and `artifacts`
 
 ## CI Integration
 

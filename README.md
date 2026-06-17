@@ -115,15 +115,15 @@ projects/active/<slug>/workspace/
 The repository root then points to that workspace with symlinks such as
 `brief.md`, `draft/`, `state/`, `taste/`, and `exports/`.
 
-There is also an install-anywhere alpha for external writing repos. It is tested
-from a packed local package, but npm registry publishing remains disabled until
-registry/one-off `npx` behavior and migration are ready.
+The install-anywhere workflow supports external writing repos with Manuscript Lab
+as a dev dependency. Local release-candidate testing uses a packed package; the
+public registry smoke runs after npm auth is available.
 
 ```bash
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.9.0.tgz
+npm install -D manuscript-lab
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -141,15 +141,14 @@ Install-anywhere init writes `manuscript-lab.config.json` plus user-owned files
 under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 `.pi/`, or `skills/` into the caller workspace.
 
-The current install-anywhere surface covers deterministic local work: validate,
+The install-anywhere surface covers deterministic local work: validate,
 status, compose, static checks, claims/citations/evidence, gates, reports,
 typed review runs, `review:report`, Markdown/HTML export, and `done` with
 configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
 comparison, taste gates, merge previews, and diff audits. Template project
 switching commands are guarded as template-clone compatibility commands.
-One-off `npx`, global install, and registry smokes remain before npm
-publishing.
+The remaining account-bound release check is the public registry smoke.
 
 ## Daily Loop
 
@@ -256,16 +255,16 @@ are ignored by default so the public repo stays reusable.
 
 ## Important Docs
 
+- `docs/V1_RELEASE_PLAN.md`: active v1 branch scope and integration gates
 - `docs/GETTING_STARTED.md`: first-project walkthrough
 - `docs/CODEX_SKILLS.md`: installing and using the Codex skill
 - `docs/PRODUCT_STRATEGY.md`: positioning and product roadmap
 - `docs/ARCHITECTURE.md`: layers and file boundaries
-- `docs/FILE_PROTOCOL.md`: draft protocol v1 for project layout and config
+- `docs/FILE_PROTOCOL.md`: project layout and config protocol
 - `docs/INSTALL_WORKFLOW.md`: npm/install-anywhere design record
 - `docs/GATE_ENGINE.md`: readiness gate design and result format
 - `docs/EVIDENCE_SPINE.md`: claims and sources design
 - `examples/technical-whitepaper/README.md`: public tutorial fixture
-- `docs/OPEN_SOURCE_READINESS.md`: current public-readiness gap list
 - `docs/CI.md`: GitHub Actions workflow
 - `docs/OPERATOR_GUIDE.md`: detailed operating manual
 - `docs/PROJECT_FILESYSTEM.md`: active/inactive project filesystem

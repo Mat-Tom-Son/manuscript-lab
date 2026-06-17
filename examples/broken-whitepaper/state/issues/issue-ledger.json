@@ -1,0 +1,28 @@
+{
+  "version": 1,
+  "next_id": 2,
+  "issues": [
+    {
+      "id": "issue_broken_0001",
+      "status": "open",
+      "severity": "blocker",
+      "category": "unsupported-claim",
+      "target": {
+        "file": "draft/01-market.md",
+        "start_line": 27
+      },
+      "claim": "The draft presents fake benchmark numbers as if they were supported market findings.",
+      "evidence": "The section uses [citation-needed], cites missing-benchmark, and state/claims.md marks related rows unsupported or needs-review.",
+      "recommended_action": "Remove the numbers, weaken them into examples, or add real local sources before export.",
+      "created_at": "2026-06-16T00:00:00.000Z",
+      "updated_at": "2026-06-16T00:00:00.000Z",
+      "history": [
+        {
+          "at": "2026-06-16T00:00:00.000Z",
+          "action": "created",
+          "source": "fixture"
+        }
+      ]
+    }
+  ]
+}

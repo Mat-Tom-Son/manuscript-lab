@@ -30,7 +30,7 @@ assert(files.length > 0, "npm pack file list should not be empty");
 
 const forbidden = [
   { label: ".env", test: privateEnvFile },
-  { label: ".doccheck", test: exactOrUnder(".doccheck") },
+  { label: ".doccheck", test: hasPathSegment(".doccheck") },
   { label: "PROJECT.md", test: exact("PROJECT.md") },
   { label: "brief.md", test: exact("brief.md") },
   { label: "outline.md", test: exact("outline.md") },

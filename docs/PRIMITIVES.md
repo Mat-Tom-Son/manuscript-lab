@@ -25,6 +25,31 @@ status
 
 ## Primitives
 
+### Public CLI Shape
+
+The `mlab` wrapper keeps npm-script compatibility while exposing a smaller
+public command vocabulary:
+
+```bash
+mlab validate
+mlab status
+mlab compose draft/<section>.md
+mlab check --static-only draft/<section>.md
+mlab review draft/<section>.md --dry-run --panel prose.clean
+mlab review report draft/<section>.md
+mlab issues list --status open
+mlab revise draft/<section>.md --issue <issue-id> --candidates 3 --dry-run
+mlab compare draft/<section>.md --run <candidate-run-id> --dry-run
+mlab merge draft/<section>.md --run <candidate-run-id>
+mlab audit --before before.md --after draft/<section>.md --static-only
+mlab gate manuscript --write
+mlab report --write
+```
+
+Compatibility names such as `review:run`, `revise:candidates`,
+`compare:candidates`, `merge:winner`, and `diff:audit` still work. The friendly
+aliases are thin routers over those existing commands.
+
 ### CLI Diagnostics
 
 ```bash
@@ -191,6 +216,8 @@ suggested next steps. `--write` stores `reports/latest.json` and
 npm run review:run -- --dry-run --panel prose.clean draft/<section>.md
 npm run review:run -- --panel lightning.clean draft/<section>.md
 npm run review:report -- draft/<section>.md
+mlab review draft/<section>.md --dry-run --panel prose.clean
+mlab review report draft/<section>.md
 ```
 
 Runs typed editorial sensors. Reviews create durable issues; they do not decide revisions by themselves.
@@ -220,6 +247,9 @@ npm run compare:candidates -- draft/<section>.md --run <candidate-run-id>
 npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id>
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id>
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id> --apply --audit
+mlab revise draft/<section>.md --issue <issue-id> --candidates 3
+mlab compare draft/<section>.md --run <candidate-run-id>
+mlab merge draft/<section>.md --run <candidate-run-id>
 ```
 
 Runs a controlled experiment for an accepted issue: generate multiple independent full-section revision candidates, compare them blindly with order-swapped pairwise judging, optionally gate the winner against narrative taste, materialize the selected winner, then optionally apply it with a before snapshot and diff audit. Candidate runs record `source_sha256`; `merge:winner --apply` refuses stale or legacy runs when the current draft no longer matches that source hash unless a human deliberately passes `--force`.
@@ -254,6 +284,7 @@ taste/EXEMPLARS.md
 ```bash
 npm run snapshot:revision -- draft/<section>.md --issue <issue-id>
 npm run diff:audit -- --before before.md --after draft/<section>.md --issue <issue-id>
+mlab audit --before before.md --after draft/<section>.md --issue <issue-id>
 ```
 
 Audits whether a targeted edit made the right tradeoffs. Use `snapshot:revision` immediately before manual edits when there is no before file yet. It is not a generic line edit.

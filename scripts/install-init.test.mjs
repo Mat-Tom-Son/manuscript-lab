@@ -106,7 +106,7 @@ function testTemplateOnlyWrapperRoutesRefuseOutsideTemplate() {
 
   const help = runMlab(["init", "--help"], { cwd: path.join(tmp, "local-wrapper") });
   assert.equal(help.status, 0, help.stderr || help.stdout);
-  assert.match(help.stdout, /Install-anywhere alpha/);
+  assert.match(help.stdout, /Install-anywhere workflow/);
   assert.match(help.stdout, /Template clone compatibility/);
 }
 
@@ -133,12 +133,13 @@ function testInstalledTarball() {
   });
   assert.equal(npmInit.status, 0, npmInit.stderr || npmInit.stdout);
 
-  const install = spawnSync(npmCommand, ["install", "--no-audit", "--no-fund", "--ignore-scripts", tarball], {
+  const install = spawnSync(npmCommand, ["install", "--save-dev", "--no-audit", "--no-fund", "--ignore-scripts", tarball], {
     cwd: workspace,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
   });
   assert.equal(install.status, 0, install.stderr || install.stdout);
+  assertProjectLocalDependency(workspace);
 
   const installedRunner = (args, { cwd }) => runInstalledMlab(args, { cwd, installRoot: workspace });
   const init = installedRunner(["init", "--profile", "whitepaper", "--root", "manuscript", "--title", "Packed Project", "--sections", "1", "--json"], { cwd: workspace });
@@ -151,9 +152,73 @@ function testInstalledTarball() {
   assertEvidenceAndGate(workspace, installedRunner);
   assertEvidenceAndGate(path.join(workspace, "manuscript"), installedRunner);
   assertEvidenceAndGate(path.join(workspace, "manuscript", "draft"), installedRunner);
+  assertProjectLocalNpxSmoke(workspace);
   assertInstalledCommandSurface(workspace, installedRunner);
   assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, installedRunner);
+  assertOneOffNpxLikeSmoke(tarball);
   assertGlobalPrefixInstall(tarball);
+}
+
+function assertProjectLocalDependency(workspace) {
+  const pkg = JSON.parse(fs.readFileSync(path.join(workspace, "package.json"), "utf8"));
+  assert(pkg.devDependencies?.["manuscript-lab"], "packed package should be installed as a project-local dev dependency");
+}
+
+function assertProjectLocalNpxSmoke(workspace) {
+  const runner = (args, { cwd }) => runProjectLocalNpxMlab(args, { cwd });
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+
+  const validate = assertJsonCommand(runner, ["validate", "--json"], { cwd: workspace });
+  assert.equal(validate.ok, true);
+  assert.equal(validate.mode, "installed");
+
+  const check = assertJsonCommand(runner, ["check", "--static-only", "--json", "draft/01-opening.md"], { cwd: manuscriptRoot });
+  assert.equal(check.pass, true);
+
+  const gate = assertJsonCommand(runner, ["gate", "01-opening.md", "--json"], { cwd: draftRoot });
+  assert.equal(gate.ready, true);
+  assert.equal(gate.gate_id, "section-ready");
+}
+
+function assertOneOffNpxLikeSmoke(tarball) {
+  const workspace = path.join(tmp, "one-off-npx-like");
+  mkdir(workspace);
+  const runner = (args, { cwd }) => runOneOffNpxLikeMlab(args, { cwd, tarball });
+
+  const help = runner(["help"], { cwd: workspace });
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /install-anywhere workflow/i);
+
+  const version = assertJsonCommand(runner, ["version", "--json"], { cwd: workspace });
+  assert.equal(version.name, "manuscript-lab");
+  assert.equal(version.version, packageVersion);
+
+  const doctor = assertJsonCommand(runner, ["doctor", "--no-project", "--no-network", "--json"], { cwd: workspace });
+  assert.equal(doctor.ok, true, JSON.stringify(doctor, null, 2));
+  assert.equal(doctor.summary.failures, 0);
+
+  const noProject = runner(["validate", "--json"], { cwd: workspace });
+  assert.equal(noProject.status, 1, noProject.stderr || noProject.stdout);
+  const missing = JSON.parse(noProject.stdout);
+  assert.equal(missing.mode, "none");
+  assert(missing.hints.some((hint) => /mlab init --profile/.test(hint)));
+  assert(missing.hints.some((hint) => /mlab doctor --no-project/.test(hint)));
+
+  const init = assertJsonCommand(
+    runner,
+    ["init", "--profile", "whitepaper", "--root", "manuscript", "--title", "One-Off Project", "--sections", "1", "--json"],
+    { cwd: workspace },
+  );
+  assert.equal(init.ok, true);
+  assert.equal(init.mode, "installed");
+  assert.equal(fs.existsSync(path.join(workspace, "package.json")), false, "one-off smoke should not create package.json");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules")), false, "one-off smoke should not create a project-local install");
+
+  assertProjectScaffold(workspace);
+  assertNoPackageScaffoldCopied(workspace);
+  assertValidateWorksFrom(workspace, runner);
+  assertValidateWorksFrom(path.join(workspace, "manuscript", "draft"), runner);
 }
 
 function assertGlobalPrefixInstall(tarball) {
@@ -173,7 +238,7 @@ function assertGlobalPrefixInstall(tarball) {
 
   const help = runner(["help"], { cwd: tmp });
   assert.equal(help.status, 0, help.stderr || help.stdout);
-  assert.match(help.stdout, /install-anywhere alpha/i);
+  assert.match(help.stdout, /install-anywhere workflow/i);
 
   const version = assertJsonCommand(runner, ["version", "--json"], { cwd: tmp });
   assert.equal(version.name, "manuscript-lab");
@@ -777,6 +842,22 @@ function runMlab(args, { cwd }) {
 function runInstalledMlab(args, { cwd, installRoot = cwd }) {
   const bin = path.join(installRoot, "node_modules", ".bin", process.platform === "win32" ? "mlab.cmd" : "mlab");
   return spawnSync(bin, args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function runProjectLocalNpxMlab(args, { cwd }) {
+  return spawnSync(npmCommand, ["exec", "--", "mlab", ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function runOneOffNpxLikeMlab(args, { cwd, tarball }) {
+  return spawnSync(npmCommand, ["exec", "--yes", `--package=${tarball}`, "--", "mlab", ...args], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
