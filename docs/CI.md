@@ -58,7 +58,9 @@ jobs:
 assertion, and an installed-tarball smoke test for init, validate, evidence,
 gates, report generation, status, compose, static check, review reporting,
 `done:no-export`, configurable `done` export gates, and Markdown/HTML export
-with manifests from workspace, manuscript, and nested draft directories.
+with manifests from workspace, manuscript, and nested draft directories. It
+also verifies template-only wrapper commands refuse in installed workspaces
+without writing legacy `projects/` state.
 
 Changing this workflow requires a GitHub token with `workflow` scope. Normal
 code and docs pushes do not need that extra scope.

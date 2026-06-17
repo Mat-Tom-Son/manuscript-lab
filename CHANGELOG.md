@@ -23,6 +23,10 @@
 - Added installed-tarball smoke coverage for running full `done` with
   Markdown/HTML exports from the workspace root, manuscript root, and nested
   `draft/` directory.
+- Guarded template-only wrapper commands (`init` without `--profile`,
+  `project:*`, `story:*`, and related aliases) so they refuse outside the
+  template clone root instead of creating confusing legacy project workspaces in
+  install-anywhere repositories.
 
 ## 0.7.1 - 2026-06-17
 

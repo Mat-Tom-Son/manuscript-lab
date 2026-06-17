@@ -37,8 +37,9 @@ Unsupported choices:
 - No postinstall script that mutates the current directory.
 - No global package that assumes the global install directory is the project
   root.
-- No npm publish until root-aware command coverage includes the remaining
-  model/revision/project-switching paths and registry/global install smokes.
+- No npm publish until root-aware command coverage includes registry/global
+  install smokes, migration, and a deliberate decision about installed
+  multi-project switching.
 
 ## Current Template-First Workflow
 
@@ -158,8 +159,10 @@ npx mlab merge:winner draft/01-intro.md --run <candidate-run-id> --apply --audit
 ```
 
 The target CLI should later grow to the full command family, including richer
-`doctor`, migration, project-switching commands, and global/one-off `npx`
-smokes.
+`doctor`, migration, and global/one-off `npx` smokes. Template project
+switching commands are compatibility commands for template clones; in installed
+or no-project contexts, the wrapper refuses them instead of creating legacy
+`projects/` state in the caller workspace.
 
 Behavior by install mode:
 
@@ -177,6 +180,8 @@ Useful failure modes:
   `mlab doctor --no-project` hints instead of stack traces.
 - inside a template clone: report that template mode is active and that
   `npm run ...` remains supported.
+- outside the template clone root: refuse template-only `project:*`, `story:*`,
+  `new`, and bare `init` commands before they write legacy workspace files.
 - version mismatch between global CLI and project config/package: warn, then
   suggest `npm install -D manuscript-lab@<expected>`.
 
@@ -377,7 +382,7 @@ Additional required tests before npm publishing:
 - global-install smoke using a temporary npm prefix
 - config-root-aware smoke for `doctor`, model-backed `review:run`,
   model-backed candidate generation/comparison/taste/diff-audit calls, full
-  `done` export gates, and template project-switching commands
+  `done` export gates, and template-only command refusal
 - config schema validation and unknown-key behavior
 - legacy template-mode smoke so template-first usage does not regress
 - migration dry-run fixture and apply fixture
@@ -400,6 +405,8 @@ Before the package can be published:
   export-manifest, and configurable `done` export-gate e2e passes in CI
 - root-aware installed-package smoke covers the model-backed revision command
   surface
+- packed installed-package smoke proves template-only commands refuse without
+  writing `projects/`, `draft/`, or package-local state
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow
@@ -431,9 +438,9 @@ This design plus the v0.6 alpha closes the first implementation slices of issue
   registry/global smokes, migration, and the remaining model/revision command
   surface
 
-The next implementation follow-up should make project-switching, migration,
-one-off `npx`, and temporary-prefix global install paths respect the same
-root-discovery/config layer already used by validate, evidence, citations,
-gate, status, compose, check, review-report, report generation, review-run,
-Markdown/HTML export, configurable `done` export gates, export manifests, and
-the candidate/revision command surface.
+The next implementation follow-up should make migration, one-off `npx`, and
+temporary-prefix global install paths respect the same root-discovery/config
+layer already used by validate, evidence, citations, gate, status, compose,
+check, review-report, report generation, review-run, Markdown/HTML export,
+configurable `done` export gates, export manifests, template-only command
+refusal, and the candidate/revision command surface.

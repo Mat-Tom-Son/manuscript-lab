@@ -64,18 +64,17 @@ npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
 npx mlab report --write
 npx mlab export --formats md,html --include-todo --slug my-whitepaper
-npx mlab done:no-export
+npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
 That creates `manuscript-lab.config.json` plus a user-owned scaffold under
 `manuscript/`. In the current alpha, deterministic local commands such as
 `validate`, `status`, `compose`, static `check`, claims/citations/evidence,
-gates, `report`, `review:report`, Markdown/HTML export, and `done:no-export` are
-config-root aware. Candidate-loop command routing also works for accepted issue
-listing, dry-run candidate previews, dry-run comparisons, dry-run taste gates,
-merge previews, and static audited apply. Full typed review execution,
-model-backed candidate generation/judging, template project switching, and
-EPUB/PDF-oriented `done` remain template-first while the installed CLI matures.
+gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
+export gates are config-root aware. Typed review execution and the
+candidate-loop commands also work in install-anywhere projects. Template project
+switching commands are template-clone compatibility commands and refuse outside
+the template clone root while the installed CLI matures.
 
 ## 2. Fill In The Core Files
 
