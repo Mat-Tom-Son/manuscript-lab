@@ -49,6 +49,7 @@ for (const entry of entries.slice(-options.limit)) {
 
 function resolveLedgerFile() {
   if (options.ledger) return abs(options.ledger);
+  if (process.env.MODEL_CALL_AUDIT_DIR) return path.join(abs(process.env.MODEL_CALL_AUDIT_DIR), "ledger.jsonl");
 
   const registry = readJsonSafe(abs("projects/registry.json"), null);
   const active = typeof registry?.active === "string" ? registry.active : registry?.active?.slug;

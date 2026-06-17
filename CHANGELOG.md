@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+- Loaded local `.env` values in `mlab doctor` so provider-key diagnostics match
+  model-backed command behavior without printing secret values.
+- Made `mlab model:calls` and `mlab report` honor `MODEL_CALL_AUDIT_DIR` when
+  inspecting model-call ledgers from calibration or external workspaces.
+
 ## 0.7.0 - 2026-06-17
 
 - Sharpened the README demo payoff with a concrete report excerpt and an
