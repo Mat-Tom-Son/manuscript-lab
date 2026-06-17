@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 0.8.0 - 2026-06-17
 
 - Made `mlab review:run` root-aware in packed install-anywhere workspaces,
   loading bundled review suites, model panels, and prompts from the package
