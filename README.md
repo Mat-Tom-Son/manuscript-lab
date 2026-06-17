@@ -143,12 +143,12 @@ under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 
 The current install-anywhere surface covers deterministic local work: validate,
 status, compose, static checks, claims/citations/evidence, gates, reports,
-`review:report`, `done:no-export`, and Markdown/HTML export. It also includes
-root-aware candidate-loop command routing for accepted issues, dry-run candidate
-previews, dry-run comparisons, dry-run taste gates, merge previews, and static
-audited apply. Full typed review execution, model-backed candidate
-generation/judging, template project switching, and EPUB/PDF-oriented `done`
-remain template-first while the installed CLI matures.
+typed review runs, `review:report`, `done:no-export`, and Markdown/HTML export.
+It also includes root-aware candidate-loop command routing for accepted issues,
+dry-run candidate previews, dry-run comparisons, dry-run taste gates, merge
+previews, and static audited apply. Model-backed candidate generation/judging,
+template project switching, and EPUB/PDF-oriented `done` remain template-first
+while the installed CLI matures.
 
 ## Daily Loop
 

@@ -15,6 +15,7 @@ try {
   testLocalWrapperInstallInit();
   testLegacyWrapperInitRoutes();
   testUnsafeInitTargets();
+  testReviewRunRejectsInvalidConfig();
   testInstalledTarball();
   console.log("install init tests passed");
 } finally {
@@ -63,6 +64,23 @@ function testUnsafeInitTargets() {
   const nonEmptyResult = runMlab(["init", "--profile", "whitepaper", "--root", "manuscript"], { cwd: nonEmpty });
   assert.notEqual(nonEmptyResult.status, 0);
   assert.match(nonEmptyResult.stderr, /not empty/i);
+}
+
+function testReviewRunRejectsInvalidConfig() {
+  const workspace = path.join(tmp, "invalid-review-config");
+  mkdir(workspace);
+  writeJsonFile(path.join(workspace, "manuscript-lab.config.json"), {
+    schemaVersion: 1,
+    profile: "whitepaper",
+    root: "../outside",
+    draftGlob: "draft/*.md",
+    stateDir: "state",
+    exportsDir: "exports",
+  });
+
+  const result = runMlab(["review:run", "--dry-run", "draft/01-opening.md"], { cwd: workspace });
+  assert.equal(result.status, 2);
+  assert.match(result.stderr, /Config root is invalid|must not escape/i);
 }
 
 function testLegacyWrapperInitRoutes() {
@@ -214,6 +232,7 @@ function assertInstalledCommandSurface(workspace, runner) {
   const nestedCompose = assertJsonCommand(runner, ["compose", "01-opening.md", "--json"], { cwd: draftRoot });
   assert.equal(nestedCompose.section, "draft/01-opening.md");
 
+  assertInstalledReviewRun(workspace, runner);
   assertInstalledCandidatePreview(workspace, runner);
 
   const exported = assertJsonCommand(runner, ["export", "--formats", "md,html", "--include-todo", "--slug", "packed", "--json"], { cwd: workspace });
@@ -254,6 +273,75 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "reports")), false, "commands should not write reports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "exports")), false, "commands should not write exports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
+}
+
+function assertInstalledReviewRun(workspace, runner) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+  const mockResponseRel = "state/reviews/mock-contract-editor-response.json";
+  const mockResponseFile = path.join(manuscriptRoot, mockResponseRel);
+
+  for (const cwd of [workspace, manuscriptRoot, draftRoot]) {
+    const target = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
+    const review = assertJsonCommand(
+      runner,
+      ["review:run", "--dry-run", "--passes", "contract.editor", "--panel", "prose.clean", "--force", "--json", target],
+      { cwd },
+    );
+
+    assert.equal(review.target, "draft/01-opening.md");
+    assert.equal(review.section_id, "01-opening");
+    assert(review.jobs.length >= 1);
+    assert(review.jobs.every((job) => job.pass === "contract.editor"));
+    assert(review.jobs.every((job) => job.context_pack === "informed.editor"));
+    assert(review.jobs.every((job) => job.visible_files.some((file) => file.path === "draft/01-opening.md")));
+  }
+
+  writeJsonFile(mockResponseFile, {
+    pass: "contract.editor",
+    section: "draft/01-opening.md",
+    summary: "Mock installed review response.",
+    issues: [
+      {
+        category: "structure",
+        severity: "minor",
+        confidence: 0.91,
+        target_quote: "Use this section for the first owned draft once the brief, outline, style guide,\nand source index are ready.",
+        claim: "The scaffold still reads like setup instructions rather than owned prose.",
+        evidence: "The sentence directly tells the writer how to use the section.",
+        reader_effect: "A reviewer can tell the draft has not yet been replaced with manuscript content.",
+        recommended_action: "Replace the scaffold instruction with project-specific prose.",
+      },
+    ],
+    strengths: [],
+  });
+
+  const run = parseJsonFromMixedOutput(
+    runner(
+      [
+        "review:run",
+        "01-opening.md",
+        "--passes",
+        "contract.editor",
+        "--models",
+        "openrouter:openai/gpt-4.1-mini",
+        "--force",
+        "--mock-response",
+        mockResponseRel,
+        "--json",
+      ],
+      { cwd: draftRoot },
+    ),
+  );
+  assert.equal(run.target, "draft/01-opening.md");
+  assert.equal(run.results.length, 1);
+  assert.equal(run.results[0].imported_issue_ids.length, 1);
+  assert(fs.existsSync(path.join(manuscriptRoot, run.results[0].file)));
+  assert(fs.existsSync(path.join(manuscriptRoot, "state", "issues", "issue-ledger.json")));
+  const ledger = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, "state", "issues", "issue-ledger.json"), "utf8"));
+  assert(ledger.issues.some((issue) => issue.source?.type === "model_review" && issue.source?.run_file === run.results[0].file));
+  assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "review runs should not write state under draft/");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "review runs should not write state under the package");
 }
 
 function assertInstalledCandidatePreview(workspace, runner) {
@@ -412,6 +500,13 @@ function assertJsonCommand(runner, args, { cwd }) {
   const result = runner(args, { cwd });
   assert.equal(result.status, 0, result.stderr || result.stdout);
   return JSON.parse(result.stdout);
+}
+
+function parseJsonFromMixedOutput(result) {
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  const start = result.stdout.indexOf("{");
+  assert.notEqual(start, -1, result.stdout);
+  return JSON.parse(result.stdout.slice(start));
 }
 
 function runMlab(args, { cwd }) {
