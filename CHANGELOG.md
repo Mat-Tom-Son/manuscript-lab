@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.1 - 2026-06-17
+
+- Fixed project-free `mlab doctor --no-network` so public one-off registry
+  smokes in blank directories report missing project/git context as diagnostics
+  instead of failing the command before `mlab init`.
+
 ## 1.0.0 - 2026-06-17
 
 - Removed migration from the v1/npm-publishing path; v1 now assumes fresh

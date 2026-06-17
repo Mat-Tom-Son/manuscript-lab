@@ -101,6 +101,10 @@ function checkIgnoredPrivatePaths() {
     add("warn", "gitignore.private_paths", "Private/generated path ignore rules", "Skipped because git is unavailable.");
     return;
   }
+  if (run("git", ["rev-parse", "--is-inside-work-tree"]).status !== 0) {
+    add("info", "gitignore.private_paths", "Private/generated path ignore rules", "Skipped because the current directory is not a git worktree.");
+    return;
+  }
   const notIgnored = privatePaths.filter((file) => run("git", ["check-ignore", "-q", "--", file]).status !== 0);
   add(notIgnored.length ? "fail" : "pass", "gitignore.private_paths", "Private/generated path ignore rules", notIgnored.length ? `Not ignored: ${notIgnored.join(", ")}` : "Private/generated paths are ignored.");
 }
