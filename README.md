@@ -147,7 +147,8 @@ typed review runs, `review:report`, Markdown/HTML export, and `done` with
 configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
 comparison, taste gates, merge previews, and diff audits. Template project
-switching, one-off `npx`, global install, and registry smokes remain before npm
+switching commands are guarded as template-clone compatibility commands.
+One-off `npx`, global install, and registry smokes remain before npm
 publishing.
 
 ## Daily Loop

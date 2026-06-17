@@ -3,6 +3,7 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
+import { discoverProtocol } from "../scripts/lib/protocol.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
 const packageRoot = path.resolve(here, "..");
@@ -56,6 +57,18 @@ const aliases = {
   "story:restore": ["scripts/story-workspace.mjs", "restore"],
   "story:unload": ["scripts/story-workspace.mjs", "unload"],
 };
+const templateOnlyCommands = new Set([
+  "project",
+  "story",
+  "new",
+  "project:init",
+  "project:list",
+  "project:sync",
+  "project:verify",
+  "story:init",
+  "story:restore",
+  "story:unload",
+]);
 
 if (command === "help" || command === "--help" || command === "-h") {
   printHelp();
@@ -65,6 +78,13 @@ if (command === "help" || command === "--help" || command === "-h") {
 if (initHelpRequest(command, rest)) {
   printInitHelp();
   process.exit(0);
+}
+
+if (templateOnlyRequest(command, rest)) {
+  const discovery = discoverProtocol({ cwd: process.cwd(), packageRoot });
+  if (!templateCommandAllowed(discovery)) {
+    refuseTemplateOnlyCommand(command, discovery, rest);
+  }
 }
 
 const target = installAnywhereInitRequest(command, rest)
@@ -88,8 +108,34 @@ function installAnywhereInitRequest(commandName, commandArgs) {
   return commandName === "init" && commandArgs.some((arg) => arg === "--profile" || arg === "--root" || arg.startsWith("--profile=") || arg.startsWith("--root="));
 }
 
+function templateOnlyRequest(commandName, commandArgs) {
+  if (commandName === "init") return !installAnywhereInitRequest(commandName, commandArgs);
+  return templateOnlyCommands.has(commandName);
+}
+
+function templateCommandAllowed(discovery) {
+  return discovery.mode === "template" && path.resolve(process.cwd()) === path.resolve(discovery.workspaceRoot);
+}
+
 function initHelpRequest(commandName, commandArgs) {
   return commandName === "init" && commandArgs.some((arg) => arg === "--help" || arg === "-h");
+}
+
+function refuseTemplateOnlyCommand(commandName, discovery, commandArgs) {
+  const json = commandArgs.includes("--json");
+  const message = discovery.mode === "template"
+    ? `Command "${commandName}" is template-clone only and must be run from the template clone root.`
+    : discovery.mode === "installed"
+    ? `Command "${commandName}" is template-clone only. This workspace uses install-anywhere mode.`
+    : `Command "${commandName}" is template-clone only and no template clone was found.`;
+  const hint = "Use `mlab init --profile whitepaper --root manuscript --title \"My Project\"` for install-anywhere projects.";
+
+  if (json) {
+    console.log(JSON.stringify({ ok: false, command: commandName, mode: discovery.mode, error: message, hint }, null, 2));
+  } else {
+    console.error(`${message}\n${hint}`);
+  }
+  process.exit(2);
 }
 
 function printHelp() {
@@ -123,7 +169,7 @@ Common commands:
   done:no-export
   done
 
-Project commands:
+Project commands (template clone compatibility only):
   project:init
   story:init
   story:restore
@@ -149,5 +195,6 @@ Template clone compatibility:
 
 Notes:
   Passing --profile or --root selects config-first install-anywhere init.
-  Bare init, project:init, and story:init preserve the template workspace flow.`);
+  Bare init, project:init, and story:init preserve the template workspace flow
+  only inside a template clone.`);
 }

@@ -13,7 +13,7 @@ const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
 
 try {
   testLocalWrapperInstallInit();
-  testLegacyWrapperInitRoutes();
+  testTemplateOnlyWrapperRoutesRefuseOutsideTemplate();
   testUnsafeInitTargets();
   testReviewRunRejectsInvalidConfig();
   testInstalledTarball();
@@ -83,16 +83,25 @@ function testReviewRunRejectsInvalidConfig() {
   assert.match(result.stderr, /Config root is invalid|must not escape/i);
 }
 
-function testLegacyWrapperInitRoutes() {
-  for (const command of ["init", "project:init", "story:init"]) {
-    const workspace = path.join(tmp, `legacy-${command.replace(":", "-")}`);
+function testTemplateOnlyWrapperRoutesRefuseOutsideTemplate() {
+  for (const command of ["init", "new", "project:init", "project:sync", "story:init", "story:restore"]) {
+    const workspace = path.join(tmp, `template-only-${command.replace(":", "-")}`);
     mkdir(workspace);
     const result = runMlab([command, "--title", `Legacy ${command}`, "--slug", `legacy-${command.replace(":", "-")}`, "--sections", "1", "--kind", "document.section"], { cwd: workspace });
-    assert.equal(result.status, 0, result.stderr || result.stdout);
+    assert.equal(result.status, 2, result.stderr || result.stdout);
+    assert.match(result.stderr, /template-clone only/i);
+    assert.match(result.stderr, /mlab init --profile/i);
     assert.equal(fs.existsSync(path.join(workspace, "manuscript-lab.config.json")), false, `${command} should not create install-anywhere config`);
-    assert(fs.existsSync(path.join(workspace, "projects", "registry.json")), `${command} should create template project registry`);
-    assert(fs.existsSync(path.join(workspace, "draft", "01-opening.md")), `${command} should create template draft mount`);
+    assert.equal(fs.existsSync(path.join(workspace, "projects")), false, `${command} should not create a legacy project registry`);
+    assert.equal(fs.existsSync(path.join(workspace, "draft")), false, `${command} should not create a draft mount`);
   }
+
+  const json = runMlab(["project:init", "--json"], { cwd: path.join(tmp, "local-wrapper") });
+  assert.equal(json.status, 2, json.stderr || json.stdout);
+  const parsed = JSON.parse(json.stdout);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mode, "installed");
+  assert.match(parsed.error, /template-clone only/i);
 
   const help = runMlab(["init", "--help"], { cwd: path.join(tmp, "local-wrapper") });
   assert.equal(help.status, 0, help.stderr || help.stdout);
@@ -142,6 +151,7 @@ function testInstalledTarball() {
   assertEvidenceAndGate(path.join(workspace, "manuscript"), installedRunner);
   assertEvidenceAndGate(path.join(workspace, "manuscript", "draft"), installedRunner);
   assertInstalledCommandSurface(workspace, installedRunner);
+  assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, installedRunner);
 }
 
 function assertProjectScaffold(workspace) {
@@ -290,6 +300,30 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "reports")), false, "commands should not write reports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "exports")), false, "commands should not write exports under the package");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
+}
+
+function assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, runner) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+  const cwdCases = [workspace, manuscriptRoot, draftRoot];
+  const commands = ["init", "new", "project", "project:init", "project:list", "project:sync", "story", "story:init", "story:restore", "story:unload"];
+
+  for (const cwd of cwdCases) {
+    for (const command of commands) {
+      const result = runner([command, "--json"], { cwd });
+      assert.equal(result.status, 2, `${command} should refuse in installed mode from ${cwd}: ${result.stderr || result.stdout}`);
+      const parsed = JSON.parse(result.stdout);
+      assert.equal(parsed.ok, false);
+      assert.equal(parsed.mode, "installed");
+      assert.match(parsed.error, /template-clone only/i);
+      assert.match(parsed.hint, /mlab init --profile/i);
+    }
+  }
+
+  assert.equal(fs.existsSync(path.join(workspace, "projects")), false, "template commands should not create projects/ in installed workspace");
+  assert.equal(fs.existsSync(path.join(manuscriptRoot, "projects")), false, "template commands should not create projects/ under manuscript root");
+  assert.equal(fs.existsSync(path.join(draftRoot, "projects")), false, "template commands should not create projects/ under draft/");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "projects")), false, "template commands should not create projects/ under the package");
 }
 
 function assertInstalledReviewRun(workspace, runner) {

@@ -82,6 +82,9 @@ feel locked to one agent UI?"
 - Added configurable `mlab done` export requirements and installed-tarball
   smoke coverage for running the done gate with generated exports from
   workspace, manuscript, and nested draft directories.
+- Guarded template-only project/workspace commands so installed-mode users do
+  not accidentally create legacy `projects/` workspaces outside a template
+  clone root.
 - Made the technical-whitepaper fixture a config-first project so the demo can
   be inspected without mounting it as the active template project.
 - Updated `.gitignore` so user writing work does not accidentally become public.
@@ -109,18 +112,15 @@ routing, exports, done gate, optional agent adapters, and local diagnostics.
 
 The main mismatch is packaging maturity. The repo is template-first with an
 install-anywhere alpha; the deterministic local command loop, unified local
-report, configurable export-oriented done gate, and model/revision command
-surface now work in external writing repositories. Template project switching,
-migration, one-off `npx`, and global install smokes are not yet stable as
-installed-package workflows.
+report, configurable export-oriented done gate, model/revision command surface,
+and template-only command refusal now work in external writing repositories.
+Migration, one-off `npx`, global install smokes, and any future installed
+multi-project workflow are not yet stable as installed-package workflows.
 
 ## Remaining Gaps
 
 ### Before npm Publishing
 
-- Make template project-switching commands fully config-root aware in
-  installed-package mode, or document them as template-only before npm
-  publishing.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full
   profile/override/export model described in `docs/GATE_ENGINE.md`.
@@ -128,6 +128,8 @@ installed-package workflows.
   claim/source records and issue integration from `docs/EVIDENCE_SPINE.md`.
 - Better distinction between optional agent integrations and portable npm usage.
 - One-off `npx` and global-install smokes once npm publishing is enabled.
+- Decide whether installed multi-project switching should exist; current
+  `project:*` and `story:*` commands are guarded as template-only compatibility.
 
 ### Nice To Have
 
