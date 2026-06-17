@@ -117,13 +117,13 @@ The repository root then points to that workspace with symlinks such as
 
 There is also an install-anywhere alpha for external writing repos. It is tested
 from a packed local package, but npm registry publishing remains disabled until
-global/registry smokes and the remaining model-heavy commands are ready.
+global/registry smokes, migration, and one-off `npx` behavior are ready.
 
 ```bash
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.6.0.tgz
+npm install -D /path/to/manuscript-lab-0.8.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status

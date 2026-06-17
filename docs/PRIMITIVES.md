@@ -270,10 +270,21 @@ sizes, formats, and chapter metadata.
 
 ```bash
 npm run done
+npm run done -- --export-formats md,html --include-todo-exports
 npm run done:no-export
 ```
 
-Runs the final readiness gate. `npm run done` regenerates MD/HTML/EPUB/PDF exports, then requires static checks, strict template audit, strict context audit, fresh runtime packets, synced active project filesystem, no unresolved issues, no latest review-run errors, and reader exports. It syncs the active project workspace and verifies the root mount. Historical review-run errors are superseded when a later successful run exists for the same section/pass/model. `npm run done:no-export` is for reusable-infrastructure maintenance, setup, or story-switching tasks where exports are not part of the requested work.
+Runs the final readiness gate. `npm run done` regenerates reader exports, then
+requires static checks, strict template audit, strict context audit, fresh
+runtime packets, synced active project filesystem, no unresolved issues, no
+latest review-run errors, and the configured reader exports. By default it
+expects MD, HTML, EPUB, and PDF. Use `--export-formats md,html` for
+dependency-light Markdown/HTML release gates, and `--include-todo-exports` when
+checking a scaffold or tutorial fixture. It syncs the active project workspace
+and verifies the root mount in template mode. Historical review-run errors are
+superseded when a later successful run exists for the same section/pass/model.
+`npm run done:no-export` is for reusable-infrastructure maintenance, setup, or
+story-switching tasks where exports are not part of the requested work.
 
 For review-only tasks, unresolved issues may be the expected output. Report them instead of resolving them just to pass the gate.
 

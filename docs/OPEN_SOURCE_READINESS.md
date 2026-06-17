@@ -96,8 +96,8 @@ feel locked to one agent UI?"
 - License: MIT.
 - First release shape: GitHub template-style public repo.
 - npm publishing: intentionally disabled for now with `private: true` until
-  registry/global install smokes, migration, and the remaining model-heavy
-  command paths are ready.
+  registry/global install smokes, migration, and one-off `npx` behavior are
+  ready.
 - User project files: ignored by default so the public repo contains the harness,
   not someone's manuscript.
 - Product lane: local CI for prose, not an AI book generator. See
@@ -137,10 +137,10 @@ multi-project workflow are not yet stable as installed-package workflows.
 - A public docs site.
 - A CI end-to-end test that runs the public tutorial fixture walkthrough.
 
-## Suggested Release Path
+## Current Release Path
 
-1. Publish the clean repo on GitHub.
-2. Keep it template-first for the first public release.
-3. Keep the tutorial fixture current as the public demo path.
-4. Mature the install-anywhere alpha until the full command surface works in
-   arbitrary external workspaces.
+1. Keep the GitHub repo template-friendly and contributor-safe.
+2. Keep the technical-whitepaper fixture current as the public demo path.
+3. Mature migration, one-off `npx`, and temporary-prefix global install smokes.
+4. Keep npm publishing disabled until those smokes and the protocol migration
+   story are boring.
