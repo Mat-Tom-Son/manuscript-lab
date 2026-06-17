@@ -201,7 +201,7 @@ function assertInstalledCommandSurface(workspace, runner) {
   const draftRoot = path.join(manuscriptRoot, "draft");
   const cwdCases = [workspace, manuscriptRoot, draftRoot];
 
-  for (const cwd of cwdCases) {
+  for (const [index, cwd] of cwdCases.entries()) {
     const status = assertJsonCommand(runner, ["status", "--json"], { cwd });
     assert.equal(status.mode, "installed");
     assert.equal(fs.realpathSync(status.manuscript_root), fs.realpathSync(manuscriptRoot));
@@ -227,6 +227,23 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(done.pass, true, JSON.stringify(done, null, 2));
     assert.equal(done.checks.project_sync, "skipped");
     assert.equal(done.checks.project_filesystem, "skipped");
+
+    const doneSlug = `packed-done-${index + 1}`;
+    const doneWithExports = assertJsonCommand(
+      runner,
+      ["done", "--export-formats=md,html", "--include-todo-exports", `--export-slug=${doneSlug}`, "--json"],
+      { cwd },
+    );
+    assert.equal(doneWithExports.pass, true, JSON.stringify(doneWithExports, null, 2));
+    assert.deepEqual(doneWithExports.export_formats, ["md", "html"]);
+    assert.equal(doneWithExports.checks.exports, true);
+    assert.equal(doneWithExports.checks.project_sync, "skipped");
+    assert.equal(doneWithExports.checks.project_filesystem, "skipped");
+    assert(fs.existsSync(path.join(manuscriptRoot, "exports", `${doneSlug}.md`)));
+    assert(fs.existsSync(path.join(manuscriptRoot, "exports", `${doneSlug}.html`)));
+    const doneManifest = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, "exports", "manifest.json"), "utf8"));
+    assert.deepEqual(doneManifest.output_summary.formats.sort(), ["html", "md"]);
+    assert.equal(doneManifest.options.include_todo, true);
   }
 
   const nestedCompose = assertJsonCommand(runner, ["compose", "01-opening.md", "--json"], { cwd: draftRoot });

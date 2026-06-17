@@ -3,19 +3,22 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { ensureProtocolReady } from "./lib/cli-runtime.mjs";
 import { scanReviewErrors } from "./lib/review-errors.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const discovery = discoverProtocol({ cwd: process.cwd() });
-const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = normalizeOptions(parseArgs(process.argv.slice(2)));
-const installedMode = discovery.mode === "installed";
-const unloaded = isWorkspaceUnloaded();
-
 if (options.help) {
   printHelp();
   process.exit(0);
 }
+
+const discovery = discoverProtocol({ cwd: process.cwd() });
+ensureProtocolReady(discovery, { json: Boolean(options.json) });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
+const installedMode = discovery.mode === "installed";
+const unloaded = isWorkspaceUnloaded();
+const exportFormats = requiredExportFormats(options);
 
 const errors = [];
 const warnings = [];
@@ -29,8 +32,8 @@ if (auditResult.status !== 0) errors.push("Reusable template audit failed.");
 const contextAuditResult = runNode(["scripts/context-audit.mjs", "--strict"], { capture: true, cwd: discovery.packageRoot });
 if (contextAuditResult.status !== 0) errors.push("Context hygiene audit failed.");
 
-const exportResult = options["skip-exports"] || unloaded ? null : runNode(["scripts/export-manuscript.mjs", "--quiet"], { capture: true });
-if (exportResult && exportResult.status !== 0) errors.push("Reader export failed. Run npm run export.");
+const exportResult = options["skip-exports"] || unloaded ? null : runNode(["scripts/export-manuscript.mjs", ...exportArgs(options, exportFormats)], { capture: true });
+if (exportResult && exportResult.status !== 0) errors.push(`Reader export failed${childSummary(exportResult)}. Run ${installedMode ? "mlab export" : "npm run export"}.`);
 
 const statusResult = runNode(["scripts/harness-status.mjs", "--json"], { capture: true });
 let status = null;
@@ -77,6 +80,7 @@ const result = {
     project_filesystem: installedMode ? "skipped" : projectResult.status === 0,
     review_errors: unloaded ? "skipped" : reviewScan.failures.length === 0,
   },
+  export_formats: options["skip-exports"] || unloaded ? [] : exportFormats,
   errors,
   warnings,
 };
@@ -116,11 +120,35 @@ function validateStatus(status) {
   if (!options["skip-exports"]) {
     const exports = status.exports ?? [];
     const byExt = new Set(exports.map((item) => item.file.split(".").pop()?.toLowerCase()).filter(Boolean));
-    for (const ext of ["md", "html", "epub", "pdf"]) {
+    for (const ext of exportFormats) {
       if (!byExt.has(ext)) errors.push(`Missing ${ext.toUpperCase()} export. Run npm run export.`);
     }
   }
 
+}
+
+function requiredExportFormats(rawOptions) {
+  const formats = splitList(rawOptions["export-formats"] ?? "md,html,epub,pdf");
+  const allowed = new Set(["md", "html", "epub", "pdf"]);
+  if (!formats.length) {
+    console.error("At least one export format is required.");
+    process.exit(2);
+  }
+  for (const format of formats) {
+    if (!allowed.has(format)) {
+      console.error(`Unsupported export format: ${format}`);
+      process.exit(2);
+    }
+  }
+  return [...new Set(formats)];
+}
+
+function exportArgs(rawOptions, formats) {
+  const args = ["--quiet", "--formats", formats.join(",")];
+  if (rawOptions["include-todo-exports"]) args.push("--include-todo");
+  if (rawOptions["export-slug"]) args.push("--slug", rawOptions["export-slug"]);
+  if (rawOptions["export-out"]) args.push("--out", rawOptions["export-out"]);
+  return args;
 }
 
 function runNode(args, { capture, cwd = process.cwd() }) {
@@ -159,9 +187,12 @@ function parseArgs(args) {
   for (let i = 0; i < args.length; i += 1) {
     const arg = args[i];
     if (!arg.startsWith("--")) continue;
-    const key = arg.slice(2);
+    const equalsIndex = arg.indexOf("=");
+    const key = equalsIndex === -1 ? arg.slice(2) : arg.slice(2, equalsIndex);
     const next = args[i + 1];
-    if (next && !next.startsWith("--")) {
+    if (equalsIndex !== -1) {
+      parsed[key] = arg.slice(equalsIndex + 1);
+    } else if (next && !next.startsWith("--")) {
       parsed[key] = next;
       i += 1;
     } else {
@@ -174,6 +205,22 @@ function parseArgs(args) {
 function normalizeOptions(options) {
   if (options["no-export"]) options["skip-exports"] = true;
   return options;
+}
+
+function splitList(value) {
+  return String(value)
+    .split(",")
+    .map((item) => item.trim().toLowerCase())
+    .filter(Boolean);
+}
+
+function childSummary(result) {
+  const text = `${result.stderr ?? ""}\n${result.stdout ?? ""}`
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean)
+    .find((line) => !line.startsWith("Traceback "));
+  return text ? `: ${text}` : "";
 }
 
 function printText(result) {
@@ -206,11 +253,17 @@ Checks:
   - no open or deferred issues remain
   - latest persisted review runs have no errors
   - active project filesystem is synced and verified under projects/active/
-  - MD, HTML, EPUB, and PDF exports exist unless --skip-exports is set
+  - configured export formats exist unless --skip-exports is set
 
 Options:
   --skip-exports     Do not require readable exports
   --no-export        Alias for --skip-exports
+  --export-formats md,html,epub,pdf
+                     Export formats required by this run. Default: md,html,epub,pdf
+  --export-slug name Override export filename stem for the regenerated exports
+  --export-out dir   Override export output directory
+  --include-todo-exports
+                     Include todo draft shells when regenerating exports
   --require-done     Require every active section status to be done
   --warn-review-errors
                      Report persisted review run errors as warnings instead of failures

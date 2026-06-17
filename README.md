@@ -134,7 +134,7 @@ npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
 npx mlab report --write
 npx mlab export --formats md,html --include-todo --slug my-whitepaper
-npx mlab done:no-export
+npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
 Install-anywhere init writes `manuscript-lab.config.json` plus user-owned files
@@ -143,11 +143,12 @@ under `manuscript/`. It does not copy package `scripts/`, `checks/`, `reviews/`,
 
 The current install-anywhere surface covers deterministic local work: validate,
 status, compose, static checks, claims/citations/evidence, gates, reports,
-typed review runs, `review:report`, `done:no-export`, and Markdown/HTML export.
-It also includes root-aware candidate-loop command routing for accepted issues,
-candidate generation, candidate comparison, taste gates, merge previews, and
-diff audits. Template project switching and EPUB/PDF-oriented `done` remain
-template-first while the installed CLI matures.
+typed review runs, `review:report`, Markdown/HTML export, and `done` with
+configurable export requirements. It also includes root-aware candidate-loop
+command routing for accepted issues, candidate generation, candidate
+comparison, taste gates, merge previews, and diff audits. Template project
+switching, one-off `npx`, global install, and registry smokes remain before npm
+publishing.
 
 ## Daily Loop
 

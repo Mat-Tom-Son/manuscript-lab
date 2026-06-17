@@ -16,6 +16,13 @@
 - Added non-network installed-tarball smoke coverage for the model-shaped
   revision chain: candidate generation, comparison, taste gate, and diff audit
   from a nested `draft/` directory.
+- Made `mlab done` configurable for install-anywhere release gates with
+  `--export-formats`, `--export-slug`, `--export-out`, and
+  `--include-todo-exports`, while keeping the default reader-export expectation
+  at Markdown, HTML, EPUB, and PDF.
+- Added installed-tarball smoke coverage for running full `done` with
+  Markdown/HTML exports from the workspace root, manuscript root, and nested
+  `draft/` directory.
 
 ## 0.7.1 - 2026-06-17
 
