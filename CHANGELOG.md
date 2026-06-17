@@ -2,6 +2,14 @@
 
 ## Unreleased
 
+- Made `mlab review:run` root-aware in packed install-anywhere workspaces,
+  loading bundled review suites, model panels, and prompts from the package
+  while writing review artifacts and issue-ledger updates under the configured
+  manuscript root.
+- Added installed-tarball smoke coverage for `review:run --dry-run` from the
+  workspace root, manuscript root, and nested `draft/` directory, plus a
+  non-network mocked review run that saves artifacts and imports ledger issues.
+
 ## 0.7.1 - 2026-06-17
 
 - Loaded local `.env` values in `mlab doctor` so provider-key diagnostics match
