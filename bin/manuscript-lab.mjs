@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
@@ -10,6 +11,7 @@ const packageRoot = path.resolve(here, "..");
 const args = process.argv.slice(2);
 const command = args[0] || "help";
 const rest = args[1] === "--" ? args.slice(2) : args.slice(1);
+const pkg = readPackageJson();
 
 const commands = {
   "check": ["scripts/doccheck.mjs"],
@@ -72,6 +74,11 @@ const templateOnlyCommands = new Set([
 
 if (command === "help" || command === "--help" || command === "-h") {
   printHelp();
+  process.exit(0);
+}
+
+if (command === "version" || command === "--version" || command === "-v") {
+  printVersion(rest);
   process.exit(0);
 }
 
@@ -138,6 +145,23 @@ function refuseTemplateOnlyCommand(commandName, discovery, commandArgs) {
   process.exit(2);
 }
 
+function readPackageJson() {
+  try {
+    return JSON.parse(fs.readFileSync(path.join(packageRoot, "package.json"), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+function printVersion(commandArgs) {
+  const version = pkg.version ?? "0.0.0";
+  if (commandArgs.includes("--json")) {
+    console.log(JSON.stringify({ name: pkg.name ?? "manuscript-lab", version }, null, 2));
+  } else {
+    console.log(version);
+  }
+}
+
 function printHelp() {
   console.log(`manuscript-lab - file-based writing harness
 
@@ -146,6 +170,7 @@ Usage:
   mlab <command> [args]
 
 Common commands:
+  version
   init --profile whitepaper --root manuscript --title "My Whitepaper"
   project:init --title "My Project" --slug my-project --sections 4 --kind document.section
   validate

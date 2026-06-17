@@ -10,6 +10,7 @@ import { spawnSync } from "node:child_process";
 const repoRoot = process.cwd();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-install-init-"));
 const npmCommand = process.platform === "win32" ? "npm.cmd" : "npm";
+const packageVersion = JSON.parse(fs.readFileSync(path.join(repoRoot, "package.json"), "utf8")).version;
 
 try {
   testLocalWrapperInstallInit();
@@ -152,6 +153,59 @@ function testInstalledTarball() {
   assertEvidenceAndGate(path.join(workspace, "manuscript", "draft"), installedRunner);
   assertInstalledCommandSurface(workspace, installedRunner);
   assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, installedRunner);
+  assertGlobalPrefixInstall(tarball);
+}
+
+function assertGlobalPrefixInstall(tarball) {
+  const prefix = path.join(tmp, "global-prefix");
+  const workspace = path.join(tmp, "global-workspace");
+  mkdir(prefix);
+  mkdir(workspace);
+
+  const install = spawnSync(npmCommand, ["install", "--global", "--prefix", prefix, "--no-audit", "--no-fund", "--ignore-scripts", tarball], {
+    cwd: tmp,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+  assert.equal(install.status, 0, install.stderr || install.stdout);
+
+  const runner = (args, { cwd }) => runGlobalMlab(args, { cwd, prefix });
+
+  const help = runner(["help"], { cwd: tmp });
+  assert.equal(help.status, 0, help.stderr || help.stdout);
+  assert.match(help.stdout, /install-anywhere alpha/i);
+
+  const version = assertJsonCommand(runner, ["version", "--json"], { cwd: tmp });
+  assert.equal(version.name, "manuscript-lab");
+  assert.equal(version.version, packageVersion);
+
+  const doctor = assertJsonCommand(runner, ["doctor", "--no-project", "--no-network", "--json"], { cwd: tmp });
+  assert.equal(doctor.ok, true, JSON.stringify(doctor, null, 2));
+  assert.equal(doctor.summary.failures, 0);
+  assert(doctor.checks.some((check) => check.id === "workspace.project" && check.status === "info"));
+
+  const init = assertJsonCommand(
+    runner,
+    ["init", "--profile", "whitepaper", "--root", "manuscript", "--title", "Global Prefix Project", "--sections", "1", "--json"],
+    { cwd: workspace },
+  );
+  assert.equal(init.ok, true);
+  assert.equal(init.mode, "installed");
+
+  assertProjectScaffold(workspace);
+  assertNoPackageScaffoldCopied(workspace);
+  assertValidateWorksFrom(workspace, runner);
+  assertValidateWorksFrom(path.join(workspace, "manuscript", "draft"), runner);
+  assertEvidenceAndGate(path.join(workspace, "manuscript", "draft"), runner);
+
+  const refused = runner(["project:init", "--json"], { cwd: workspace });
+  assert.equal(refused.status, 2, refused.stderr || refused.stdout);
+  const parsed = JSON.parse(refused.stdout);
+  assert.equal(parsed.ok, false);
+  assert.equal(parsed.mode, "installed");
+  assert.match(parsed.error, /template-clone only/i);
+  assert.equal(fs.existsSync(path.join(workspace, "projects")), false, "global template command should not create projects/");
+  assert.equal(fs.existsSync(path.join(prefix, "projects")), false, "global template command should not write under the prefix");
 }
 
 function assertProjectScaffold(workspace) {
@@ -722,6 +776,15 @@ function runMlab(args, { cwd }) {
 
 function runInstalledMlab(args, { cwd, installRoot = cwd }) {
   const bin = path.join(installRoot, "node_modules", ".bin", process.platform === "win32" ? "mlab.cmd" : "mlab");
+  return spawnSync(bin, args, {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function runGlobalMlab(args, { cwd, prefix }) {
+  const bin = path.join(prefix, process.platform === "win32" ? "mlab.cmd" : "bin/mlab");
   return spawnSync(bin, args, {
     cwd,
     encoding: "utf8",

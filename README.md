@@ -117,7 +117,7 @@ The repository root then points to that workspace with symlinks such as
 
 There is also an install-anywhere alpha for external writing repos. It is tested
 from a packed local package, but npm registry publishing remains disabled until
-global/registry smokes, migration, and one-off `npx` behavior are ready.
+registry/one-off `npx` behavior and migration are ready.
 
 ```bash
 mkdir my-whitepaper

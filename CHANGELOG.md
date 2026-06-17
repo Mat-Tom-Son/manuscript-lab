@@ -5,6 +5,9 @@
 - Tightened public contributor guidance with the full verification gate,
   package-boundary checks, current install-anywhere examples, and `done`
   export-format command documentation.
+- Added `mlab version` / `mlab --version`, project-free
+  `mlab doctor --no-project`, and packed-tarball temporary-prefix global install
+  smoke coverage for help/version/doctor/init/validate/gate/refusal behavior.
 
 ## 0.8.0 - 2026-06-17
 

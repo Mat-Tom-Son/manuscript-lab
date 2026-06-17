@@ -2,9 +2,11 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { spawnSync } from "node:child_process";
 
 const root = process.cwd();
+const packageRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const options = parseArgs(process.argv.slice(2));
 const checks = [];
 
@@ -55,7 +57,7 @@ function checkRequiredHarnessFiles() {
     "skills/codex/manuscript-lab/SKILL.md",
     ".pi/skills/longform-writing/SKILL.md",
   ];
-  const missing = required.filter((file) => !fs.existsSync(abs(file)));
+  const missing = required.filter((file) => !fs.existsSync(packageAbs(file)));
   add(missing.length ? "fail" : "pass", "harness.files", "Reusable harness files", missing.length ? `Missing: ${missing.join(", ")}` : "Required files are present.");
 }
 
@@ -69,6 +71,11 @@ function checkGit() {
 }
 
 function checkIgnoredPrivatePaths() {
+  if (options["no-project"]) {
+    add("info", "gitignore.private_paths", "Private/generated path ignore rules", "Skipped because --no-project was set.");
+    return;
+  }
+
   const privatePaths = [
     ".env",
     ".doccheck/",
@@ -99,6 +106,11 @@ function checkIgnoredPrivatePaths() {
 }
 
 function checkProjectWorkspace() {
+  if (options["no-project"]) {
+    add("info", "workspace.project", "Project workspace", "Skipped because --no-project was set.");
+    return;
+  }
+
   const transitionFile = abs("state/.transition.json");
   if (fs.existsSync(transitionFile)) {
     add("fail", "workspace.transition", "Workspace transition marker", "state/.transition.json exists. Inspect with npm run story -- transition-status --json.");
@@ -148,12 +160,17 @@ function checkModelEnvironment() {
 }
 
 function checkPackagePosture() {
-  const pkg = loadJson("package.json", {});
+  const pkg = loadJson(packageAbs("package.json"), {});
   add(pkg.private === true ? "pass" : "warn", "package.private", "npm publishing posture", pkg.private === true ? "package.json is private; template-first release is protected from accidental npm publish." : "package.json is publishable. Confirm installed-package workflow is ready before publishing.");
   add(pkg.bin ? "pass" : "info", "package.bin", "Local wrapper", pkg.bin ? `Wrapper commands: ${Object.keys(pkg.bin).join(", ")}` : "No bin wrapper configured.");
 }
 
 function checkGitHubRemote() {
+  if (options["no-project"]) {
+    add("info", "github.remote", "GitHub remote", "Skipped because --no-project was set.");
+    return;
+  }
+
   if (!commandExists("gh")) {
     add("info", "github.cli", "GitHub CLI", "`gh` is not installed or not on PATH.");
     return;
@@ -230,6 +247,10 @@ function abs(file) {
   return path.isAbsolute(file) ? file : path.join(root, file);
 }
 
+function packageAbs(file) {
+  return path.isAbsolute(file) ? file : path.join(packageRoot, file);
+}
+
 function loadLocalEnv() {
   const file = abs(".env");
   if (!fs.existsSync(file)) return;
@@ -250,12 +271,13 @@ function stripEnvQuotes(value) {
 }
 
 function parseArgs(args) {
-  const parsed = { help: false, json: false, strict: false, "no-network": false };
+  const parsed = { help: false, json: false, strict: false, "no-network": false, "no-project": false };
   for (const arg of args) {
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--json") parsed.json = true;
     else if (arg === "--strict") parsed.strict = true;
     else if (arg === "--no-network") parsed["no-network"] = true;
+    else if (arg === "--no-project") parsed["no-project"] = true;
     else fail(`Unknown option: ${arg}`);
   }
   return parsed;
@@ -277,6 +299,7 @@ Options:
   --json        Print machine-readable output.
   --strict      Exit nonzero when warnings are present.
   --no-network  Skip GitHub CLI remote inspection.
+  --no-project  Skip project/workspace checks for global or one-off CLI diagnostics.
   --help, -h    Show this help.
 `);
 }

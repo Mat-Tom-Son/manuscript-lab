@@ -16,8 +16,8 @@ Manuscript Lab is template-first with an install-anywhere alpha.
 - The local `manuscript-lab` / `mlab` wrapper supports template clones and the
   config-first init path.
 - Existing `npm run ...` commands stay canonical for template users.
-- npm registry publishing remains disabled until registry/global smokes,
-  migration, and one-off `npx` behavior are ready.
+- npm registry publishing remains disabled until registry/one-off `npx`
+  behavior and migration are ready.
 
 The install-anywhere target is a package-assets CLI, not a postinstall copy of
 the whole harness.
@@ -37,8 +37,8 @@ Unsupported choices:
 - No postinstall script that mutates the current directory.
 - No global package that assumes the global install directory is the project
   root.
-- No npm publish until root-aware command coverage includes registry/global
-  install smokes, migration, and a deliberate decision about installed
+- No npm publish until root-aware command coverage includes registry/one-off
+  `npx` behavior, migration, and a deliberate decision about installed
   multi-project switching.
 
 ## Current Template-First Workflow
@@ -159,7 +159,7 @@ npx mlab merge:winner draft/01-intro.md --run <candidate-run-id> --apply --audit
 ```
 
 The target CLI should later grow to the full command family, including richer
-`doctor`, migration, and global/one-off `npx` smokes. Template project
+`doctor`, migration, and registry/one-off `npx` smokes. Template project
 switching commands are compatibility commands for template clones; in installed
 or no-project contexts, the wrapper refuses them instead of creating legacy
 `projects/` state in the caller workspace.
@@ -170,9 +170,9 @@ Behavior by install mode:
   default docs/CI path.
 - one-off `npx`: allowed for `init`, `doctor`, `validate`, and help commands,
   but should warn when no project-local dependency exists.
-- global install: allowed for interactive use, but should prefer a local
-  `node_modules/.bin/mlab` when it finds one in the workspace so project CI and
-  local shells use the same version.
+- global install: smoke-tested from a temporary npm prefix for project-free
+  diagnostics, config-first init, validation, evidence gates, and template-only
+  command refusal. Project-local installs remain the reproducible CI path.
 
 Useful failure modes:
 
@@ -379,7 +379,6 @@ The test must assert:
 Additional required tests before npm publishing:
 
 - one-off `npx` smoke for `help`, `version`, `init`, and `doctor`
-- global-install smoke using a temporary npm prefix
 - config-root-aware smoke for `doctor`, model-backed `review:run`,
   model-backed candidate generation/comparison/taste/diff-audit calls, full
   `done` export gates, and template-only command refusal
@@ -435,11 +434,11 @@ This design plus the v0.8 alpha closes the first implementation slices of issue
 - global install remains a convenience layer, not the reproducible project
   workflow
 - npm publishing remains unsupported until installed-package coverage includes
-  registry/global smokes, migration, and one-off `npx` behavior
+  registry/one-off `npx` behavior and migration
 
-The next implementation follow-up should make migration, one-off `npx`, and
-temporary-prefix global install paths respect the same root-discovery/config
-layer already used by validate, evidence, citations, gate, status, compose,
-check, review-report, report generation, review-run, Markdown/HTML export,
-configurable `done` export gates, export manifests, template-only command
-refusal, and the candidate/revision command surface.
+The next implementation follow-up should make migration and one-off `npx` paths
+respect the same root-discovery/config layer already used by validate,
+evidence, citations, gate, status, compose, check, review-report, report
+generation, review-run, Markdown/HTML export, configurable `done` export gates,
+export manifests, template-only command refusal, temporary-prefix global
+installs, and the candidate/revision command surface.
