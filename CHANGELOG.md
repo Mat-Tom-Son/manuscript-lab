@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+- Tightened public contributor guidance with the full verification gate,
+  package-boundary checks, current install-anywhere examples, and `done`
+  export-format command documentation.
+
 ## 0.8.0 - 2026-06-17
 
 - Made `mlab review:run` root-aware in packed install-anywhere workspaces,

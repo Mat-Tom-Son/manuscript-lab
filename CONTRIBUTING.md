@@ -15,6 +15,8 @@ Run:
 npm test
 npm run template:audit -- --strict
 npm run context:audit -- --strict
+npm run doctor -- --no-network
+npm pack --dry-run
 ```
 
 If you need to scan for private project fingerprints, put them in an ignored
@@ -55,10 +57,14 @@ When editing reusable scripts:
 
 ```bash
 npm test
+npm run doctor -- --no-network
 ```
 
 Add focused tests when changing shared behavior, project workspace behavior,
 model routing, review imports, candidate merging, or export logic.
+
+Run `npm pack --dry-run` when package contents, CLI behavior, examples, docs,
+skills, or published assets change.
 
 ## Writing Workflow Changes
 
@@ -70,3 +76,20 @@ update the relevant docs and Pi adapter files together:
 - `docs/OPERATOR_GUIDE.md`
 - `.pi/skills/`
 - `.pi/prompts/`
+
+## Pull Request Checklist
+
+Before opening a public PR, run the smallest focused test for your change and,
+unless the change is truly docs-only, the public repo gate:
+
+```bash
+npm test
+npm run template:audit -- --strict
+npm run context:audit -- --strict
+npm run doctor -- --no-network
+npm pack --dry-run
+```
+
+For install-anywhere or package-boundary changes, make sure
+`node scripts/install-init.test.mjs` passes. For agent/prompt/review changes,
+make sure the context and template audits pass before requesting review.

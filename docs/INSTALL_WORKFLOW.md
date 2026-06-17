@@ -1,10 +1,11 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." v0.6 extends the installed-package alpha: config-first `mlab init`
-plus deterministic validation, evidence, citation, gate, status, compose,
-static check, report generation, review-report, configurable `done` gates, and
-Markdown/HTML export plus manifest smoke coverage from a packed tarball.
+workflow." v0.8 extends the installed-package alpha: config-first `mlab init`;
+deterministic validation, evidence, citation, gate, status, compose, static
+check, report generation, review-report, configurable `done` gates, and
+Markdown/HTML export; and model-shaped review/revision smoke coverage from a
+packed tarball.
 
 ## Decision
 
@@ -16,8 +17,7 @@ Manuscript Lab is template-first with an install-anywhere alpha.
   config-first init path.
 - Existing `npm run ...` commands stay canonical for template users.
 - npm registry publishing remains disabled until registry/global smokes,
-  migration, and the remaining model-heavy command surface can operate cleanly
-  from an external workspace.
+  migration, and one-off `npx` behavior are ready.
 
 The install-anywhere target is a package-assets CLI, not a postinstall copy of
 the whole harness.
@@ -72,7 +72,7 @@ The alpha adoption path from a packed local package is:
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.6.0.tgz
+npm install -D /path/to/manuscript-lab-0.8.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -426,7 +426,7 @@ Recommended release line:
 
 ## Close Criteria For Issue #2
 
-This design plus the v0.6 alpha closes the first implementation slices of issue
+This design plus the v0.8 alpha closes the first implementation slices of issue
 #2:
 
 - npm install should operate from package assets, with `init` writing only
@@ -435,8 +435,7 @@ This design plus the v0.6 alpha closes the first implementation slices of issue
 - global install remains a convenience layer, not the reproducible project
   workflow
 - npm publishing remains unsupported until installed-package coverage includes
-  registry/global smokes, migration, and the remaining model/revision command
-  surface
+  registry/global smokes, migration, and one-off `npx` behavior
 
 The next implementation follow-up should make migration, one-off `npx`, and
 temporary-prefix global install paths respect the same root-discovery/config
