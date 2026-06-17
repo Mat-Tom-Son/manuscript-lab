@@ -25,6 +25,19 @@ status
 
 ## Primitives
 
+### CLI Diagnostics
+
+```bash
+node bin/manuscript-lab.mjs version
+node bin/manuscript-lab.mjs version --json
+node bin/manuscript-lab.mjs doctor --no-project --no-network --json
+```
+
+`version` is project-free and reports the package being executed. `doctor
+--no-project` checks package assets and local tool dependencies without
+requiring a Manuscript Lab workspace, which makes it useful for global or
+one-off-style CLI diagnostics.
+
 ### Story Workspace
 
 ```bash

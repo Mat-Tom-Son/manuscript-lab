@@ -85,6 +85,8 @@ feel locked to one agent UI?"
 - Guarded template-only project/workspace commands so installed-mode users do
   not accidentally create legacy `projects/` workspaces outside a template
   clone root.
+- Added project-free version/doctor commands and temporary-prefix global install
+  smoke coverage from a packed tarball.
 - Made the technical-whitepaper fixture a config-first project so the demo can
   be inspected without mounting it as the active template project.
 - Updated `.gitignore` so user writing work does not accidentally become public.
@@ -96,8 +98,7 @@ feel locked to one agent UI?"
 - License: MIT.
 - First release shape: GitHub template-style public repo.
 - npm publishing: intentionally disabled for now with `private: true` until
-  registry/global install smokes, migration, and one-off `npx` behavior are
-  ready.
+  registry/one-off `npx` behavior and migration are ready.
 - User project files: ignored by default so the public repo contains the harness,
   not someone's manuscript.
 - Product lane: local CI for prose, not an AI book generator. See
@@ -114,7 +115,7 @@ The main mismatch is packaging maturity. The repo is template-first with an
 install-anywhere alpha; the deterministic local command loop, unified local
 report, configurable export-oriented done gate, model/revision command surface,
 and template-only command refusal now work in external writing repositories.
-Migration, one-off `npx`, global install smokes, and any future installed
+Migration, registry/one-off `npx` behavior, and any future installed
 multi-project workflow are not yet stable as installed-package workflows.
 
 ## Remaining Gaps
@@ -127,7 +128,7 @@ multi-project workflow are not yet stable as installed-package workflows.
 - Broaden evidence commands from deterministic Markdown registers into richer
   claim/source records and issue integration from `docs/EVIDENCE_SPINE.md`.
 - Better distinction between optional agent integrations and portable npm usage.
-- One-off `npx` and global-install smokes once npm publishing is enabled.
+- Registry/one-off `npx` smokes once npm publishing is enabled.
 - Decide whether installed multi-project switching should exist; current
   `project:*` and `story:*` commands are guarded as template-only compatibility.
 
@@ -141,6 +142,6 @@ multi-project workflow are not yet stable as installed-package workflows.
 
 1. Keep the GitHub repo template-friendly and contributor-safe.
 2. Keep the technical-whitepaper fixture current as the public demo path.
-3. Mature migration, one-off `npx`, and temporary-prefix global install smokes.
+3. Mature migration and registry/one-off `npx` smokes.
 4. Keep npm publishing disabled until those smokes and the protocol migration
    story are boring.
