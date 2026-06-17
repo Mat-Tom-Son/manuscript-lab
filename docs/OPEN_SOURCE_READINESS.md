@@ -79,6 +79,9 @@ feel locked to one agent UI?"
 - Added export manifests so every successful export has input/output hashes,
   file sizes, formats, source commit when available, git dirty state, and
   chapter metadata.
+- Added configurable `mlab done` export requirements and installed-tarball
+  smoke coverage for running the done gate with generated exports from
+  workspace, manuscript, and nested draft directories.
 - Made the technical-whitepaper fixture a config-first project so the demo can
   be inspected without mounting it as the active template project.
 - Updated `.gitignore` so user writing work does not accidentally become public.
@@ -105,18 +108,19 @@ issue ledger, candidate revisions, comparison, taste gate, diff audit, model
 routing, exports, done gate, optional agent adapters, and local diagnostics.
 
 The main mismatch is packaging maturity. The repo is template-first with an
-install-anywhere alpha; v0.6 covers the deterministic local command loop and a
-unified local report in an external writing repository, and the next slice adds
-root-aware candidate-loop previews and static audited apply. The full
-model/revision/project-switching surface is not yet stable as an installed
-package.
+install-anywhere alpha; the deterministic local command loop, unified local
+report, configurable export-oriented done gate, and model/revision command
+surface now work in external writing repositories. Template project switching,
+migration, one-off `npx`, and global install smokes are not yet stable as
+installed-package workflows.
 
 ## Remaining Gaps
 
 ### Before npm Publishing
 
-- Make full `done` with EPUB/PDF export expectations and template
-  project-switching commands fully config-root aware in installed-package mode.
+- Make template project-switching commands fully config-root aware in
+  installed-package mode, or document them as template-only before npm
+  publishing.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full
   profile/override/export model described in `docs/GATE_ENGINE.md`.
