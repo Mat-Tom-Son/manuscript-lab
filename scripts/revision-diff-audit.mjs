@@ -3,7 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
-import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
@@ -18,6 +18,9 @@ if (options.help) {
 if (!options.before || !options.after) {
   fail("Both --before and --after are required.");
 }
+
+ensureProtocolReady(discovery, { json: options.json });
+prepareModelProviderEnvironment(discovery, paths);
 
 const beforeFile = resolveInputPath(options.before);
 const afterFile = resolveInputPath(options.after);
@@ -47,10 +50,23 @@ let error = "";
 let mode = "static";
 let modelCallId = "";
 let modelCallPath = "";
+let model = null;
+let runtime = null;
 
 if (!options.staticOnly) {
-  const model = diffAuditModel();
-  if (!hasApiKeyForModel(model)) {
+  model = diffAuditModel();
+  const { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } = await import("./lib/model-provider.mjs");
+  runtime = describeModelRuntime(model);
+  if (options.mockResponse) {
+    mode = "static+model";
+    rawOutput = read(resolveInputPath(options.mockResponse));
+    const parseResult = parseModelJson(rawOutput);
+    if (parseResult.ok) {
+      parsed = normalizeAudit(parseResult.value);
+    } else {
+      error = parseResult.error;
+    }
+  } else if (!hasApiKeyForModel(model)) {
     error = `${providerMissingKeyMessage(model)} Saved static audit only.`;
   } else {
     mode = "static+model";
@@ -94,9 +110,9 @@ const result = {
   run_id: runId,
   created_at: timestamp,
   mode,
-  model: mode === "static+model" ? diffAuditModel() : null,
-  provider: mode === "static+model" ? describeModelRuntime(diffAuditModel()).provider : null,
-  resolved_model: mode === "static+model" ? describeModelRuntime(diffAuditModel()).model : null,
+  model: mode === "static+model" ? model : null,
+  provider: mode === "static+model" ? runtime?.provider ?? null : null,
+  resolved_model: mode === "static+model" ? runtime?.model ?? null : null,
   model_call_id: modelCallId,
   model_call_path: modelCallPath,
   target: {
@@ -397,13 +413,14 @@ function parseArgs(rawArgs) {
     model: "",
     temperature: "",
     maxTokens: "",
+    mockResponse: "",
     json: false,
     help: false,
     dryRun: false,
     staticOnly: false,
   };
   const booleanOptions = new Set(["json", "help", "dryRun", "staticOnly"]);
-  const valueOptions = new Set(["before", "after", "out", "issue", "model", "temperature", "maxTokens"]);
+  const valueOptions = new Set(["before", "after", "out", "issue", "model", "temperature", "maxTokens", "mockResponse"]);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
     const arg = rawArgs[index];
@@ -470,6 +487,7 @@ Options:
   --issue issue_id       Optional issue-ledger id that motivated the edit.
   --out dir              Output directory. Default: state/revision-audits/<section-id>.
   --model provider/name  Override model. Prefix with lightning: or openrouter: to route a model.
+  --mock-response file   Use a local JSON response instead of calling a model.
   --static-only          Save static diff signals without calling a model.
   --dry-run              Print the model prompt and exit.
   --json                 Print machine-readable result.

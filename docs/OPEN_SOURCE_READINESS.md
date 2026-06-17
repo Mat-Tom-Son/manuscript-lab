@@ -115,9 +115,8 @@ package.
 
 ### Before npm Publishing
 
-- Make full `done` with EPUB/PDF export expectations, model-backed candidate
-  generation/comparison/taste/diff-audit calls, and template project-switching
-  commands fully config-root aware in installed-package mode.
+- Make full `done` with EPUB/PDF export expectations and template
+  project-switching commands fully config-root aware in installed-package mode.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full
   profile/override/export model described in `docs/GATE_ENGINE.md`.

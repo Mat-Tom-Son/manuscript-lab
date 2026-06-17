@@ -399,8 +399,8 @@ Before the package can be published:
 - `npm run doctor -- --no-network` passes without packaging failures
 - installed-tarball init/validate/evidence/gate/status/compose/check/export
   and export-manifest e2e passes in CI
-- root-aware installed-package smoke covers the remaining model-backed
-  revision command surface
+- root-aware installed-package smoke covers the model-backed revision command
+  surface
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { lockPathFor, writeFileAtomic, writeJsonAtomic, withFileLock } from "./lib/files.mjs";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
+import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
 const options = parseArgs(process.argv.slice(2));
@@ -16,18 +17,8 @@ if (options.help || !options.target) {
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
-if (!discovery.config || discovery.mode === "none" || discovery.errors?.length) {
-  const errors = discovery.errors?.length ? discovery.errors : ["No Manuscript Lab project found."];
-  if (options.json) {
-    console.log(JSON.stringify({ ok: false, errors, warnings: discovery.warnings ?? [] }, null, 2));
-  } else {
-    for (const error of errors) console.error(error);
-  }
-  process.exit(2);
-}
-
-loadEnvFiles([paths.workspaceAbs(".env"), paths.projectAbs(".env")]);
-process.chdir(discovery.manuscriptRoot);
+ensureProtocolReady(discovery, { json: options.json });
+prepareModelProviderEnvironment(discovery, paths);
 
 const { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } = await import("./lib/model-provider.mjs");
 
@@ -1266,28 +1257,6 @@ function normalizeRel(file) {
 
 function read(file) {
   return fs.readFileSync(file, "utf8");
-}
-
-function loadEnvFiles(files) {
-  const seen = new Set();
-  for (const file of files) {
-    const resolved = path.resolve(file);
-    if (seen.has(resolved) || !fs.existsSync(resolved)) continue;
-    seen.add(resolved);
-    for (const line of read(resolved).split(/\r?\n/)) {
-      const trimmed = line.trim();
-      if (!trimmed || trimmed.startsWith("#")) continue;
-      const match = trimmed.match(/^([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
-      if (!match || process.env[match[1]] !== undefined) continue;
-      process.env[match[1]] = stripEnvQuotes(match[2].trim());
-    }
-  }
-}
-
-function stripEnvQuotes(value) {
-  const quote = value[0];
-  if ((quote === "\"" || quote === "'") && value.endsWith(quote)) return value.slice(1, -1);
-  return value;
 }
 
 function abs(rel) {

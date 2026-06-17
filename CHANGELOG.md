@@ -9,6 +9,13 @@
 - Added installed-tarball smoke coverage for `review:run --dry-run` from the
   workspace root, manuscript root, and nested `draft/` directory, plus a
   non-network mocked review run that saves artifacts and imports ledger issues.
+- Made model-backed revision commands root-aware in install-anywhere workspaces:
+  `revise:candidates`, `compare:candidates`, `taste:arbiter`, and `diff:audit`
+  now load workspace/project `.env` files before provider setup and default
+  model-call audit ledgers to the configured manuscript root.
+- Added non-network installed-tarball smoke coverage for the model-shaped
+  revision chain: candidate generation, comparison, taste gate, and diff audit
+  from a nested `draft/` directory.
 
 ## 0.7.1 - 2026-06-17
 
