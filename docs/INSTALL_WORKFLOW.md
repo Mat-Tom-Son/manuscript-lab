@@ -1,11 +1,12 @@
 # Install Workflow
 
 This document is the design record for issue #2, "Design npm/global install
-workflow." v0.8 extends the installed-package alpha: config-first `mlab init`;
-deterministic validation, evidence, citation, gate, status, compose, static
-check, report generation, review-report, configurable `done` gates, and
-Markdown/HTML export; and model-shaped review/revision smoke coverage from a
-packed tarball.
+workflow." v0.9 is the current installed-package alpha checkpoint:
+config-first `mlab init`; deterministic validation, evidence, citation, gate,
+status, compose, static check, report generation, review-report, configurable
+`done` gates, Markdown/HTML export, model-shaped review/revision smoke
+coverage from a packed tarball, project-free diagnostics, and temporary-prefix
+global install smoke coverage.
 
 ## Decision
 
@@ -72,7 +73,7 @@ The alpha adoption path from a packed local package is:
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.8.0.tgz
+npm install -D /path/to/manuscript-lab-0.9.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
@@ -378,17 +379,15 @@ The test must assert:
 
 Additional required tests before npm publishing:
 
-- one-off `npx` smoke for `help`, `version`, `init`, and `doctor`
-- config-root-aware smoke for `doctor`, model-backed `review:run`,
-  model-backed candidate generation/comparison/taste/diff-audit calls, full
-  `done` export gates, and template-only command refusal
+- registry/one-off `npx` smoke for `help`, `version`, `init`, `doctor`,
+  `validate`, and a minimal gate/report loop from the published package
+- project-local dependency smoke that matches the future public registry path:
+  `npm install -D manuscript-lab`, `npx mlab validate`, `npx mlab check`,
+  `npx mlab gate draft/01-opening.md --json`
 - config schema validation and unknown-key behavior
 - legacy template-mode smoke so template-first usage does not regress
 - migration dry-run fixture and apply fixture
 - Windows path fixture for root discovery and configured relative paths
-- CI fixture matching the future public registry path:
-  `npm install -D manuscript-lab`, `npx mlab validate`, `npx mlab check`,
-  `npx mlab gate draft/01-opening.md --json`
 
 ## Release Gates
 
@@ -420,12 +419,16 @@ Recommended release line:
 - `0.3.x`: deterministic protocol, evidence, and gate commands
 - `0.4.x`: install-anywhere init alpha behind documented caveats
 - `0.5.x`: root-aware installed deterministic command loop
+- `0.6.x`: export manifests and unified reports
+- `0.7.x`: candidate arena root-awareness
+- `0.8.x`: review/revision/done installed-mode hardening
+- `0.9.x`: contributor-ready diagnostics and global-install smoke coverage
 - `1.0.0`: stable file protocol, installed CLI, gate engine, evidence checks,
   export manifests with provenance, and CI-ready `npx mlab`
 
 ## Close Criteria For Issue #2
 
-This design plus the v0.8 alpha closes the first implementation slices of issue
+This design plus the v0.9 alpha closes the first implementation slices of issue
 #2:
 
 - npm install should operate from package assets, with `init` writing only

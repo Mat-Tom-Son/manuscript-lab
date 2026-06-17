@@ -2,6 +2,8 @@
 
 ## Unreleased
 
+## 0.9.0 - 2026-06-17
+
 - Tightened public contributor guidance with the full verification gate,
   package-boundary checks, current install-anywhere examples, and `done`
   export-format command documentation.

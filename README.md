@@ -123,7 +123,7 @@ registry/one-off `npx` behavior and migration are ready.
 mkdir my-whitepaper
 cd my-whitepaper
 npm init -y
-npm install -D /path/to/manuscript-lab-0.8.0.tgz
+npm install -D /path/to/manuscript-lab-0.9.0.tgz
 npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
