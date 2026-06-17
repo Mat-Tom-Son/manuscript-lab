@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.0.2 - 2026-06-17
+
+- Aligned public release docs with the published npm package and GitHub release:
+  added npm/GitHub/CI badges, deleted the old v1 branch plan, and removed stale
+  pre-publish language from install docs.
+
 ## 1.0.1 - 2026-06-17
 
 - Fixed project-free `mlab doctor --no-network` so public one-off registry
@@ -10,7 +16,7 @@
 
 - Removed migration from the v1/npm-publishing path; v1 now assumes fresh
   config-first installed projects while preserving template-clone compatibility.
-- Added a v1 release plan, stronger config validation, project-free validation
+- Added v1 release scope notes, stronger config validation, project-free validation
   hints, project-local install smoke coverage, and local one-off `npm exec`
   package smoke coverage.
 - Added public CLI aliases for review, revision, comparison, merge, and audit
@@ -158,7 +164,7 @@
 
 ## 0.1.0
 
-Initial public-ready release candidate.
+Initial public-ready release checkpoint.
 
 - Extracted reusable writing harness from a live document workspace.
 - Added runtime context packets, static and model-backed checks, typed reviews,

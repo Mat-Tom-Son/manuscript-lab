@@ -611,5 +611,5 @@ Recommended release line:
 - `0.3.x`: installable package workflow
 - `0.4.x`: gate engine and profile validation
 - `0.5.x`: claim/source spine
-- `1.0.0`: stable protocol, install-anywhere CLI, gates, issues, candidates,
+- `1.0.x`: stable protocol, install-anywhere CLI, gates, issues, candidates,
   evidence checks, export manifests, and CI workflow

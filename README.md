@@ -1,5 +1,9 @@
 # Manuscript Lab
 
+[![npm version](https://img.shields.io/npm/v/manuscript-lab.svg)](https://www.npmjs.com/package/manuscript-lab)
+[![GitHub release](https://img.shields.io/github/v/release/Mat-Tom-Son/manuscript-lab)](https://github.com/Mat-Tom-Son/manuscript-lab/releases/latest)
+[![CI](https://github.com/Mat-Tom-Son/manuscript-lab/actions/workflows/ci.yml/badge.svg)](https://github.com/Mat-Tom-Son/manuscript-lab/actions/workflows/ci.yml)
+
 Manuscript Lab is local CI for prose.
 
 It is a file-based workflow for making long-form writing reviewable,
@@ -47,6 +51,19 @@ Requirements:
 - No npm dependencies are required
 - Full EPUB/PDF export additionally needs `zip`, `python3`, and the Python
   `reportlab` package. Markdown/HTML export works without those.
+
+Install from npm when you want Manuscript Lab inside an existing writing repo:
+
+```bash
+npm install -D manuscript-lab
+npx mlab --version
+```
+
+The public package is
+[`manuscript-lab`](https://www.npmjs.com/package/manuscript-lab). The matching
+source release is published on
+[GitHub Releases](https://github.com/Mat-Tom-Son/manuscript-lab/releases/latest),
+with user-visible changes tracked in `CHANGELOG.md`.
 
 Fastest demo:
 
@@ -116,8 +133,9 @@ The repository root then points to that workspace with symlinks such as
 `brief.md`, `draft/`, `state/`, `taste/`, and `exports/`.
 
 The install-anywhere workflow supports external writing repos with Manuscript Lab
-as a dev dependency. Local release-candidate testing uses a packed package; the
-public registry smoke runs after npm auth is available.
+as a dev dependency. The published package is tested both as a one-off
+`npm exec --package=manuscript-lab -- mlab ...` command and as a project-local
+`npm install -D manuscript-lab && npx mlab ...` dependency.
 
 ```bash
 mkdir my-whitepaper
@@ -148,7 +166,6 @@ configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
 comparison, taste gates, merge previews, and diff audits. Template project
 switching commands are guarded as template-clone compatibility commands.
-The remaining account-bound release check is the public registry smoke.
 
 ## Daily Loop
 
@@ -255,7 +272,6 @@ are ignored by default so the public repo stays reusable.
 
 ## Important Docs
 
-- `docs/V1_RELEASE_PLAN.md`: active v1 branch scope and integration gates
 - `docs/GETTING_STARTED.md`: first-project walkthrough
 - `docs/CODEX_SKILLS.md`: installing and using the Codex skill
 - `docs/PRODUCT_STRATEGY.md`: positioning and product roadmap
