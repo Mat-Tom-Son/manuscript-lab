@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.3 - 2026-06-17
+
+- Cleaned public changelog wording so the v1 history stays focused on fresh
+  config-first installed projects.
+
 ## 1.0.2 - 2026-06-17
 
 - Aligned public release docs with the published npm package and GitHub release:
@@ -14,8 +19,8 @@
 
 ## 1.0.0 - 2026-06-17
 
-- Removed migration from the v1/npm-publishing path; v1 now assumes fresh
-  config-first installed projects while preserving template-clone compatibility.
+- Set the v1/npm-publishing path around fresh config-first installed projects
+  while preserving template-clone compatibility.
 - Added v1 release scope notes, stronger config validation, project-free validation
   hints, project-local install smoke coverage, and local one-off `npm exec`
   package smoke coverage.
