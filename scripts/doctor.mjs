@@ -8,6 +8,8 @@ const root = process.cwd();
 const options = parseArgs(process.argv.slice(2));
 const checks = [];
 
+loadLocalEnv();
+
 if (options.help) {
   printHelp();
   process.exit(0);
@@ -226,6 +228,25 @@ function loadJson(file, fallback) {
 
 function abs(file) {
   return path.isAbsolute(file) ? file : path.join(root, file);
+}
+
+function loadLocalEnv() {
+  const file = abs(".env");
+  if (!fs.existsSync(file)) return;
+  for (const line of fs.readFileSync(file, "utf8").split(/\r?\n/)) {
+    const match = line.match(/^\s*(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
+    if (!match) continue;
+    const key = match[1];
+    if (process.env[key] !== undefined) continue;
+    process.env[key] = stripEnvQuotes(match[2].trim());
+  }
+}
+
+function stripEnvQuotes(value) {
+  if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) {
+    return value.slice(1, -1);
+  }
+  return value;
 }
 
 function parseArgs(args) {

@@ -387,6 +387,8 @@ function readModelCalls() {
 }
 
 function modelLedgerPath() {
+  if (process.env.MODEL_CALL_AUDIT_DIR) return path.join(path.resolve(process.env.MODEL_CALL_AUDIT_DIR), "ledger.jsonl");
+
   const registry = readJsonIfExists(paths.workspaceAbs("projects/registry.json"), null);
   const active = typeof registry?.active === "string" ? registry.active : registry?.active?.slug;
   const project = active ? registry?.projects?.[active] : null;
