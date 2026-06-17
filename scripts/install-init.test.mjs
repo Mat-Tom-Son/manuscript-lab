@@ -4,6 +4,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import crypto from "node:crypto";
 import { spawnSync } from "node:child_process";
 
 const repoRoot = process.cwd();
@@ -213,6 +214,8 @@ function assertInstalledCommandSurface(workspace, runner) {
   const nestedCompose = assertJsonCommand(runner, ["compose", "01-opening.md", "--json"], { cwd: draftRoot });
   assert.equal(nestedCompose.section, "draft/01-opening.md");
 
+  assertInstalledCandidatePreview(workspace, runner);
+
   const exported = assertJsonCommand(runner, ["export", "--formats", "md,html", "--include-todo", "--slug", "packed", "--json"], { cwd: workspace });
   assert.equal(exported.chapters, 1);
   assert.deepEqual(
@@ -253,6 +256,158 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", ".doccheck")), false, "doccheck cache should not write under the package");
 }
 
+function assertInstalledCandidatePreview(workspace, runner) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+  const targetRel = "draft/01-opening.md";
+  const targetFile = path.join(manuscriptRoot, targetRel);
+  const baseText = fs.readFileSync(targetFile, "utf8");
+  const sourceSha256 = sha256(baseText);
+  const issueId = "issue-installed-001";
+
+  writeJsonFile(path.join(manuscriptRoot, "state/issues/issue-ledger.json"), {
+    version: 1,
+    next_id: 2,
+    issues: [
+      {
+        id: issueId,
+        status: "accepted",
+        target: { file: targetRel, section_id: "01-opening" },
+        category: "structure",
+        severity: "minor",
+        claim: "The installed smoke needs a durable accepted issue for candidate preview.",
+        evidence: "Fixture issue inserted by install smoke.",
+        recommended_action: "Create a candidate preview without model calls.",
+        decision: {
+          issue_id: issueId,
+          decision: "accept",
+          reason: "Exercise installed candidate command routing.",
+          revision_instruction: "Add a concise installed-mode verification sentence.",
+          merge_into: "",
+          decided_at: "2026-06-16T00:00:00.000Z",
+        },
+      },
+    ],
+  });
+
+  for (const cwd of [workspace, manuscriptRoot, draftRoot]) {
+    const target = cwd === draftRoot ? "01-opening.md" : targetRel;
+    const issues = runner(["issues", "list", "--status", "accepted"], { cwd });
+    assert.equal(issues.status, 0, issues.stderr || issues.stdout);
+    assert.match(issues.stdout, new RegExp(issueId));
+
+    const revise = runner(["revise:candidates", target, "--issue", issueId, "--dry-run"], { cwd });
+    assert.equal(revise.status, 0, revise.stderr || revise.stdout);
+    assert.match(revise.stdout, /Candidate run dry-run/);
+  }
+
+  const runId = "installed-run-001";
+  const runRel = path.join("state/candidates/01-opening", runId);
+  const runDir = path.join(manuscriptRoot, runRel);
+  mkdir(runDir);
+  const candidateAText = `${baseText.trim()}\n\nThis installed-mode candidate preserves the base draft while adding one preview sentence.\n`;
+  const candidateBText = `${baseText.trim()}\n\nThis alternate installed-mode candidate uses a slightly different preview sentence.\n`;
+  writeText(path.join(runDir, "base.md"), baseText);
+  writeText(path.join(runDir, "candidate-a.md"), candidateAText);
+  writeText(path.join(runDir, "candidate-b.md"), candidateBText);
+  writeJsonFile(path.join(runDir, "issue-context.json"), {
+    version: 1,
+    target: targetRel,
+    issue_ids: [issueId],
+    issues: [{ id: issueId, status: "accepted", target: { file: targetRel, section_id: "01-opening" }, claim: "Installed preview issue." }],
+  });
+  writeJsonFile(path.join(runDir, "manifest.json"), {
+    version: 1,
+    run_id: runId,
+    created_at: "2026-06-16T00:00:00.000Z",
+    target: targetRel,
+    section_id: "01-opening",
+    source_sha256: sourceSha256,
+    status: "generated",
+    n: 2,
+    models: ["manual:installed-smoke"],
+    issue_ids: [issueId],
+    files: {
+      base: `${runRel}/base.md`,
+      issue_context: `${runRel}/issue-context.json`,
+      candidate_meta: `${runRel}/candidate-meta.json`,
+    },
+    candidates: [
+      { candidate_id: "candidate-a", model: "manual:installed-smoke", strategy: "minimal", file: `${runRel}/candidate-a.md`, raw_output_file: "" },
+      { candidate_id: "candidate-b", model: "manual:installed-smoke", strategy: "alternate", file: `${runRel}/candidate-b.md`, raw_output_file: "" },
+    ],
+    completed_at: "2026-06-16T00:00:00.000Z",
+  });
+  writeJsonFile(path.join(runDir, "candidate-meta.json"), {
+    version: 1,
+    run_id: runId,
+    generated_at: "2026-06-16T00:00:00.000Z",
+    target: targetRel,
+    section_id: "01-opening",
+    source_sha256: sourceSha256,
+    candidates: [
+      { candidate_id: "candidate-a", model: "manual:installed-smoke", file: `${runRel}/candidate-a.md`, error: "", summary: "Adds preview sentence." },
+      { candidate_id: "candidate-b", model: "manual:installed-smoke", file: `${runRel}/candidate-b.md`, error: "", summary: "Adds alternate preview sentence." },
+    ],
+  });
+  writeJsonFile(path.join(runDir, "decision.json"), {
+    version: 1,
+    source_candidate_run: runId,
+    decision: "winner_selected",
+    winner: "candidate-a",
+    confidence: "high",
+    reason: "Manual installed smoke winner.",
+  });
+  writeJsonFile(path.join(runDir, "taste-pass.json"), {
+    disposition: "pass",
+    confidence: "high",
+    candidate_id: "candidate-a",
+    rationale: "Installed smoke candidate can apply.",
+    reader_effect: "Keeps the scaffold readable.",
+    voice_integrity: "Preserves the neutral tutorial voice.",
+    section_effect: "Maintains the section job.",
+    future_story_debt: [],
+    blocking_reasons: [],
+    required_patch: "",
+    protected_strengths: ["Concise project setup."],
+  });
+
+  for (const cwd of [workspace, manuscriptRoot, draftRoot]) {
+    const target = cwd === draftRoot ? "01-opening.md" : targetRel;
+    const compare = runner(["compare:candidates", target, "--run", runId, "--dry-run"], { cwd });
+    assert.equal(compare.status, 0, compare.stderr || compare.stdout);
+    assert.match(compare.stdout, /Compare candidates dry-run/);
+
+    const taste = runner(["taste:arbiter", target, "--run", runId, "--dry-run"], { cwd });
+    assert.equal(taste.status, 0, taste.stderr || taste.stdout);
+    assert.match(taste.stdout, /Taste arbiter dry-run/);
+
+    const mergePreview = assertJsonCommand(runner, ["merge:winner", target, "--run", runId, "--json"], { cwd });
+    assert.equal(mergePreview.applied, false);
+    assert.equal(mergePreview.selected_candidate, "candidate-a");
+    assert.equal(mergePreview.files.winner, `${runRel}/winner.md`);
+  }
+
+  const taste = assertJsonCommand(
+    runner,
+    ["taste:arbiter", targetRel, "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.1", "--json"],
+    { cwd: workspace },
+  );
+  assert.equal(taste.gate.disposition, "pass");
+  assert.equal(taste.gate.can_apply, true);
+  assert(fs.existsSync(path.join(runDir, "taste-arbiter.json")));
+
+  const merge = assertJsonCommand(runner, ["merge:winner", "01-opening.md", "--run", runId, "--apply", "--audit", "--static-only", "--json"], { cwd: draftRoot });
+  assert.equal(merge.applied, true);
+  assert.equal(merge.selected_candidate, "candidate-a");
+  assert.equal(merge.audit.status, "ran", JSON.stringify(merge.audit, null, 2));
+  assert(fs.existsSync(path.join(runDir, "winner.md")));
+  assert(fs.existsSync(path.join(runDir, "merge-result.json")));
+  assert(fs.existsSync(path.join(runDir, "before-apply.md")));
+  assert.match(fs.readFileSync(targetFile, "utf8"), /installed-mode candidate preserves the base draft/);
+  assert(fs.existsSync(path.join(manuscriptRoot, "state", "revision-audits", "01-opening")));
+}
+
 function assertJsonCommand(runner, args, { cwd }) {
   const result = runner(args, { cwd });
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -278,4 +433,17 @@ function runInstalledMlab(args, { cwd, installRoot = cwd }) {
 
 function mkdir(dir) {
   fs.mkdirSync(dir, { recursive: true });
+}
+
+function writeText(file, value) {
+  fs.mkdirSync(path.dirname(file), { recursive: true });
+  fs.writeFileSync(file, value, "utf8");
+}
+
+function writeJsonFile(file, value) {
+  writeText(file, `${JSON.stringify(value, null, 2)}\n`);
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(String(value ?? "")).digest("hex");
 }

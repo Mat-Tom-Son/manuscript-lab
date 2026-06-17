@@ -4,8 +4,10 @@ import fs from "node:fs";
 import path from "node:path";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help) {
@@ -28,7 +30,7 @@ const afterContract = parseSectionContract(afterText);
 const sectionId = afterContract?.get("id") || path.basename(afterFile, path.extname(afterFile));
 const timestamp = new Date().toISOString();
 const runId = `diff_audit_${timestamp.replace(/[^0-9]/g, "").slice(0, 14)}_${sectionId.replace(/[^a-z0-9]+/gi, "_")}`;
-const outDir = resolveInputPath(options.out || path.join("state/revision-audits", sectionId));
+const outDir = options.out ? resolveInputPath(options.out) : paths.projectAbs(path.join("state/revision-audits", sectionId));
 fs.mkdirSync(outDir, { recursive: true });
 
 const staticAudit = buildStaticAudit();
@@ -160,7 +162,7 @@ function buildStaticAudit() {
 }
 
 function buildPrompt(staticAudit) {
-  const promptText = read(abs("reviews/prompts/revision-diff-audit.md"));
+  const promptText = read(paths.packageAbs("reviews/prompts/revision-diff-audit.md"));
   const issue = options.issue ? findIssue(options.issue) : null;
   const styleFiles = [
     "style.md",
@@ -436,15 +438,15 @@ function parseArgs(rawArgs) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInputOrCwd(input);
 }
 
 function abs(rel) {
-  return path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function displayPath(file) {
-  return path.relative(root, file).split(path.sep).join("/");
+  return paths.projectRel(file);
 }
 
 function read(file) {

@@ -5,8 +5,10 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help || !options.target) {
@@ -111,7 +113,7 @@ if (options.json) {
 } else {
   console.log(`Comparisons written: ${comparisonDirRel}`);
   console.log(`Decision: ${decision.decision}${decision.winner ? ` (${decision.winner})` : ""}`);
-  if (decision.winner) console.log(`Next: npm run merge:winner -- ${manifest.target} --run ${manifest.run_id}`);
+  if (decision.winner) console.log(`Next: ${cliCommand("merge:winner", [manifest.target, "--run", manifest.run_id])}`);
 }
 
 async function runComparison({ pair, order, model }) {
@@ -349,7 +351,7 @@ function loadCandidates(meta) {
   return (meta.candidates ?? [])
     .filter((candidate) => !candidate.error)
     .map((candidate) => {
-      const file = abs(candidate.file);
+      const file = resolveInputPath(candidate.file);
       return fs.existsSync(file) ? { ...candidate, text: read(file) } : null;
     })
     .filter(Boolean);
@@ -366,7 +368,7 @@ function candidatePairs(items) {
 }
 
 function resolveRunDir(id, requestedRun) {
-  const sectionDir = abs(path.join("state/candidates", id));
+  const sectionDir = resolveInputPath(path.join("state/candidates", id));
   if (requestedRun) {
     const run = path.isAbsolute(requestedRun) ? requestedRun : path.join(sectionDir, requestedRun);
     if (!fs.existsSync(run)) fail(`Candidate run not found: ${requestedRun}`);
@@ -555,7 +557,7 @@ function safeId(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInputOrCwd(input);
 }
 
 function read(file) {
@@ -563,7 +565,7 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function normalizeRel(file) {
@@ -571,7 +573,12 @@ function normalizeRel(file) {
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
+}
+
+function cliCommand(command, commandArgs = []) {
+  const args = commandArgs.filter(Boolean).join(" ");
+  return discovery.mode === "installed" ? `mlab ${command}${args ? ` ${args}` : ""}` : `npm run ${command} --${args ? ` ${args}` : ""}`;
 }
 
 function fail(message) {

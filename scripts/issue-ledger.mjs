@@ -3,8 +3,10 @@
 import fs from "node:fs";
 import path from "node:path";
 import { lockPathFor, withFileLock, writeJsonAtomic } from "./lib/files.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const args = process.argv.slice(2);
 const command = args[0] ?? "help";
 const rest = args.slice(1);
@@ -236,7 +238,7 @@ function normalizeTargetOption(value) {
   if (!value) return "";
   const raw = String(value);
   if (!raw.endsWith(".md")) return raw;
-  return path.isAbsolute(raw) ? displayPath(raw) : raw.split(path.sep).join("/");
+  return displayPath(paths.resolveProjectInput(raw));
 }
 
 function printHelp() {
@@ -266,7 +268,7 @@ function fail(message) {
 }
 
 function abs(rel) {
-  return path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function issueLedgerLockPath() {
@@ -274,5 +276,5 @@ function issueLedgerLockPath() {
 }
 
 function displayPath(file) {
-  return path.relative(root, file).split(path.sep).join("/");
+  return paths.projectRel(file);
 }

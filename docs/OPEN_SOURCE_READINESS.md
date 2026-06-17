@@ -106,7 +106,8 @@ routing, exports, done gate, optional agent adapters, and local diagnostics.
 
 The main mismatch is packaging maturity. The repo is template-first with an
 install-anywhere alpha; v0.6 covers the deterministic local command loop and a
-unified local report in an external writing repository, but the full
+unified local report in an external writing repository, and the next slice adds
+root-aware candidate-loop previews and static audited apply. The full
 model/revision/project-switching surface is not yet stable as an installed
 package.
 
@@ -115,8 +116,9 @@ package.
 ### Before npm Publishing
 
 - Make `doctor`, full `done` with EPUB/PDF export expectations, model-backed
-  `review:run`, candidate revision commands, and template project-switching
-  commands fully config-root aware in installed-package mode.
+  `review:run`, model-backed candidate generation/comparison/taste/diff-audit
+  calls, and template project-switching commands fully config-root aware in
+  installed-package mode.
 - Implement migration for the draft protocol in `docs/FILE_PROTOCOL.md`.
 - Broaden the gate engine from the initial deterministic gates into the full
   profile/override/export model described in `docs/GATE_ENGINE.md`.

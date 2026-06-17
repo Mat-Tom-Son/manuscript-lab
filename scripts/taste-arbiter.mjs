@@ -5,8 +5,10 @@ import path from "node:path";
 import { createHash } from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const options = parseArgs(process.argv.slice(2));
 
 if (options.help || !options.target) {
@@ -481,7 +483,7 @@ function renderArbiterMarkdown(result) {
 }
 
 function loadTasteContext(rootRel, maxChars) {
-  const rootDir = abs(rootRel);
+  const rootDir = resolveInputPath(rootRel);
   const required = [
     "TASTE.md",
     "VOICE.md",
@@ -550,12 +552,12 @@ function loadCandidate(meta, id) {
   const candidates = Array.isArray(meta.candidates) ? meta.candidates : [];
   const candidate = candidates.find((item) => item.candidate_id === id);
   if (!candidate || candidate.error) return null;
-  const file = abs(candidate.file);
+  const file = resolveInputPath(candidate.file);
   return fs.existsSync(file) ? { ...candidate, text: read(file) } : null;
 }
 
 function resolveRunDir(id, requestedRun, out) {
-  const sectionDir = abs(path.join(out, id));
+  const sectionDir = resolveInputPath(path.join(out, id));
   if (requestedRun) {
     const run = path.isAbsolute(requestedRun) ? requestedRun : path.join(sectionDir, requestedRun);
     if (!fs.existsSync(run)) fail(`Candidate run not found: ${requestedRun}`);
@@ -639,7 +641,7 @@ function parseJsonObject(rawOutput) {
 }
 
 function loadMockResponses(file) {
-  const value = loadJson(abs(file));
+  const value = loadJson(resolveInputPath(file));
   return Array.isArray(value) ? value : [value];
 }
 
@@ -834,7 +836,7 @@ function safeId(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  return paths.resolveProjectInputOrCwd(input);
 }
 
 function read(file) {
@@ -842,7 +844,7 @@ function read(file) {
 }
 
 function abs(rel) {
-  return path.isAbsolute(rel) ? rel : path.join(root, rel);
+  return paths.projectAbs(rel);
 }
 
 function normalizeRel(file) {
@@ -850,7 +852,7 @@ function normalizeRel(file) {
 }
 
 function displayPath(file) {
-  return normalizeRel(path.relative(root, file));
+  return paths.projectRel(file);
 }
 
 function fail(message) {

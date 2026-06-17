@@ -133,7 +133,7 @@ state, sources, exports, and project config under the workspace/manuscript root.
 `manuscript-lab` and `mlab` remain equivalent bin names. `mlab` is the primary
 docs name once npm support is real.
 
-The v0.6 alpha supports the deterministic local loop:
+The current alpha supports the deterministic local loop:
 
 ```bash
 npx mlab status
@@ -145,9 +145,22 @@ npx mlab export --formats md,html --include-todo --slug draft
 npx mlab done:no-export
 ```
 
+It also has root-aware command routing and packed-tarball smoke coverage for the
+first candidate-loop slice:
+
+```bash
+npx mlab issues list --status accepted
+npx mlab revise:candidates draft/01-intro.md --issue issue-001 --dry-run
+npx mlab compare:candidates draft/01-intro.md --run <candidate-run-id> --dry-run
+npx mlab taste:arbiter draft/01-intro.md --run <candidate-run-id> --dry-run
+npx mlab merge:winner draft/01-intro.md --run <candidate-run-id>
+npx mlab merge:winner draft/01-intro.md --run <candidate-run-id> --apply --audit --static-only
+```
+
 The target CLI should later grow to the full command family, including
-model-backed `review:run`, candidate revisions, full `done` with reader export
-expectations, richer `doctor`, migration, and project-switching commands.
+model-backed `review:run`, model-backed candidate generation/judging, full
+`done` with reader export expectations, richer `doctor`, migration, and
+project-switching commands.
 
 Behavior by install mode:
 
@@ -363,8 +376,9 @@ Additional required tests before npm publishing:
 
 - one-off `npx` smoke for `help`, `version`, `init`, and `doctor`
 - global-install smoke using a temporary npm prefix
-- config-root-aware smoke for `doctor`, model-backed `review:run`, candidate
-  revision commands, full `done`, and template project-switching commands
+- config-root-aware smoke for `doctor`, model-backed `review:run`,
+  model-backed candidate generation/comparison/taste/diff-audit calls, full
+  `done`, and template project-switching commands
 - config schema validation and unknown-key behavior
 - legacy template-mode smoke so template-first usage does not regress
 - migration dry-run fixture and apply fixture
@@ -385,8 +399,8 @@ Before the package can be published:
 - `npm run doctor -- --no-network` passes without packaging failures
 - installed-tarball init/validate/evidence/gate/status/compose/check/export
   and export-manifest e2e passes in CI
-- root-aware installed-package smoke covers the remaining model/revision
-  command surface
+- root-aware installed-package smoke covers the remaining model-backed
+  revision command surface
 - temporary-prefix global install smoke passes in CI
 - packlist audit proves private/generated project files are absent
 - README, package docs, and CHANGELOG describe the supported npm workflow
@@ -419,7 +433,8 @@ This design plus the v0.6 alpha closes the first implementation slices of issue
   surface
 
 The next implementation follow-up should make doctor, full done/export
-expectations, review-run, candidate revision, and project-switching paths
-respect the same root-discovery/config layer already used by validate,
-evidence, citations, gate, status, compose, check, review-report, and
-report generation, Markdown/HTML export, and export manifests.
+expectations, review-run, model-backed candidate generation/judging/taste/diff
+audit, and project-switching paths respect the same root-discovery/config layer
+already used by validate, evidence, citations, gate, status, compose, check,
+review-report, report generation, Markdown/HTML export, export manifests, and
+the first candidate-loop dry-run/static-audit slice.
