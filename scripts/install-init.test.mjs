@@ -389,6 +389,8 @@ function assertInstalledCandidatePreview(workspace, runner) {
     assert.match(revise.stdout, /Candidate run dry-run/);
   }
 
+  assertInstalledMockRevisionModelSurface({ workspace, runner, manuscriptRoot, draftRoot, targetRel, baseText, issueId });
+
   const runId = "installed-run-001";
   const runRel = path.join("state/candidates/01-opening", runId);
   const runDir = path.join(manuscriptRoot, runRel);
@@ -494,6 +496,156 @@ function assertInstalledCandidatePreview(workspace, runner) {
   assert(fs.existsSync(path.join(runDir, "before-apply.md")));
   assert.match(fs.readFileSync(targetFile, "utf8"), /installed-mode candidate preserves the base draft/);
   assert(fs.existsSync(path.join(manuscriptRoot, "state", "revision-audits", "01-opening")));
+}
+
+function assertInstalledMockRevisionModelSurface({ workspace, runner, manuscriptRoot, draftRoot, targetRel, baseText, issueId }) {
+  const runId = "installed-mock-model-run-001";
+  const runRel = path.join("state/candidates/01-opening", runId);
+  const mockCandidatesRel = "state/candidates/mock-candidate-responses.json";
+  const mockCompareRel = "state/candidates/mock-compare-response.json";
+  const mockDiffRel = "state/revision-audits/mock-diff-audit-response.json";
+  const candidateAText = `${baseText.trim()}\n\nThis mock model candidate adds one installed-mode verification sentence.\n`;
+  const candidateBText = `${baseText.trim()}\n\nThis alternate mock model candidate adds a different installed-mode verification sentence.\n`;
+
+  writeJsonFile(path.join(manuscriptRoot, mockCandidatesRel), [
+    {
+      summary: "Adds installed-mode verification sentence.",
+      candidate_markdown: candidateAText,
+      changed_lines: ["Added one verification sentence."],
+      protected_strengths: ["Keeps the scaffold contract."],
+      risk_notes: [],
+    },
+    {
+      summary: "Adds alternate installed-mode verification sentence.",
+      candidate_markdown: candidateBText,
+      changed_lines: ["Added alternate verification sentence."],
+      protected_strengths: ["Keeps the scaffold contract."],
+      risk_notes: [],
+    },
+  ]);
+  writeJsonFile(path.join(manuscriptRoot, mockCompareRel), [
+    {
+      winner: "A",
+      confidence: "high",
+      reason: "Candidate A fixes the accepted issue with less extra wording.",
+      issue_resolution: "Resolves the installed smoke issue.",
+      voice_preservation: "Preserves the neutral tutorial voice.",
+      new_regressions: [],
+    },
+    {
+      winner: "B",
+      confidence: "high",
+      reason: "Candidate A remains better after order swapping.",
+      issue_resolution: "Resolves the installed smoke issue.",
+      voice_preservation: "Preserves the neutral tutorial voice.",
+      new_regressions: [],
+    },
+  ]);
+  writeJsonFile(path.join(manuscriptRoot, mockDiffRel), {
+    target_issue: issueId,
+    verdict: "improved",
+    voice_preservation: 0.9,
+    pattern_saturation_delta: 0,
+    register_variance_delta: 0,
+    issue_resolution: { status: "resolved" },
+    lost_high_value_lines: [],
+    new_strengths: ["Adds a concrete verification sentence."],
+    remaining_hotspots: [],
+    gaming_risk: { risk: "low" },
+    recommendation: "The mocked model audit approves the change.",
+  });
+
+  const generated = parseJsonFromMixedOutput(
+    runner(
+      [
+        "revise:candidates",
+        "01-opening.md",
+        "--issue",
+        issueId,
+        "--run-id",
+        runId,
+        "--n",
+        "2",
+        "--models",
+        "openrouter:openai/gpt-4.1-mini",
+        "--mock-response",
+        mockCandidatesRel,
+        "--json",
+      ],
+      { cwd: draftRoot },
+    ),
+  );
+  assert.equal(generated.run_id, runId);
+  assert.equal(generated.manifest.status, "generated");
+  assert.equal(generated.candidate_meta.candidates.length, 2);
+  assert(fs.existsSync(path.join(manuscriptRoot, runRel, "candidate-a.md")));
+  assert(fs.existsSync(path.join(manuscriptRoot, runRel, "candidate-b.md")));
+
+  const compared = parseJsonFromMixedOutput(
+    runner(
+      [
+        "compare:candidates",
+        "01-opening.md",
+        "--run",
+        runId,
+        "--models",
+        "openrouter:openai/gpt-4.1-mini",
+        "--mock-response",
+        mockCompareRel,
+        "--json",
+      ],
+      { cwd: draftRoot },
+    ),
+  );
+  assert.equal(compared.decision.winner, "candidate-a");
+  assert(fs.existsSync(path.join(manuscriptRoot, runRel, "comparisons", "comparisons.json")));
+
+  writeJsonFile(path.join(manuscriptRoot, runRel, "taste-pass.json"), {
+    disposition: "pass",
+    confidence: "high",
+    candidate_id: "candidate-a",
+    rationale: "Mock candidate can apply.",
+    reader_effect: "Keeps the scaffold readable.",
+    voice_integrity: "Preserves the neutral tutorial voice.",
+    section_effect: "Maintains the section job.",
+    future_story_debt: [],
+    blocking_reasons: [],
+    required_patch: "",
+    protected_strengths: ["Concise project setup."],
+  });
+  const taste = assertJsonCommand(
+    runner,
+    ["taste:arbiter", "01-opening.md", "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.1", "--json"],
+    { cwd: draftRoot },
+  );
+  assert.equal(taste.gate.disposition, "pass");
+  assert.equal(taste.gate.can_apply, true);
+
+  const audit = parseJsonFromMixedOutput(
+    runner(
+      [
+        "diff:audit",
+        "--before",
+        `${runRel}/base.md`,
+        "--after",
+        `${runRel}/candidate-a.md`,
+        "--issue",
+        issueId,
+        "--model",
+        "openrouter:openai/gpt-4.1-mini",
+        "--mock-response",
+        mockDiffRel,
+        "--json",
+      ],
+      { cwd: draftRoot },
+    ),
+  );
+  assert.equal(audit.result.mode, "static+model");
+  assert.equal(audit.result.provider, "openrouter");
+  assert.equal(audit.result.parsed.verdict, "improved");
+  assert(fs.existsSync(path.join(manuscriptRoot, audit.file)));
+  assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "mocked model revision commands should not write state under draft/");
+  assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "mocked model revision commands should not write state under the package");
 }
 
 function assertJsonCommand(runner, args, { cwd }) {

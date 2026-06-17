@@ -4,7 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { createHash } from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
-import { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
@@ -15,6 +15,9 @@ if (options.help || !options.target) {
   printHelp();
   process.exit(options.help ? 0 : 1);
 }
+
+ensureProtocolReady(discovery, { json: options.json });
+prepareModelProviderEnvironment(discovery, paths);
 
 const target = resolveInputPath(options.target);
 if (!fs.existsSync(target)) fail(`Target file does not exist: ${displayPath(target)}`);
@@ -55,6 +58,8 @@ if (options.dryRun) {
   console.log(options.json ? JSON.stringify(summary, null, 2) : renderDryRun(summary));
   process.exit(selectedCandidateId && !selectedCandidate ? 1 : 0);
 }
+
+const { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } = await import("./lib/model-provider.mjs");
 
 if (!selectedCandidate) {
   const result = noCandidateResult();
@@ -739,6 +744,7 @@ Options:
   --out dir             Candidate root directory. Default: state/candidates.
   --taste-root dir      Project taste directory. Default: taste.
   --models a,b          Arbiter models. Default: openrouter:z-ai/glm-5.1.
+  --mock-response file  Use local JSON response(s) instead of calling a model.
   --temperature n       Arbiter temperature. Default: 0.
   --max-tokens n        Max response tokens per model. Default: 1800.
   --max-taste-chars n   Max taste context chars. Default: 35000.
