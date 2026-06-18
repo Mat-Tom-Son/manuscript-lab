@@ -19,7 +19,7 @@ When the right fix is not yet shaped, insert a writers-room option layer before
 candidate generation:
 
 ```text
-issue or section question -> room blue-sky -> showrunner decision -> beat board or fix-options -> candidate revisions
+issue or section question -> room diagnose -> room blue-sky -> showrunner decision -> beat board or fix-options -> candidate revisions
 ```
 
 Use `npm run diff:audit -- --before <file> --after <file> [--issue <issue_id>]` after a targeted revision or candidate merge when a before snapshot is available.
@@ -42,11 +42,13 @@ Use room commands before candidate generation when the work needs productive
 friction rather than immediate prose:
 
 ```bash
+npm run room -- diagnose draft/<section>.md
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
 npm run room -- break draft/<section>.md --run <room-run-id>
 npm run room -- table-read draft/<section>.md
 npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+npm run review:run -- --passes scene.turn --panel lightning.clean draft/<section>.md
 ```
 
 Use Chorus when the experiment is prose-production method rather than issue-fix

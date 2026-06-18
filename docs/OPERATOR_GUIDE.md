@@ -52,6 +52,7 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 | `/doc-chorus-report draft/<section>.md` | `npm run chorus -- report draft/<section>.md` |
 | `/doc-write draft/<section>.md` | compose, edit `draft/<section>.md`, then `npm run check` |
 | `/doc-review-section draft/<section>.md` | `npm run review:run -- --panel prose.clean draft/<section>.md` |
+| `/doc-room-diagnose draft/<section>.md` | `npm run room -- diagnose draft/<section>.md` |
 | `/doc-room-blue-sky draft/<section>.md` | `npm run room -- blue-sky draft/<section>.md` |
 | `/doc-room-decide draft/<section>.md --run <id> --select idea-001` | `npm run room -- decide draft/<section>.md --run <id> --select idea-001` |
 | `/doc-room-break draft/<section>.md --run <id>` | `npm run room -- break draft/<section>.md --run <id>` |
@@ -77,8 +78,8 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 - `state/chorus/`: Chorus beat-level line-lab runs, candidate prose, contact
   sheets, plan-quality notes, optional assemblies, metrics, and reports.
 - `state/runtime/`: generated runtime packets for section operations.
-- `state/room/`: writers' room run packets, idea cards, decisions, beat boards,
-  and table-read artifacts.
+- `state/room/`: writers' room diagnostics, run packets, idea cards, decisions,
+  causal beat boards, and table-read artifacts.
 - `state/truth/`: machine-readable truth state for future observe/settle workflows.
 - `state/projections/`: human-readable projections generated from truth state.
 - `state/continuity.md`: canon, timeline, characters, terms, and open loops.
@@ -114,7 +115,7 @@ Do not revise from raw reviewer chatter. Reviews are sensors. The issue ledger i
 2. Pick one section.
 3. Read its section contract at the top of the draft file.
 4. Run `npm run compose -- draft/<section>.md` to compile the context, rules, criteria, and trace.
-5. If direction is still cheap to change, use `npm run room -- blue-sky`, `decide`, and `break` before drafting.
+5. If direction is still cheap to change, use `npm run room -- diagnose`, then `blue-sky`, `decide`, and `break` before drafting.
 6. If voice material is the question, use `npm run chorus -- run draft/<section>.md`; inspect `CONTACT_SHEET.md` before editing `draft/`.
 7. Run static checks before touching model calls.
 8. Run typed reviews only when the prose is worth reviewing.

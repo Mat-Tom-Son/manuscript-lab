@@ -14,6 +14,11 @@
           "deepseek/deepseek-v4-flash",
           "google/gemini-3.1-flash-lite"
         ],
+        "scene.turn": [
+          "qwen/qwen3.7-plus",
+          "anthropic/claude-haiku-4.5",
+          "google/gemini-3.1-flash-lite"
+        ],
         "line.editor": [
           "anthropic/claude-haiku-4.5",
           "qwen/qwen3.6-flash",
@@ -61,6 +66,10 @@
           "google/gemini-3.1-flash-lite"
         ],
         "room.table_read": [
+          "qwen/qwen3.7-plus",
+          "google/gemini-3.1-flash-lite"
+        ],
+        "scene.turn": [
           "qwen/qwen3.7-plus",
           "google/gemini-3.1-flash-lite"
         ],
@@ -112,6 +121,9 @@
         "room.table_read": [
           "lightning:lightning-ai/deepseek-v4-pro"
         ],
+        "scene.turn": [
+          "lightning:lightning-ai/deepseek-v4-pro"
+        ],
         "line.editor": [
           "lightning:lightning-ai/deepseek-v4-pro"
         ],
@@ -138,6 +150,10 @@
           "lightning:lightning-ai/gpt-oss-120b"
         ],
         "room.table_read": [
+          "lightning:lightning-ai/deepseek-v4-pro",
+          "lightning:lightning-ai/gpt-oss-120b"
+        ],
+        "scene.turn": [
           "lightning:lightning-ai/deepseek-v4-pro",
           "lightning:lightning-ai/gpt-oss-120b"
         ],

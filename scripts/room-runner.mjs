@@ -28,15 +28,17 @@ if (command === "help" || command === "--help" || command === "-h" || options.he
 
 ensureProtocolReady(discovery, { json: options.json });
 
-if (["blue-sky", "break", "decide", "table-read"].includes(command) && !options.target) {
+if (["diagnose", "blue-sky", "break", "decide", "table-read"].includes(command) && !options.target) {
   fail(`${command} requires a target draft section.`);
 }
 
-if (!["blue-sky", "break", "decide", "table-read", "report"].includes(command)) {
+if (!["diagnose", "blue-sky", "break", "decide", "table-read", "report"].includes(command)) {
   fail(`Unknown room command: ${command}`);
 }
 
-if (command === "blue-sky") {
+if (command === "diagnose") {
+  runDiagnose();
+} else if (command === "blue-sky") {
   await runBlueSky();
 } else if (command === "break") {
   runBreak();
@@ -46,6 +48,79 @@ if (command === "blue-sky") {
   runTableRead();
 } else {
   runReport();
+}
+
+function runDiagnose() {
+  const target = loadTarget(options.target);
+  const runId = options.runId || `story_diagnosis_${timestampId()}_${target.sectionId}`;
+  const run = makeRun({ target, runId, operation: "diagnose" });
+  const roles = [storyDiagnosisRole()];
+  const manifest = roomPacket({
+    target,
+    run,
+    roles,
+    operation: "diagnose",
+    status: "prepared",
+    expectedOutput: "story-diagnosis.json",
+  });
+
+  if (options.dryRun) {
+    printJsonOrText({
+      ok: true,
+      dry_run: true,
+      command: "diagnose",
+      run_id: runId,
+      run_dir: run.rel,
+      target: target.rel,
+    }, `Room story diagnosis dry-run: ${run.rel}`);
+    return;
+  }
+
+  const context = loadDiagnosisContext(target);
+  const diagnosis = buildStoryDiagnosis({ target, run, context });
+  fs.mkdirSync(path.join(run.abs, "output"), { recursive: true });
+  writeRunManifest(run, manifest);
+  writeJson(path.join(run.abs, "role-casts.json"), {
+    schema_version: ROOM_SCHEMA,
+    run_id: runId,
+    roles: roles.map(publicRole),
+  });
+  writeJson(path.join(run.abs, "visible-files.json"), {
+    schema_version: ROOM_SCHEMA,
+    run_id: runId,
+    roles: {
+      story_diagnosis: {
+        context_pack: "story.foundation",
+        visible_files: context.manifest,
+      },
+    },
+  });
+  writeJson(path.join(run.abs, "output", "story-diagnosis.json"), diagnosis);
+  writeFile(path.join(run.abs, "output", "STORY_DIAGNOSIS.md"), renderStoryDiagnosis(diagnosis));
+  updateRunStatus(run, "diagnosed", {
+    completed_at: diagnosis.generated_at,
+    diagnosis_file: normalizeRel(path.join(run.rel, "output/story-diagnosis.json")),
+    diagnosis_report: normalizeRel(path.join(run.rel, "output/STORY_DIAGNOSIS.md")),
+    story_grade: diagnosis.grade,
+    foundation_ready: diagnosis.foundation_ready,
+    recommended_next: diagnosis.recommended_next.command,
+  });
+
+  printJsonOrText({
+    ok: true,
+    schema_version: ROOM_SCHEMA,
+    command: "diagnose",
+    run_id: runId,
+    run_dir: run.rel,
+    target: target.rel,
+    grade: diagnosis.grade,
+    foundation_ready: diagnosis.foundation_ready,
+    recommended_next: diagnosis.recommended_next,
+    files: {
+      json: normalizeRel(path.join(run.rel, "output/story-diagnosis.json")),
+      markdown: normalizeRel(path.join(run.rel, "output/STORY_DIAGNOSIS.md")),
+    },
+  }, `Room story diagnosis written: ${normalizeRel(path.join(run.rel, "output/STORY_DIAGNOSIS.md"))}\nGrade: ${diagnosis.grade}\nNext: ${diagnosis.recommended_next.label}`);
 }
 
 async function runBlueSky() {
@@ -419,6 +494,7 @@ function runReport() {
         if (!packet) continue;
         const cards = fs.existsSync(path.join(runDir, "idea-cards.jsonl")) ? readJsonl(path.join(runDir, "idea-cards.jsonl")) : [];
         const beatBoard = readJson(path.join(runDir, "output/beat-board.json"), null);
+        const diagnosis = readJson(path.join(runDir, "output/story-diagnosis.json"), null);
         runs.push({
           run_id: packet.run_id,
           operation: packet.operation,
@@ -431,6 +507,9 @@ function runReport() {
           parked: cards.filter((card) => card.status === "parked").length,
           rejected: cards.filter((card) => card.status === "rejected").length,
           beats: beatBoard?.beats?.length ?? 0,
+          grade: diagnosis?.grade ?? packet.story_grade ?? "",
+          foundation_ready: diagnosis?.foundation_ready ?? packet.foundation_ready ?? null,
+          recommended_next: diagnosis?.recommended_next?.label ?? "",
         });
       }
     }
@@ -585,6 +664,16 @@ function tableReadRole() {
   };
 }
 
+function storyDiagnosisRole() {
+  return {
+    id: "story_diagnosis",
+    label: "Story Diagnosis",
+    job: "Diagnose story readiness before room ideation, scene work, or line-lab prose.",
+    context_pack: "story.foundation",
+    temperature: 0,
+  };
+}
+
 function publicRole(role) {
   return {
     id: role.id,
@@ -594,6 +683,217 @@ function publicRole(role) {
     temperature: role.temperature,
     model: role.model ?? "",
   };
+}
+
+function loadDiagnosisContext(target) {
+  const files = [];
+  const add = (rel, { strip = false, limit = 16000 } = {}) => {
+    const full = paths.projectAbs(rel);
+    if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) return;
+    let content = fs.readFileSync(full, "utf8");
+    if (strip) content = stripContract(content);
+    files.push({
+      path: normalizeRel(rel),
+      content: content.slice(0, limit),
+      sha256: sha256(content),
+      stripped_contract: strip,
+    });
+  };
+
+  add("brief.md");
+  add("outline.md");
+  add("style.md", { limit: 8000 });
+  add("state/continuity.md");
+  add("state/open-questions.md");
+  add("taste/GENRE_PROMISE.md", { limit: 8000 });
+  add("taste/TARGET_READER.md", { limit: 8000 });
+  add("taste/TASTE.md", { limit: 8000 });
+  add(target.rel, { strip: true });
+
+  return {
+    files,
+    manifest: files.map((file) => ({
+      path: file.path,
+      sha256: file.sha256,
+      stripped_contract: file.stripped_contract,
+    })),
+  };
+}
+
+function buildStoryDiagnosis({ target, run, context }) {
+  const body = stripContract(target.text).trim();
+  const bodyWords = wordCount(body);
+  const acceptance = parseContractBullets(target.text, "acceptance");
+  const contextText = context.files.map((file) => file.content).join("\n\n");
+  const brief = fileContent(context, "brief.md");
+  const outline = fileContent(context, "outline.md");
+  const continuity = fileContent(context, "state/continuity.md");
+  const targetKind = String(target.kind ?? "");
+  const fictionLike = targetKind.startsWith("fiction") || /fiction|chapter|story|novel|scene/i.test(contextText);
+  const components = {
+    premise: component({
+      present: Boolean(target.purpose || /premise|promise|about|thesis|argument/i.test(brief)),
+      evidence: target.purpose ? `section purpose: ${target.purpose}` : evidenceLine(brief, /premise|promise|about|thesis|argument/i),
+      missing: "Define what the section/story is about and why a reader should care.",
+    }),
+    story_core: component({
+      present: Boolean(target.purpose || acceptance.length || /core|central|promise|reader|stakes|question|tension/i.test([brief, outline].join("\n"))),
+      evidence: acceptance.length ? `${acceptance.length} acceptance criterion/criteria` : evidenceLine([brief, outline].join("\n"), /core|central|promise|reader|stakes|question|tension/i),
+      missing: "State the central tension, reader promise, or section job before generating options.",
+    }),
+    ending_direction: component({
+      present: /ending|climax|resolution|conclusion|handoff|exit|therefore|until finally|ever since/i.test([target.text, outline].join("\n")),
+      evidence: evidenceLine([target.text, outline].join("\n"), /ending|climax|resolution|conclusion|handoff|exit|therefore|until finally|ever since/i),
+      missing: "Define what the section or story must test, conclude, or hand off.",
+    }),
+    protagonist_engine: fictionLike
+      ? component({
+          present: /protagonist|want|need|lie|ghost|wound|comfort zone|stakes|arc|pressure/i.test([outline, continuity, brief].join("\n")),
+          evidence: evidenceLine([outline, continuity, brief].join("\n"), /protagonist|want|need|lie|ghost|wound|comfort zone|stakes|arc|pressure/i),
+          missing: "Define want, need, false belief, pressure, stakes, and arc direction.",
+        })
+      : component({ present: true, evidence: "not required for this section kind", missing: "" }),
+    causal_beats: component({
+      present: hasCausalBeats(outline) || acceptance.length >= 2,
+      evidence: hasCausalBeats(outline) ? "outline contains causal beat language" : acceptance.length >= 2 ? `${acceptance.length} contract criteria can be broken into beats` : "",
+      missing: "Break movement into beats with choice, consequence, turn, and therefore/but causality.",
+    }),
+    world_pressure: component({
+      present: !fictionLike || /law|taboo|scarcity|status|ritual|institution|consequence|pressure|danger|obligation|class|surveillance|world/i.test([outline, continuity, brief].join("\n")),
+      evidence: fictionLike ? evidenceLine([outline, continuity, brief].join("\n"), /law|taboo|scarcity|status|ritual|institution|consequence|pressure|danger|obligation|class|surveillance|world/i) : "not required for this section kind",
+      missing: "If setting matters, define only the world pressure that changes choices and consequences.",
+    }),
+    scenes_ready: component({
+      present: bodyWords > 80 || hasCausalBeats(outline),
+      evidence: bodyWords > 80 ? `${bodyWords} draft word(s)` : hasCausalBeats(outline) ? "outline has beat movement" : "",
+      missing: "Draft scenes only after beats have objective, obstacle, pressure, and turn.",
+    }),
+  };
+  const missing = Object.entries(components)
+    .filter(([, value]) => value.status === "missing")
+    .map(([key, value]) => ({ component: key, action: value.next_action }));
+  const warnings = buildDiagnosisWarnings({ body, outline, fictionLike, components });
+  const foundationReady = !["premise", "story_core", "ending_direction", "protagonist_engine", "causal_beats"].some((key) => components[key]?.status === "missing");
+  const grade = gradeDiagnosis({ components, warnings, bodyWords });
+  const recommendedNext = recommendedDiagnosisNext({ target, run, foundationReady, components, bodyWords });
+
+  return {
+    schema_version: ROOM_SCHEMA,
+    run_id: run.runId,
+    target: target.rel,
+    section_id: target.sectionId,
+    generated_at: new Date().toISOString(),
+    kind: target.kind,
+    stage: bodyWords > 80 ? "draft_or_revision" : foundationReady ? "ready_for_room" : "foundation_missing",
+    grade,
+    foundation_ready: foundationReady,
+    current_state: {
+      draft_words: bodyWords,
+      acceptance_count: acceptance.length,
+      fiction_like: fictionLike,
+    },
+    components,
+    missing,
+    warnings,
+    recommended_next: recommendedNext,
+    visible_files: context.manifest,
+  };
+}
+
+function component({ present, evidence, missing }) {
+  return {
+    status: present ? "present" : "missing",
+    evidence: String(evidence ?? "").trim(),
+    next_action: present ? "" : missing,
+  };
+}
+
+function hasCausalBeats(text) {
+  const value = String(text ?? "");
+  const bulletCount = value.split(/\r?\n/).filter((line) => /^\s*[-*]\s+\S/.test(line)).length;
+  return bulletCount >= 3 || /\b(therefore|because of that|but one day|until finally|but|so|consequence|turn|reversal|midpoint)\b/i.test(value);
+}
+
+function buildDiagnosisWarnings({ body, outline, fictionLike, components }) {
+  const warnings = [];
+  if (/\band then\b/i.test([body, outline].join("\n")) && !/\b(therefore|but|because|consequence)\b/i.test([body, outline].join("\n"))) {
+    warnings.push({ code: "and_then_risk", severity: "warning", message: "Movement appears sequential; add therefore/but causality before drafting." });
+  }
+  if (fictionLike && components.protagonist_engine.status === "missing") {
+    warnings.push({ code: "weak_protagonist_engine", severity: "warning", message: "Fiction-like work is missing explicit want/need/lie/pressure/stakes state." });
+  }
+  if (components.world_pressure.status === "missing") {
+    warnings.push({ code: "decorative_world_risk", severity: "notice", message: "World details should create pressure, costs, or choices; avoid lore-only expansion." });
+  }
+  return warnings;
+}
+
+function gradeDiagnosis({ components, warnings, bodyWords }) {
+  const values = Object.values(components);
+  const present = values.filter((value) => value.status === "present").length;
+  const score = Math.max(0, Math.min(100, Math.round((present / values.length) * 100) - warnings.length * 5 + (bodyWords > 80 ? 5 : 0)));
+  if (score >= 85) return "ready";
+  if (score >= 65) return "needs_targeted_foundation";
+  if (score >= 40) return "needs_story_foundation";
+  return "not_ready_for_prose";
+}
+
+function recommendedDiagnosisNext({ target, run, foundationReady, components, bodyWords }) {
+  if (!foundationReady) {
+    return {
+      label: "repair story foundation before blue-sky or prose",
+      command: roomCommand(`diagnose ${target.rel}`),
+      reason: "Premise, story core, ending direction, protagonist engine, or causal beats are missing.",
+    };
+  }
+  if (components.world_pressure.status === "missing") {
+    return {
+      label: "add only story-relevant world pressure",
+      command: roomCommand(`blue-sky ${target.rel} --roles story_engine,wild_card`),
+      reason: "Foundation is usable, but world pressure is not yet doing story work.",
+    };
+  }
+  if (bodyWords > 80) {
+    return {
+      label: "run table-read and scene-turn sensors",
+      command: reviewRunCommand(`--passes room.table_read,scene.turn ${target.rel}`),
+      reason: "Draft prose exists; diagnose turns and reader energy before line polish.",
+    };
+  }
+  return {
+    label: "generate room cards, then break causal beats",
+    command: roomCommand(`blue-sky ${target.rel}`),
+    reason: "Foundation is sufficient for option generation and beat breaking.",
+  };
+}
+
+function renderStoryDiagnosis(diagnosis) {
+  const lines = [
+    "# Story Diagnosis",
+    "",
+    `Run ID: \`${diagnosis.run_id}\``,
+    `Target: \`${diagnosis.target}\``,
+    `Grade: \`${diagnosis.grade}\``,
+    `Foundation ready: ${diagnosis.foundation_ready ? "yes" : "no"}`,
+    "",
+    "## Components",
+    "",
+  ];
+  for (const [key, value] of Object.entries(diagnosis.components)) {
+    lines.push(`- \`${key}\`: ${value.status}${value.evidence ? ` (${value.evidence})` : ""}`);
+    if (value.next_action) lines.push(`  - Next: ${value.next_action}`);
+  }
+  lines.push("", "## Warnings", "");
+  if (diagnosis.warnings.length) {
+    for (const warning of diagnosis.warnings) lines.push(`- ${warning.severity}: ${warning.message}`);
+  } else {
+    lines.push("- none");
+  }
+  lines.push("", "## Recommended Next", "");
+  lines.push(`- ${diagnosis.recommended_next.label}`);
+  lines.push(`- Command: \`${diagnosis.recommended_next.command}\``);
+  lines.push(`- Reason: ${diagnosis.recommended_next.reason}`);
+  return `${lines.join("\n")}\n`;
 }
 
 function modelForRole(role, index) {
@@ -701,6 +1001,10 @@ function buildBlueSkyPrompt({ role, target, context, runId }) {
             pitch: "one concrete possibility, not prose",
             reader_effect: "what this changes for the reader",
             pressure: "what constraint or tension it creates",
+            causal_link: "therefore | but | because | meanwhile",
+            choice: "choice or action that causes the beat",
+            consequence: "new cost, problem, or obligation created by the beat",
+            turn: "what reverses, reframes, or changes",
             exit_state: "what should be different by the end if used",
             risks: ["specific risk"],
             depends_on: ["canon/source/decision dependency"],
@@ -788,6 +1092,10 @@ function normalizeCards(rawCards, { role, source }) {
       why_it_might_work: String(card?.why_it_might_work ?? card?.why ?? "").trim(),
       reader_effect: String(card?.reader_effect ?? card?.effect ?? card?.why_it_might_work ?? "").trim(),
       pressure: String(card?.pressure ?? card?.tension ?? "").trim(),
+      causal_link: normalizeCausalLink(card?.causal_link ?? card?.link),
+      choice: String(card?.choice ?? card?.action ?? "").trim(),
+      consequence: String(card?.consequence ?? card?.cost ?? "").trim(),
+      turn: String(card?.turn ?? card?.reversal ?? "").trim(),
       exit_state: String(card?.exit_state ?? "").trim(),
       issue_ids: normalizeStringArray(card?.issue_ids),
       risks: normalizeStringArray(card?.risks),
@@ -851,6 +1159,10 @@ function beatFromCard(card, index) {
     job: jobForType(card.type),
     visible_event: card.pitch,
     pressure: card.pressure || card.why_it_might_work || "Make the section's job visible under pressure.",
+    causal_link: card.causal_link || inferCausalLink(card),
+    choice: card.choice || choiceForCard(card),
+    consequence: card.consequence || consequenceForCard(card),
+    turn: card.turn || turnForCard(card),
     reader_question: readerQuestionForCard(card),
     exit_state: card.exit_state || exitStateForCard(card),
     risks: card.risks,
@@ -874,6 +1186,38 @@ function jobForType(type) {
   if (type === "pressure") return "raise-pressure";
   if (type === "reversal") return "turn";
   return "move";
+}
+
+function normalizeCausalLink(value) {
+  const normalized = String(value ?? "").toLowerCase().replace(/[^a-z]+/g, "_").replace(/^_+|_+$/g, "");
+  if (["therefore", "but", "because", "meanwhile"].includes(normalized)) return normalized;
+  if (normalized.includes("but")) return "but";
+  if (normalized.includes("because")) return "because";
+  if (normalized.includes("meanwhile")) return "meanwhile";
+  return "";
+}
+
+function inferCausalLink(card) {
+  if (card.type === "reversal") return "but";
+  if (card.type === "evidence") return "because";
+  if (card.type === "pressure") return "therefore";
+  return "therefore";
+}
+
+function choiceForCard(card) {
+  if (card.type === "evidence") return "Choose the proof point or source obligation this beat will make visible.";
+  return "Choose how this option changes what the section does next.";
+}
+
+function consequenceForCard(card) {
+  if (card.type === "evidence") return "Unsupported claims become visible support obligations.";
+  return card.exit_state || "The next beat inherits a changed reader question, pressure, or expectation.";
+}
+
+function turnForCard(card) {
+  if (card.type === "reversal") return card.pitch;
+  if (card.type === "pressure") return "Pressure increases enough that the section cannot remain static.";
+  return card.exit_state || "The beat changes reader understanding or section direction.";
 }
 
 function readerQuestionForCard(card) {
@@ -960,6 +1304,10 @@ function renderBeatBoard(board) {
     lines.push(`- Job: ${beat.job}`);
     lines.push(`- Visible event: ${beat.visible_event}`);
     lines.push(`- Pressure: ${beat.pressure}`);
+    lines.push(`- Causal link: ${beat.causal_link}`);
+    lines.push(`- Choice: ${beat.choice}`);
+    lines.push(`- Consequence: ${beat.consequence}`);
+    lines.push(`- Turn: ${beat.turn}`);
     lines.push(`- Reader question: ${beat.reader_question}`);
     lines.push(`- Exit state: ${beat.exit_state}`);
     if (beat.risks.length) lines.push(`- Risks: ${beat.risks.join("; ")}`);
@@ -1001,6 +1349,7 @@ function renderRoomSummary(runs, target) {
   } else {
     for (const run of runs) {
       lines.push(`- ${run.run_id} (${run.operation}) -> ${run.run_dir}`);
+      if (run.grade) lines.push(`  grade: ${run.grade}, foundation ready: ${run.foundation_ready ? "yes" : "no"}`);
       if (run.cards) lines.push(`  cards: ${run.cards}, selected: ${run.selected}, parked: ${run.parked}, rejected: ${run.rejected}`);
       if (run.beats) lines.push(`  beats: ${run.beats}`);
     }
@@ -1034,6 +1383,21 @@ function parseContractBullets(text, fieldName) {
 
 function titleFromMarkdown(text) {
   return String(text ?? "").match(/^#\s+(.+)$/m)?.[1]?.trim() ?? "";
+}
+
+function fileContent(context, rel) {
+  return context.files.find((file) => file.path === rel)?.content ?? "";
+}
+
+function evidenceLine(text, pattern) {
+  return String(text ?? "")
+    .split(/\r?\n/)
+    .map((line) => line.trim())
+    .find((line) => pattern.test(line)) ?? "";
+}
+
+function wordCount(text) {
+  return String(text ?? "").trim().split(/\s+/).filter(Boolean).length;
 }
 
 function normalizeCardType(type) {
@@ -1249,6 +1613,7 @@ function printHelp() {
   console.log(`room - writers' room protocol artifacts
 
 Usage:
+  npm run room -- diagnose draft/<section>.md [--run-id <id>]
   npm run room -- blue-sky draft/<section>.md [--models <model>] [--run-id <id>]
   npm run room -- decide draft/<section>.md --run <id> --select idea-001 --reason "..."
   npm run room -- break draft/<section>.md --run <id>
@@ -1256,6 +1621,7 @@ Usage:
   npm run room -- report [draft/<section>.md]
 
 Public wrapper:
+  mlab room diagnose draft/<section>.md --json
   mlab room blue-sky draft/<section>.md --json
   mlab room decide draft/<section>.md --run <id> --select idea-001
   mlab room break draft/<section>.md --run <id>

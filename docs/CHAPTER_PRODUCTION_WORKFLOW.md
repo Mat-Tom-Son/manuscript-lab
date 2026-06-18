@@ -50,13 +50,27 @@ npm run compose -- draft/<section>.md --operation draft
 
 Use `--operation revise` for existing prose. Inspect `state/runtime/<section-id>/intent.md`, `criteria.json`, `rule-stack.yaml`, and `trace.json` when the operation is consequential.
 
-## 4. Draft Or Revise In Files
+## 4. Diagnose Optional Story Foundation
+
+When direction is still cheap to change, run the room diagnosis before drafting:
+
+```bash
+npm run room -- diagnose draft/<section>.md
+```
+
+If the diagnosis flags missing premise, story core, ending direction,
+protagonist engine, causal beats, world pressure, or scene readiness, update
+durable project state before generating options or prose. Continue to
+`room blue-sky`, `decide`, and `break` only when the foundation is useful enough
+to pressure-test.
+
+## 5. Draft Or Revise In Files
 
 Write in `draft/<section>.md`, not chat. Keep the section contract current.
 
 Preserve strong existing prose unless an accepted issue requires changing it. When revising a major section, snapshot before/after material under `state/revision-audits/` so `npm run diff:audit` can compare tradeoffs.
 
-## 5. Check And Review
+## 6. Check And Review
 
 Run static checks:
 
@@ -68,13 +82,14 @@ Run targeted reviews when useful:
 
 ```bash
 npm run review:run -- --panel lightning.clean --passes cold.reader,contract.editor,continuity draft/<section>.md
+npm run review:run -- --passes scene.turn draft/<section>.md
 npm run review:report -- draft/<section>.md
 npm run issues -- list --status open --target draft/<section>.md
 ```
 
 Use `--no-ledger` for verification reads that should not import issues automatically.
 
-## 6. Triage Before Editing
+## 7. Triage Before Editing
 
 Reviews are sensors. The issue ledger is the decision surface.
 
@@ -87,7 +102,7 @@ npm run issues -- close <issue-id> --reason "..."
 
 Close false positives or stale issues with explicit reasons so future agents can see why they were rejected.
 
-## 7. Use Candidate Arena For Consequential Fixes
+## 8. Use Candidate Arena For Consequential Fixes
 
 When one issue has multiple plausible fixes:
 
@@ -102,7 +117,7 @@ npm run merge:winner -- draft/<section>.md --run <candidate-run-id> --apply --au
 
 If comparisons are unstable, stop for human judgment or manually merge strengths. Do not force the top option. If the taste arbiter returns `patch_required`, `block`, or `unstable_judgment`, patch or choose another candidate before apply unless the human explicitly overrides it.
 
-## 8. Verify And Export
+## 9. Verify And Export
 
 After edits:
 

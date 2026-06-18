@@ -13,6 +13,7 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
   assert.match(result.stdout, /Review and revision:/);
   assert.match(result.stdout, /Writers' room:/);
   assert.match(result.stdout, /Prose line lab:/);
+  assert.match(result.stdout, /room diagnose draft\/<section>\.md --json/);
   assert.match(result.stdout, /room blue-sky draft\/<section>\.md --json/);
   assert.match(result.stdout, /chorus run draft\/<section>\.md --json/);
   assert.match(result.stdout, /review draft\/<section>\.md --dry-run --panel prose\.clean/);

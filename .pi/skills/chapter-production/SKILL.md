@@ -17,8 +17,8 @@ Update the source of truth before drafting prose. Then compose, write, check, re
 2. Read the target section contract plus `PROJECT.md`, `brief.md`, `outline.md`, `style.md`, relevant `taste/` files, `docs/PROJECT_HANDOFF.md`, `docs/PROJECT_REVIEW_APPROACH.md`, and relevant `state/` files when present.
 3. If the premise, plot, science, or character direction changed, update core stores first.
 4. Run `npm run compose -- draft/<section>.md --operation draft` or `--operation revise`.
-5. When direction is unsettled, run a room pass before drafting:
-   `npm run room -- blue-sky draft/<section>.md`, then `decide`, then `break`.
+5. When direction is unsettled, diagnose foundation before drafting:
+   `npm run room -- diagnose draft/<section>.md`, then `blue-sky`, `decide`, and `break`.
 6. When voice material is the experiment, run `npm run chorus -- run draft/<section>.md`; inspect `state/chorus/` before editing `draft/`.
 7. Draft or revise in `draft/<section>.md`.
 8. Run `npm run check -- --static-only`.
@@ -63,14 +63,18 @@ Use the arena when structural feedback has several viable shapes, such as mergin
 Use:
 
 ```bash
+npm run room -- diagnose draft/<section>.md
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
 npm run room -- break draft/<section>.md --run <room-run-id>
 npm run room -- table-read draft/<section>.md
+npm run review:run -- --passes scene.turn draft/<section>.md
 ```
 
-Room runs generate options, decisions, beat boards, and table-read packets under
-`state/room/`. They do not rewrite manuscript prose.
+Room runs diagnose foundation, generate options, record decisions, materialize
+causal beat boards, and prepare table-read packets under `state/room/`. They do
+not rewrite manuscript prose. Beat boards should expose causal link, choice,
+consequence, and turn before they become drafting input.
 
 ## Chorus Layer
 

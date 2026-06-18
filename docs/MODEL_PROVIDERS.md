@@ -131,16 +131,19 @@ Room runs are deterministic unless `--models` is provided. Use provider-prefixed
 IDs to cast independent roles across Lightning and OpenRouter:
 
 ```bash
+npm run room -- diagnose draft/<section>.md
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus --roles story_engine,reader_advocate
 npm run room -- table-read draft/<section>.md
 npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+npm run review:run -- --passes scene.turn --panel lightning.clean draft/<section>.md
 ```
 
-`room blue-sky` records model/provider metadata in `role-casts.json` and
-per-role outputs under `state/room/<section-id>/<run-id>/independent/`. The
-table-read command prepares the packet; the optional `room.table_read` review
-pass uses the normal review/model-panel infrastructure and issue-ledger flow.
+`room diagnose` is deterministic and does not call a model. `room blue-sky`
+records model/provider metadata in `role-casts.json` and per-role outputs under
+`state/room/<section-id>/<run-id>/independent/`. The table-read command prepares
+the packet; the optional `room.table_read` and `scene.turn` review passes use
+the normal review/model-panel infrastructure and issue-ledger flow.
 
 ## Chorus
 

@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.3.0 - 2026-06-17
+
+- Added `room diagnose` as the first writers' room step. It writes a
+  deterministic story-foundation diagnosis, readiness grade, missing inputs,
+  warnings, visible-file manifest, and recommended next command under
+  `state/room/`.
+- Strengthened beat boards with causality fields: `causal_link`, `choice`,
+  `consequence`, and `turn`, so room material is easier to use as story
+  pressure instead of loose idea inventory.
+- Added the `scene.turn` typed review sensor and panel routes for checking
+  movement, pressure, turn, and consequence after prose exists.
+- Updated `mlab` help, status/report artifact discovery, install-anywhere
+  smoke coverage, Pi prompts, and public docs so diagnosis, causal beat boards,
+  and scene-turn review are first-class package surfaces.
+
 ## 1.2.0 - 2026-06-17
 
 - Reframed Chorus as a prose line lab by default: `chorus run` now samples

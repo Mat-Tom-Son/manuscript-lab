@@ -76,6 +76,7 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room diagnose draft/01-opening.md
 npx mlab room blue-sky draft/01-opening.md
 npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
 npx mlab room break draft/01-opening.md --run <room-run-id>
@@ -206,6 +207,7 @@ Add provider keys in `.env`, then run:
 ```bash
 npm run review:run -- --dry-run --panel prose.clean draft/01-opening.md
 npm run review:run -- --panel prose.clean draft/01-opening.md
+npm run review:run -- --passes scene.turn draft/01-opening.md
 npm run review:report -- draft/01-opening.md
 npm run issues -- list --status open
 ```

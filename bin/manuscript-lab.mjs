@@ -245,6 +245,7 @@ Common commands:
   evidence report
   gate draft/<section>.md
   report --write
+  room diagnose draft/<section>.md --json
   room blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
   room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
   room break draft/<section>.md --run <room-run-id>
@@ -263,6 +264,7 @@ Review and revision:
   audit --before before.md --after draft/<section>.md --static-only
 
 Writers' room:
+  room diagnose draft/<section>.md --json
   room blue-sky draft/<section>.md --json
   room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
   room break draft/<section>.md --run <room-run-id>

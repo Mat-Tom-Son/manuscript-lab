@@ -37,6 +37,7 @@ mlab compose draft/<section>.md
 mlab chorus run draft/<section>.md --beats 4
 mlab check --static-only draft/<section>.md
 mlab review draft/<section>.md --dry-run --panel prose.clean
+mlab room diagnose draft/<section>.md
 mlab room blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 mlab room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
 mlab room break draft/<section>.md --run <room-run-id>
@@ -257,22 +258,29 @@ Runs typed editorial sensors. Reviews create durable issues; they do not decide 
 ### Writers' Room
 
 ```bash
+npm run room -- diagnose draft/<section>.md
 npm run room -- blue-sky draft/<section>.md
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reject idea-002 --park idea-003 --reason "..."
 npm run room -- break draft/<section>.md --run <room-run-id>
 npm run room -- table-read draft/<section>.md
 npm run room -- report draft/<section>.md
+mlab room diagnose draft/<section>.md --json
 mlab room blue-sky draft/<section>.md --json
 ```
 
-Runs a file-backed writers' room protocol. `blue-sky` creates independent role
-outputs, idea cards, clusters, stress tests, visible-file manifests, and a room
-report under `state/room/<section-id>/<run-id>/`. `decide` records the human
-showrunner call. `break` refuses undecided runs by default and materializes
-selected cards into `output/beat-board.json` and `beat-board.md`. `table-read`
-prepares a read-aloud packet and points to the optional `room.table_read` review
-sensor.
+Runs a file-backed writers' room protocol. `diagnose` checks whether the
+section has enough premise, story core, ending direction, protagonist engine,
+causal beats, world pressure, and scene readiness to generate useful room work;
+it writes `output/STORY_DIAGNOSIS.md` and `output/story-diagnosis.json` with a
+grade and recommended next command. `blue-sky` creates independent role outputs,
+idea cards, clusters, stress tests, visible-file manifests, and a room report
+under `state/room/<section-id>/<run-id>/`. `decide` records the human showrunner
+call. `break` refuses undecided runs by default and materializes selected cards
+into `output/beat-board.json` and `beat-board.md` with causal link, choice,
+consequence, and turn fields. `table-read` prepares a read-aloud packet and
+points to the optional `room.table_read` review sensor. After prose exists, the
+`scene.turn` review sensor checks movement, pressure, turn, and consequence.
 
 The command is deterministic by default. Pass provider-prefixed model IDs with
 `--models` to fan roles across Lightning, OpenRouter, or custom model routes.

@@ -471,7 +471,7 @@ function printText(report) {
   console.log("Creative Labs:");
   if (report.room_runs.length || report.chorus_runs.length) {
     for (const run of report.room_runs.slice(0, 5)) {
-      const artifact = run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
+      const artifact = run.files?.diagnosis_md || run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
       console.log(`- room/${run.run_id}: ${run.operation || "room"} ${run.status} on ${run.target || run.section_id} -> ${artifact}`);
     }
     for (const run of report.chorus_runs.slice(0, 5)) {
@@ -525,7 +525,7 @@ function renderHtml(report) {
     ? report.room_runs
         .map(
           (run) =>
-            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "room")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.cards}</td><td>${run.selected}</td><td>${run.beats}</td><td>${artifactLinks(run.files, ["report", "decision", "beat_board_md", "checklist", "reader_text"])}</td></tr>`,
+            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "room")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.cards}</td><td>${run.selected}</td><td>${run.beats}</td><td>${artifactLinks(run.files, ["diagnosis_md", "diagnosis_json", "report", "decision", "beat_board_md", "checklist", "reader_text"])}</td></tr>`,
         )
         .join("\n")
     : `<tr><td colspan="9">No room runs.</td></tr>`;

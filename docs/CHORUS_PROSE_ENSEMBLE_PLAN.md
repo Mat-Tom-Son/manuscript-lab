@@ -109,7 +109,7 @@ The intended operator loop:
 
 ```text
 compose section
--> optional room blue-sky / decide / break
+-> optional room diagnose / blue-sky / decide / break
 -> chorus plan beats
 -> chorus sample candidate prose
 -> human mines the contact sheet
@@ -675,6 +675,7 @@ feature testable and install-anywhere friendly.
 Chorus should consume room output:
 
 ```bash
+npm run room -- diagnose draft/01-opening.md
 npm run room -- blue-sky draft/01-opening.md
 npm run room -- decide draft/01-opening.md --run room-001 --select idea-001 --reason "..."
 npm run room -- break draft/01-opening.md --run room-001

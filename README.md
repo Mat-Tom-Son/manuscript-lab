@@ -31,8 +31,8 @@ repo keeps them in files:
 - compiled runtime packets in `state/runtime/`
 - Chorus beat-level line-lab runs, contact sheets, plan-quality notes, and
   metrics in `state/chorus/`
-- writers' room packets, idea cards, decisions, beat boards, and table-read
-  artifacts in `state/room/`
+- writers' room diagnostics, idea cards, decisions, causal beat boards, and
+  table-read artifacts in `state/room/`
 - typed review findings in `state/issues/`
 - candidate revisions in `state/candidates/`
 - exports and export manifests in `exports/`
@@ -150,6 +150,7 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room diagnose draft/01-opening.md
 npx mlab room blue-sky draft/01-opening.md
 npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
 npx mlab room break draft/01-opening.md --run <room-run-id>
@@ -225,6 +226,7 @@ Use the room protocol when a section needs better options before drafting or a
 read-aloud energy pass after revision:
 
 ```bash
+npm run room -- diagnose draft/01-opening.md
 npm run room -- blue-sky draft/01-opening.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
 npm run room -- break draft/01-opening.md --run <room-run-id>
@@ -233,9 +235,14 @@ npm run room -- report draft/01-opening.md
 ```
 
 Room artifacts land under `state/room/<section-id>/<run-id>/`. The command
-generates options, decisions, beat boards, and table-read packets; it does not
-rewrite manuscript prose. A materialized room beat board can seed Chorus with
-`npm run chorus -- plan draft/01-opening.md --from-room <room-run-id>`.
+diagnoses story-foundation readiness, generates options, records decisions,
+materializes causal beat boards, and prepares table-read packets; it does not
+rewrite manuscript prose. Diagnosis runs write `STORY_DIAGNOSIS.md` and
+`story-diagnosis.json` with a grade and recommended next command. A materialized
+room beat board can seed Chorus with
+`npm run chorus -- plan draft/01-opening.md --from-room <room-run-id>`. After
+drafting or revision, `npm run review:run -- --passes scene.turn draft/01-opening.md`
+checks whether scene movement, pressure, turns, and consequences are carrying.
 
 ## Evidence And Gates
 

@@ -26,6 +26,15 @@ try {
 
   for (const [index, cwd] of cwdCases.entries()) {
     const target = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
+    const diagnoseRunId = `room-diagnose-${index + 1}`;
+    const diagnosis = assertJsonCommand(["room", "diagnose", target, "--run-id", diagnoseRunId, "--json"], { cwd });
+    assert.equal(diagnosis.ok, true);
+    assert.equal(diagnosis.target, "draft/01-opening.md");
+    assert.equal(diagnosis.run_dir, `state/room/01-opening/${diagnoseRunId}`);
+    assert(diagnosis.grade);
+    assert(fs.existsSync(path.join(manuscriptRoot, diagnosis.files.json)));
+    assert(fs.existsSync(path.join(manuscriptRoot, diagnosis.files.markdown)));
+
     const runId = `room-smoke-${index + 1}`;
     const blueSky = assertJsonCommand(["room", "blue-sky", target, "--run-id", runId, "--json"], { cwd });
     assert.equal(blueSky.ok, true);
@@ -59,6 +68,11 @@ try {
     assert.equal(beatBoard.beat_count, 1);
     assert.equal(beatBoard.files.json, `state/room/01-opening/${runId}/output/beat-board.json`);
     assert(fs.existsSync(path.join(runDir, "output", "beat-board.md")));
+    const beatBoardJson = JSON.parse(fs.readFileSync(path.join(runDir, "output", "beat-board.json"), "utf8"));
+    assert.equal(beatBoardJson.beats[0].causal_link, "therefore");
+    assert(beatBoardJson.beats[0].choice);
+    assert(beatBoardJson.beats[0].consequence);
+    assert(beatBoardJson.beats[0].turn);
 
     const packet = JSON.parse(fs.readFileSync(path.join(runDir, "manifest.json"), "utf8"));
     assert.equal(packet.status, "materialized");
@@ -116,7 +130,8 @@ try {
   const report = assertJsonCommand(["room", "report", "01-opening.md", "--json"], { cwd: draftRoot });
   assert.equal(report.ok, true);
   assert.equal(report.target, "draft/01-opening.md");
-  assert(report.run_count >= 5);
+  assert(report.run_count >= 8);
+  assert(report.runs.some((run) => run.operation === "diagnose" && run.grade));
 
   assert.equal(fs.existsSync(path.join(workspace, "state")), false, "room should not write state at workspace root");
   assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "room should not write state under draft/");

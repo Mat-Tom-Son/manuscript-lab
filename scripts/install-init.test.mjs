@@ -365,6 +365,15 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "CONTACT_SHEET.md")));
     assert.equal(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "assembled.md")), false);
 
+    const diagnosisRunId = `packed-diagnose-${index + 1}`;
+    const diagnosis = assertJsonCommand(runner, ["room", "diagnose", chorusTarget, "--run-id", diagnosisRunId, "--json"], { cwd });
+    assert.equal(diagnosis.ok, true);
+    assert.equal(diagnosis.target, "draft/01-opening.md");
+    assert.equal(diagnosis.run_dir, `state/room/01-opening/${diagnosisRunId}`);
+    assert(diagnosis.grade);
+    assert(fs.existsSync(path.join(manuscriptRoot, diagnosis.files.json)));
+    assert(fs.existsSync(path.join(manuscriptRoot, diagnosis.files.markdown)));
+
     const roomRunId = `packed-room-${index + 1}`;
     const roomTarget = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
     const room = assertJsonCommand(runner, ["room", "blue-sky", roomTarget, "--run-id", roomRunId, "--json"], { cwd });
@@ -388,6 +397,11 @@ function assertInstalledCommandSurface(workspace, runner) {
     const beatBoard = assertJsonCommand(runner, ["room", "break", roomTarget, "--run", roomRunId, "--json"], { cwd });
     assert.equal(beatBoard.beat_count, 1);
     assert(fs.existsSync(path.join(manuscriptRoot, room.run_dir, "output", "beat-board.json")));
+    const beatBoardJson = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, room.run_dir, "output", "beat-board.json"), "utf8"));
+    assert(beatBoardJson.beats[0].causal_link);
+    assert(beatBoardJson.beats[0].choice);
+    assert(beatBoardJson.beats[0].consequence);
+    assert(beatBoardJson.beats[0].turn);
 
     const tableRead = assertJsonCommand(runner, ["room", "table-read", roomTarget, "--run-id", `packed-table-read-${index + 1}`, "--json"], { cwd });
     assert.equal(tableRead.review_command, "mlab review:run --passes room.table_read draft/01-opening.md");
@@ -407,6 +421,12 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(tableReadStatusRun.operation, "table_read");
     assert.equal(tableReadStatusRun.files.checklist, `state/room/01-opening/packed-table-read-${index + 1}/output/table-read-checklist.md`);
 
+    const diagnosisStatusRun = statusAfterLabs.room_runs.find((run) => run.run_id === diagnosisRunId);
+    assert(diagnosisStatusRun, `status should include room diagnosis ${diagnosisRunId}`);
+    assert.equal(diagnosisStatusRun.operation, "diagnose");
+    assert.equal(diagnosisStatusRun.files.diagnosis_md, `state/room/01-opening/${diagnosisRunId}/output/STORY_DIAGNOSIS.md`);
+    assert.equal(diagnosisStatusRun.files.diagnosis_json, `state/room/01-opening/${diagnosisRunId}/output/story-diagnosis.json`);
+
     const chorusStatusRun = statusAfterLabs.chorus_runs.find((run) => run.run_id === chorusRunId);
     assert(chorusStatusRun, `status should include chorus run ${chorusRunId}`);
     assert.equal(chorusStatusRun.kind, "chorus");
@@ -424,8 +444,10 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert(projectReport.summary.room_runs >= 2, "report should count room runs");
     assert(projectReport.summary.chorus_runs >= 1, "report should count chorus runs");
     assert(projectReport.summary.room_runs_by_operation.blue_sky >= 1, "report should group room operations");
+    assert(projectReport.summary.room_runs_by_operation.diagnose >= 1, "report should group room diagnoses");
     assert(projectReport.summary.room_runs_by_operation.table_read >= 1, "report should group table-read operations");
     assert(projectReport.summary.chorus_runs_by_status.sampled >= 1, "report should group chorus statuses");
+    assert(projectReport.room_runs.some((run) => run.run_id === diagnosisRunId && run.files.diagnosis_md));
     assert(projectReport.room_runs.some((run) => run.run_id === roomRunId && run.files.beat_board_md));
     assert(projectReport.chorus_runs.some((run) => run.run_id === chorusRunId && run.files.contact_sheet));
 
@@ -556,6 +578,15 @@ function assertInstalledReviewRun(workspace, runner) {
     assert(review.jobs.every((job) => job.pass === "contract.editor"));
     assert(review.jobs.every((job) => job.context_pack === "informed.editor"));
     assert(review.jobs.every((job) => job.visible_files.some((file) => file.path === "draft/01-opening.md")));
+
+    const sceneTurn = assertJsonCommand(
+      runner,
+      ["review:run", "--dry-run", "--passes", "scene.turn", "--panel", "prose.clean", "--force", "--json", target],
+      { cwd },
+    );
+    assert.equal(sceneTurn.target, "draft/01-opening.md");
+    assert(sceneTurn.jobs.every((job) => job.pass === "scene.turn"));
+    assert(sceneTurn.jobs.every((job) => job.context_pack === "blind.section_only"));
   }
 
   writeJsonFile(mockResponseFile, {

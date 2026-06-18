@@ -9,24 +9,27 @@ behaviors that make good rooms work and express them as file-backed rituals.
 The working principle:
 
 ```text
-room energy -> durable cards -> accountable decisions -> assigned draft work -> table-read feedback -> controlled rewrites
+foundation diagnosis -> room energy -> durable cards -> accountable decisions -> assigned draft work -> table-read feedback -> controlled rewrites
 ```
 
 Implemented MVP:
 
 ```bash
+npm run room -- diagnose draft/<section>.md
 npm run room -- blue-sky draft/<section>.md
 npm run room -- blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
 npm run room -- decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
 npm run room -- break draft/<section>.md --run <room-run-id>
 npm run room -- table-read draft/<section>.md
 npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+npm run review:run -- --passes scene.turn --panel lightning.clean draft/<section>.md
 ```
 
 Current room artifacts live under
-`state/room/<section-id>/<room-run-id>/`. The feature generates options,
-decisions, beat boards, and table-read packets; it does not rewrite manuscript
-prose directly.
+`state/room/<section-id>/<room-run-id>/`. The feature diagnoses story-foundation
+readiness, generates options, records decisions, materializes causal beat
+boards, and prepares table-read packets; it does not rewrite manuscript prose
+directly.
 
 ## Research Synthesis
 
@@ -360,6 +363,7 @@ in charge of taste, authorship, and final direction.
 be a sibling operation:
 
 ```bash
+mlab room diagnose draft/<section>.md
 mlab room blue-sky draft/<section>.md
 mlab room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
 mlab room break draft/<section>.md --run <room-run-id>
@@ -720,6 +724,7 @@ patch.
 5. Add a `room` command namespace:
 
 ```bash
+mlab room diagnose draft/<section>.md
 mlab room blue-sky draft/<section>.md
 mlab room break draft/<section>.md
 mlab room decide draft/<section>.md

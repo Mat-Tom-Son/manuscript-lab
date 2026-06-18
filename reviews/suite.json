@@ -173,6 +173,29 @@
       "max_issues": 7
     },
     {
+      "id": "scene.turn",
+      "label": "Scene Turn Sensor",
+      "stage": [
+        "draft",
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "fiction.section",
+        "essay",
+        "technical.narrative"
+      ],
+      "context_pack": "blind.section_only",
+      "models": [
+        "qwen/qwen3.7-plus"
+      ],
+      "prompt": "reviews/prompts/scene-turn.md",
+      "blocking": false,
+      "min_confidence": 0.45,
+      "max_issues": 6
+    },
+    {
       "id": "continuity",
       "label": "Continuity Editor",
       "stage": [

@@ -195,6 +195,8 @@ function listRoomRuns() {
         packet: "room-packet.json",
         report: "ROOM_REPORT.md",
         decision: "decision.json",
+        diagnosis_json: "output/story-diagnosis.json",
+        diagnosis_md: "output/STORY_DIAGNOSIS.md",
         beat_board_json: "output/beat-board.json",
         beat_board_md: "output/beat-board.md",
         checklist: "output/table-read-checklist.md",
@@ -215,6 +217,9 @@ function listRoomRuns() {
         parked: cards.filter((card) => card.status === "parked").length,
         rejected: cards.filter((card) => card.status === "rejected").length,
         beats: beatBoard?.beats?.length ?? 0,
+        grade: manifest.story_grade ?? "",
+        foundation_ready: manifest.foundation_ready ?? null,
+        recommended_next: manifest.recommended_next ?? "",
         error_count: Number(manifest.error_count ?? 0),
         cluster_count: Number(manifest.cluster_count ?? 0),
         files,
@@ -465,7 +470,7 @@ function printText(data) {
     for (const run of data.room_runs) {
       const decision = run.selected || run.parked || run.rejected ? `, selected ${run.selected}, parked ${run.parked}, rejected ${run.rejected}` : "";
       const beats = run.beats ? `, ${run.beats} beat(s)` : "";
-      const artifact = run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
+      const artifact = run.files?.diagnosis_md || run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
       console.log(`- ${run.section_id}: ${run.operation || "room"} ${run.status}${decision}${beats} -> ${artifact}`);
     }
   } else {

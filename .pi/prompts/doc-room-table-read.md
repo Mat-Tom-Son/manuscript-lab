@@ -14,12 +14,15 @@ Steps:
 2. Read the generated checklist and reader text under `state/room/<section-id>/<run-id>/output/`.
 3. If a model-backed read-aloud sensor is useful, run:
    `npm run review:run -- --passes room.table_read <section file>`
-4. Treat table-read results as review sensors. Import, triage, accept, reject,
+4. If scene causality is the risk, also run:
+   `npm run review:run -- --passes scene.turn <section file>`
+5. Treat table-read results as review sensors. Import, triage, accept, reject,
    defer, or park issues before revising.
-5. Do not rewrite directly from raw table-read chatter.
+6. Do not rewrite directly from raw table-read chatter.
 
 For Lightning-specific routing:
 
 ```bash
 npm run review:run -- --passes room.table_read --panel lightning.clean draft/<section>.md
+npm run review:run -- --passes scene.turn --panel lightning.clean draft/<section>.md
 ```

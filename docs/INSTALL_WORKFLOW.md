@@ -76,6 +76,7 @@ npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
 npx mlab validate
 npx mlab status
 npx mlab compose draft/01-opening.md
+npx mlab room diagnose draft/01-opening.md
 npx mlab room blue-sky draft/01-opening.md
 npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
 npx mlab room break draft/01-opening.md --run <room-run-id>
@@ -146,6 +147,7 @@ The package workflow supports the deterministic local loop:
 ```bash
 npx mlab status
 npx mlab compose draft/01-intro.md
+npx mlab room diagnose draft/01-intro.md
 npx mlab room blue-sky draft/01-intro.md
 npx mlab room decide draft/01-intro.md --run <room-run-id> --select idea-001 --reason "..."
 npx mlab room break draft/01-intro.md --run <room-run-id>
@@ -162,9 +164,9 @@ npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
 It also has root-aware command routing and packed-tarball smoke coverage for
-the first Room/Chorus and candidate-loop slices. Room and Chorus run
+the first Room/Chorus and candidate-loop slices. Room diagnosis runs
 deterministically without provider keys; pass provider-prefixed `--models`
-values when you want Lightning/OpenRouter-backed generation. Chorus writes
+values when you want Lightning/OpenRouter-backed room generation. Chorus writes
 contact sheets by default; use `--assemble` or `chorus assemble` only when you
 want an explicit picked draft artifact.
 
@@ -350,6 +352,7 @@ npx mlab citations check --json
 npx mlab gate draft/01-opening.md --json
 npx mlab status --json
 npx mlab compose draft/01-opening.md --json
+npx mlab room diagnose draft/01-opening.md --json
 npx mlab room blue-sky draft/01-opening.md --json
 npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..." --json
 npx mlab room break draft/01-opening.md --run <room-run-id> --json
