@@ -100,9 +100,11 @@ gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
 export gates are config-root aware. Typed review execution and the
 candidate-loop commands also work in install-anywhere projects. Room and Chorus
 commands are deterministic without API keys; pass provider-prefixed `--models`
-when you want Lightning/OpenRouter-backed generation. Template project switching
-commands are template-clone compatibility commands and refuse outside the
-template clone root while the installed CLI matures.
+when you want Lightning/OpenRouter-backed generation. Chorus writes contact
+sheets by default and only assembles prose when `--assemble` or
+`chorus assemble` is used. Template project switching commands are
+template-clone compatibility commands and refuse outside the template clone root
+while the installed CLI matures.
 
 ## 2. Fill In The Core Files
 

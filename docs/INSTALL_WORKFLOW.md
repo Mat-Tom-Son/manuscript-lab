@@ -164,7 +164,9 @@ npx mlab done --export-formats md,html --include-todo-exports --json
 It also has root-aware command routing and packed-tarball smoke coverage for
 the first Room/Chorus and candidate-loop slices. Room and Chorus run
 deterministically without provider keys; pass provider-prefixed `--models`
-values when you want Lightning/OpenRouter-backed generation.
+values when you want Lightning/OpenRouter-backed generation. Chorus writes
+contact sheets by default; use `--assemble` or `chorus assemble` only when you
+want an explicit picked draft artifact.
 
 ```bash
 npx mlab issues list --status accepted

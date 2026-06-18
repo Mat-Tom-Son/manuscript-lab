@@ -357,9 +357,13 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(chorus.run_dir, `state/chorus/01-opening/${chorusRunId}`);
     assert.equal(chorus.beat_count, 2);
     assert.equal(chorus.candidate_count, 2);
+    assert.equal(chorus.committed_beat_count, 0);
+    assert.equal(chorus.contact_sheet_file, `state/chorus/01-opening/${chorusRunId}/CONTACT_SHEET.md`);
     assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "manifest.json")));
     assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "voice-pack.json")));
-    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "assembled.md")));
+    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "plan-quality.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "CONTACT_SHEET.md")));
+    assert.equal(fs.existsSync(path.join(manuscriptRoot, chorus.run_dir, "assembled.md")), false);
 
     const roomRunId = `packed-room-${index + 1}`;
     const roomTarget = cwd === draftRoot ? "01-opening.md" : "draft/01-opening.md";
@@ -409,7 +413,9 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(chorusStatusRun.operation, "chorus");
     assert.equal(chorusStatusRun.target, "draft/01-opening.md");
     assert.equal(chorusStatusRun.files.report, `state/chorus/01-opening/${chorusRunId}/CHORUS_REPORT.md`);
-    assert.equal(chorusStatusRun.files.assembled, `state/chorus/01-opening/${chorusRunId}/assembled.md`);
+    assert.equal(chorusStatusRun.files.contact_sheet, `state/chorus/01-opening/${chorusRunId}/CONTACT_SHEET.md`);
+    assert.equal(chorusStatusRun.files.plan_quality, `state/chorus/01-opening/${chorusRunId}/plan-quality.json`);
+    assert.equal(chorusStatusRun.files.assembled, undefined);
 
     const projectReport = assertJsonCommand(runner, ["report", "--json"], { cwd });
     assert.equal(projectReport.schema_version, "manuscript-lab.report.v1");
@@ -419,9 +425,9 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert(projectReport.summary.chorus_runs >= 1, "report should count chorus runs");
     assert(projectReport.summary.room_runs_by_operation.blue_sky >= 1, "report should group room operations");
     assert(projectReport.summary.room_runs_by_operation.table_read >= 1, "report should group table-read operations");
-    assert(projectReport.summary.chorus_runs_by_status.assembled >= 1, "report should group chorus statuses");
+    assert(projectReport.summary.chorus_runs_by_status.sampled >= 1, "report should group chorus statuses");
     assert(projectReport.room_runs.some((run) => run.run_id === roomRunId && run.files.beat_board_md));
-    assert(projectReport.chorus_runs.some((run) => run.run_id === chorusRunId && run.files.assembled));
+    assert(projectReport.chorus_runs.some((run) => run.run_id === chorusRunId && run.files.contact_sheet));
 
     const projectReportHtml = runner(["report", "--html"], { cwd });
     assert.equal(projectReportHtml.status, 0, projectReportHtml.stderr || projectReportHtml.stdout);

@@ -82,6 +82,6 @@ npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss
 npm run chorus -- report draft/<section>.md
 ```
 
-Chorus runs generate provisional beat-level prose candidates, pick judgments,
-metrics, and `assembled.md` under `state/chorus/`. The MVP does not modify
-`draft/`.
+Chorus runs generate provisional beat-level line candidates, contact sheets,
+plan-quality notes, metrics, and optional pick/assemble artifacts under
+`state/chorus/`. The workflow does not modify `draft/`.

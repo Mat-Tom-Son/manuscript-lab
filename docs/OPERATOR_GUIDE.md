@@ -74,8 +74,8 @@ If you use Pi, `.pi/prompts/` maps the same workflows to slash commands:
 - `taste/`: project-specific aesthetic constitution, voice/taste profile, reader contract, genre promise, failure modes, motifs, and exemplar memory.
 - `draft/`: manuscript text and section contracts.
 - `state/status.md`: section status table.
-- `state/chorus/`: Chorus beat-level prose ensemble runs, provisional
-  assemblies, candidate prose, metrics, and reports.
+- `state/chorus/`: Chorus beat-level line-lab runs, candidate prose, contact
+  sheets, plan-quality notes, optional assemblies, metrics, and reports.
 - `state/runtime/`: generated runtime packets for section operations.
 - `state/room/`: writers' room run packets, idea cards, decisions, beat boards,
   and table-read artifacts.
@@ -115,7 +115,7 @@ Do not revise from raw reviewer chatter. Reviews are sensors. The issue ledger i
 3. Read its section contract at the top of the draft file.
 4. Run `npm run compose -- draft/<section>.md` to compile the context, rules, criteria, and trace.
 5. If direction is still cheap to change, use `npm run room -- blue-sky`, `decide`, and `break` before drafting.
-6. If voice material is the question, use `npm run chorus -- run draft/<section>.md`; inspect `state/chorus/` before editing `draft/`.
+6. If voice material is the question, use `npm run chorus -- run draft/<section>.md`; inspect `CONTACT_SHEET.md` before editing `draft/`.
 7. Run static checks before touching model calls.
 8. Run typed reviews only when the prose is worth reviewing.
 9. Triage issues explicitly: accept, reject, defer, merge, convert to check, or manual review.

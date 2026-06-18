@@ -29,8 +29,8 @@ repo keeps them in files:
 - section contracts in `draft/*.md`
 - project context in `PROJECT.md`, `brief.md`, `outline.md`, `style.md`, and `taste/`
 - compiled runtime packets in `state/runtime/`
-- Chorus beat-level prose ensemble runs, provisional assemblies, and metrics in
-  `state/chorus/`
+- Chorus beat-level line-lab runs, contact sheets, plan-quality notes, and
+  metrics in `state/chorus/`
 - writers' room packets, idea cards, decisions, beat boards, and table-read
   artifacts in `state/room/`
 - typed review findings in `state/issues/`
@@ -177,8 +177,8 @@ typed review runs, `review:report`, Markdown/HTML export, and `done` with
 configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
 comparison, taste gates, merge previews, diff audits, writers' room runs under
-`state/room/`, and Chorus prose ensemble runs under `state/chorus/`. `status`
-and `report` surface recent Room and Chorus artifacts as part of the cockpit.
+`state/room/`, and Chorus line-lab runs under `state/chorus/`. `status` and
+`report` surface recent Room and Chorus artifacts as part of the cockpit.
 Template project switching commands are guarded as template-clone compatibility
 commands.
 
@@ -203,19 +203,21 @@ Use `npm run done` when you expect reader exports.
 
 ## Chorus
 
-Use Chorus when the question is not just what a section should do, but how its
-prose might sound with more variance than a single model pass:
+Use Chorus when the question is not just what a section should do, but which
+line options, pressure moves, and sentence shapes are worth stealing:
 
 ```bash
 npm run chorus -- plan draft/01-opening.md --beats 4
 npm run chorus -- plan draft/01-opening.md --from-room <room-run-id>
-npm run chorus -- run draft/01-opening.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/01-opening.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
 npm run chorus -- report draft/01-opening.md
 ```
 
-Chorus writes provisional beat candidates, pick judgments, metrics, and
-`assembled.md` under `state/chorus/<section-id>/<run-id>/`. It does not modify
-`draft/` in the MVP.
+Chorus is a line lab by default. `run` writes beat candidates, per-beat contact
+sheets, `CONTACT_SHEET.md`, `plan-quality.json`, `metrics.json`, and
+`CHORUS_REPORT.md` under `state/chorus/<section-id>/<run-id>/`. It does not
+modify `draft/`, and it does not write `assembled.md` unless you explicitly pass
+`--assemble` or run `chorus assemble`.
 
 ## Writers' Room
 

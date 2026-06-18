@@ -145,18 +145,21 @@ pass uses the normal review/model-panel infrastructure and issue-ledger flow.
 ## Chorus
 
 Chorus runs are local-seed/deterministic unless `--models` is provided. Use
-provider-prefixed IDs to fan out beat-level prose candidates:
+provider-prefixed IDs to fan out short beat-level line candidates. A more
+delicate model such as Claude Sonnet is a good first slot, with a cheaper
+contrast model after it:
 
 ```bash
-npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
-npm run chorus -- sample draft/<section>.md --run <chorus-run-id> --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
+npm run chorus -- sample draft/<section>.md --run <chorus-run-id> --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
 npm run chorus -- report draft/<section>.md
 ```
 
 Model-backed sampling records candidate metadata under
 `state/chorus/<section-id>/<run-id>/candidates/` and model-call audit entries
-with `operation: chorus.sample`. The MVP uses a pick-only judgment strategy and
-does not modify `draft/`.
+with `operation: chorus.sample`. The default workflow writes contact sheets and
+does not modify `draft/`; pick/assemble remains explicit with `--assemble` or
+`chorus assemble`.
 
 ## Checks And Audits
 

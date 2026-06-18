@@ -12,7 +12,7 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
   assert.equal(result.status, 0, result.stderr);
   assert.match(result.stdout, /Review and revision:/);
   assert.match(result.stdout, /Writers' room:/);
-  assert.match(result.stdout, /Prose ensemble:/);
+  assert.match(result.stdout, /Prose line lab:/);
   assert.match(result.stdout, /room blue-sky draft\/<section>\.md --json/);
   assert.match(result.stdout, /chorus run draft\/<section>\.md --json/);
   assert.match(result.stdout, /review draft\/<section>\.md --dry-run --panel prose\.clean/);
@@ -23,7 +23,7 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
 {
   const result = run([cli, "chorus", "--help"]);
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /chorus - beat-level prose ensemble artifacts/);
+  assert.match(result.stdout, /chorus - prose line lab and contact-sheet artifacts/);
 }
 
 {

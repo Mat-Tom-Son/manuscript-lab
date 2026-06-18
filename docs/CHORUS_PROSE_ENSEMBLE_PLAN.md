@@ -1,18 +1,20 @@
-# Chorus Prose Ensemble Plan
+# Chorus Prose Line Lab Plan
 
-Chorus is an experimental prose-production layer for Manuscript Lab. It uses a
-frontier judge and a decorrelated pool of cheaper model voices to generate,
-select, and link prose one beat at a time.
+Chorus is an experimental prose line-lab layer for Manuscript Lab. It uses a
+decorrelated pool of model voices to generate short candidate continuations one
+beat at a time, then presents them as contact sheets for human selection,
+revision, or rejection.
 
 The core idea from the design spec is strong:
 
 ```text
-context + beat goal -> decorrelated candidate continuations -> judgment -> commit -> re-ground
+context + beat goal -> decorrelated candidate continuations -> contact sheet -> human mining
 ```
 
 This is not a prompt pack and not a one-click book generator. It is a local,
 file-backed prose lab for testing whether an ensemble of under-correlated model
-voices can produce texture a single frontier model tends to smooth away.
+voices can produce line options, pressure, and texture a single frontier pass
+tends to smooth away.
 
 ## Product Thesis
 
@@ -40,8 +42,9 @@ review/taste/check gates -> better acceptance discipline
 The important distinction:
 
 - `room` generates options, decisions, and beat boards. It does not write prose.
-- `chorus` generates provisional prose into `state/chorus/`. It does not alter
-  `draft/` until an explicit apply command passes freshness checks.
+- `chorus` generates provisional line-lab artifacts into `state/chorus/`. It
+  does not alter `draft/` until a human or future explicit apply command passes
+  freshness checks.
 - `revise:candidates` generates full-section revision candidates for accepted
   issues after prose exists.
 
@@ -55,7 +58,8 @@ The first slice is available as:
 ```bash
 npm run chorus -- plan draft/<section>.md --beats 4
 npm run chorus -- run draft/<section>.md
-npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/<section>.md --assemble
 npm run chorus -- sample draft/<section>.md --run <chorus-run-id>
 npm run chorus -- judge draft/<section>.md --run <chorus-run-id>
 npm run chorus -- assemble draft/<section>.md --run <chorus-run-id>
@@ -70,8 +74,10 @@ Current MVP behavior:
 - builds beat plans from section contracts or room beat boards
 - supports local-seed, mocked, and model-backed candidate sampling
 - records per-candidate metadata and raw outputs
-- uses a pick-only heuristic judgment strategy
-- writes `assembled.md`, `metrics.json`, and `CHORUS_REPORT.md`
+- writes per-beat contact sheets, `CONTACT_SHEET.md`, `plan-quality.json`,
+  `metrics.json`, and `CHORUS_REPORT.md`
+- keeps pick-only heuristic judgment and `assembled.md` behind explicit
+  `--assemble`, `chorus judge`, or `chorus assemble`
 - does not modify `draft/`
 
 Still future work:
@@ -106,9 +112,10 @@ compose section
 -> optional room blue-sky / decide / break
 -> chorus plan beats
 -> chorus sample candidate prose
--> chorus judge and select
--> chorus assemble provisional section
--> chorus link for cadence
+-> human mines the contact sheet
+-> optional chorus judge and select
+-> optional chorus assemble provisional section
+-> future chorus link for cadence
 -> compare against solo baseline
 -> human accepts or parks
 -> apply to draft with source-hash protection
@@ -165,6 +172,10 @@ state/chorus/<section-id>/<run-id>/
   voice-pack.json
   roster.json
   beat-plan.json
+  plan-quality.json
+  CONTACT_SHEET.md
+  CHORUS_REPORT.md
+  metrics.json
   specs/
     beat-001.json
     beat-002.json
@@ -176,13 +187,14 @@ state/chorus/<section-id>/<run-id>/
       candidate-b.md
       raw/
     beat-002/
+      contact-sheet.md
   judgments/
     beat-001.json
     beat-002.json
   commits/
     beat-001.md
     beat-002.md
-  assembled.md
+  assembled.md    # optional after --assemble or chorus assemble
   linked.md
   baseline.md
   comparison.json
@@ -220,7 +232,7 @@ would need source-hash protection and before snapshots.
   },
   "orchestrator": {
     "mode": "model",
-    "model": "openrouter:anthropic/claude-sonnet-4.5"
+    "model": "openrouter:anthropic/claude-sonnet-4"
   },
   "roster": {
     "file": "state/chorus/01-opening/<run-id>/roster.json",
@@ -228,9 +240,11 @@ would need source-hash protection and before snapshots.
   },
   "files": {
     "beat_plan": "state/chorus/01-opening/<run-id>/beat-plan.json",
+    "plan_quality": "state/chorus/01-opening/<run-id>/plan-quality.json",
     "voice_pack": "state/chorus/01-opening/<run-id>/voice-pack.json",
-    "assembled": "state/chorus/01-opening/<run-id>/assembled.md",
-    "linked": "state/chorus/01-opening/<run-id>/linked.md"
+    "contact_sheet": "state/chorus/01-opening/<run-id>/CONTACT_SHEET.md",
+    "report": "state/chorus/01-opening/<run-id>/CHORUS_REPORT.md",
+    "assembled": "optional after explicit assemble"
   }
 }
 ```
@@ -522,6 +536,7 @@ Responsibilities:
 - load room beat board if provided
 - generate `voice-pack.json`
 - generate `beat-plan.json`
+- generate `plan-quality.json`
 - write `manifest.json`
 
 No model call required for MVP.
@@ -534,6 +549,8 @@ Responsibilities:
 - compile one `BeatSpec` per beat
 - fan out candidate calls per beat in parallel
 - persist candidates, raw outputs, model metadata, latency, and usage
+- write per-beat contact sheets and top-level `CONTACT_SHEET.md`
+- write `metrics.json`
 - support `--mock-response` for tests
 
 MVP should allow:
@@ -642,7 +659,9 @@ MVP features:
 - model-backed sampling through existing `callChatModel`
 - mock sampling for tests
 - `pick` selection strategy only
-- `assembled.md`
+- `CONTACT_SHEET.md`
+- `plan-quality.json`
+- optional `assembled.md` only after explicit pick/assemble
 - `CHORUS_REPORT.md`
 - no direct draft apply in the first patch
 

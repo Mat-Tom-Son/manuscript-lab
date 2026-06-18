@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+## 1.2.0 - 2026-06-17
+
+- Reframed Chorus as a prose line lab by default: `chorus run` now samples
+  beat-level candidates and writes `CONTACT_SHEET.md`, per-beat contact sheets,
+  `plan-quality.json`, metrics, and reports without assembling prose.
+- Kept the pick-and-assemble path available through explicit `--assemble`,
+  `chorus judge`, and `chorus assemble`, with reports warning against wholesale
+  merges.
+- Tightened Chorus beat plans with sensory/object targets, continuity limits,
+  stricter no-new-canon guardrails, plan-quality warnings, and usage/cost
+  metrics for model-backed candidates.
+- Updated `mlab` help, status/report artifact links, installed-package smoke
+  coverage, Pi prompts, and public docs so Room, Chorus, and candidate loops
+  present as first-class but distinct workflows.
+
 ## 1.1.0 - 2026-06-17
 
 - Added a writers' room workflow research memo mapping industry room practices

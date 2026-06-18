@@ -238,7 +238,7 @@ Common commands:
   validate
   status
   compose -- draft/<section>.md
-  chorus run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+  chorus run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
   check --static-only
   claims list --unsupported
   citations check draft/<section>.md
@@ -269,9 +269,10 @@ Writers' room:
   room table-read draft/<section>.md
   room report draft/<section>.md
 
-Prose ensemble:
+Prose line lab:
   chorus plan draft/<section>.md --beats 4
   chorus run draft/<section>.md --json
+  chorus run draft/<section>.md --assemble
   chorus sample draft/<section>.md --run <chorus-run-id>
   chorus judge draft/<section>.md --run <chorus-run-id>
   chorus assemble draft/<section>.md --run <chorus-run-id>

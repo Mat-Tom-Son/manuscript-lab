@@ -367,7 +367,7 @@ function ensureRequiredScaffoldDirs() {
   ]) {
     ensureDir(dir);
   }
-  ensureReadme("state/chorus/README.md", "Chorus prose ensemble artifacts live here.\n");
+  ensureReadme("state/chorus/README.md", "Chorus line-lab artifacts live here.\n");
   ensureReadme("state/issues/README.md", "Issue ledger artifacts live here.\n");
   ensureReadme("state/runtime/README.md", "Composed runtime packets live here.\n");
   ensureReadme("state/reviews/README.md", "Review run artifacts live here.\n");

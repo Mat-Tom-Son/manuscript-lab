@@ -227,7 +227,7 @@ function ensureScaffoldDirs(root, { written }) {
   }
 
   const readmes = {
-    "state/chorus/README.md": "Chorus prose ensemble artifacts live here.\n",
+    "state/chorus/README.md": "Chorus line-lab artifacts live here.\n",
     "style/README.md": "Project-local style artifacts live here.\n",
     "taste/accepted_patches/README.md": "Accepted taste examples live here.\n",
     "taste/rejected_patches/README.md": "Rejected taste examples live here.\n",

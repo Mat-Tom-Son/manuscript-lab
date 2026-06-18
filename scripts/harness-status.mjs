@@ -247,6 +247,8 @@ function listChorusRuns() {
         beat_plan: "beat-plan.json",
         voice_pack: "voice-pack.json",
         roster: "roster.json",
+        plan_quality: "plan-quality.json",
+        contact_sheet: "CONTACT_SHEET.md",
         metrics: "metrics.json",
         report: "CHORUS_REPORT.md",
         assembled: "assembled.md",
@@ -475,7 +477,7 @@ function printText(data) {
   if (data.chorus_runs.length) {
     for (const run of data.chorus_runs) {
       const assembled = run.assembled ? ", assembled" : "";
-      const artifact = run.files?.report || run.files?.assembled || run.path;
+      const artifact = run.files?.contact_sheet || run.files?.report || run.files?.assembled || run.path;
       console.log(`- ${run.section_id}: ${run.operation || "chorus"} ${run.status}, ${run.beats} beat(s), ${run.candidates} candidate(s), ${run.committed} committed${assembled} -> ${artifact}`);
     }
   } else {

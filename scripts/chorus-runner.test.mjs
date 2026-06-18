@@ -33,10 +33,13 @@ try {
   const bridged = assertJsonCommand(["chorus", "plan", "draft/01-opening.md", "--run-id", "chorus-from-room", "--from-room", roomRunId, "--json"], { cwd: workspace });
   assert.equal(bridged.ok, true);
   assert.equal(bridged.beat_count, 1);
+  assert.match(bridged.plan_quality, /line-lab ready|plan warning/);
   const bridgedPlan = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, bridged.run_dir, "beat-plan.json"), "utf8"));
   assert.equal(bridgedPlan.source.type, "room");
   assert.equal(bridgedPlan.source.run_id, roomRunId);
   assert.equal(bridgedPlan.beats[0].source_room_beat_id, "beat-001");
+  assert(bridgedPlan.beats[0].sensory_targets.length > 0, "room bridge should carry sensory/object targets");
+  assert(fs.existsSync(path.join(manuscriptRoot, bridged.run_dir, "plan-quality.json")));
 
   const cwdCases = [workspace, manuscriptRoot, draftRoot];
   for (const [index, cwd] of cwdCases.entries()) {
@@ -48,25 +51,40 @@ try {
     assert.equal(result.run_dir, `state/chorus/01-opening/${runId}`);
     assert.equal(result.beat_count, 2);
     assert.equal(result.candidate_count, 2);
-    assert.equal(result.committed_beat_count, 2);
+    assert.equal(result.committed_beat_count, 0);
+    assert.equal(result.contact_sheet_file, `state/chorus/01-opening/${runId}/CONTACT_SHEET.md`);
+    assert.equal(result.assembled_file, "");
 
     const runDir = path.join(manuscriptRoot, result.run_dir);
     assert(fs.existsSync(path.join(runDir, "manifest.json")));
     assert(fs.existsSync(path.join(runDir, "voice-pack.json")));
     assert(fs.existsSync(path.join(runDir, "roster.json")));
     assert(fs.existsSync(path.join(runDir, "beat-plan.json")));
+    assert(fs.existsSync(path.join(runDir, "plan-quality.json")));
     assert(fs.existsSync(path.join(runDir, "specs", "beat-001.json")));
     assert(fs.existsSync(path.join(runDir, "candidates", "beat-001", "candidate-a.md")));
-    assert(fs.existsSync(path.join(runDir, "judgments", "beat-001.json")));
-    assert(fs.existsSync(path.join(runDir, "commits", "beat-001.md")));
-    assert(fs.existsSync(path.join(runDir, "assembled.md")));
+    assert(fs.existsSync(path.join(runDir, "candidates", "beat-001", "contact-sheet.md")));
+    assert.equal(fs.existsSync(path.join(runDir, "judgments", "beat-001.json")), false);
+    assert.equal(fs.existsSync(path.join(runDir, "commits", "beat-001.md")), false);
+    assert.equal(fs.existsSync(path.join(runDir, "assembled.md")), false);
+    assert(fs.existsSync(path.join(runDir, "CONTACT_SHEET.md")));
     assert(fs.existsSync(path.join(runDir, "metrics.json")));
     assert(fs.existsSync(path.join(runDir, "CHORUS_REPORT.md")));
 
     const manifest = JSON.parse(fs.readFileSync(path.join(runDir, "manifest.json"), "utf8"));
-    assert.equal(manifest.status, "assembled");
+    assert.equal(manifest.status, "sampled");
+    assert.equal(manifest.contact_sheet_file, `state/chorus/01-opening/${runId}/CONTACT_SHEET.md`);
     assert.equal(manifest.target.source_sha256.length, 64);
   }
+
+  const assembled = assertJsonCommand(["chorus", "run", "draft/01-opening.md", "--run-id", "chorus-assemble", "--beats", "1", "--assemble", "--json"], { cwd: workspace });
+  assert.equal(assembled.ok, true);
+  assert.equal(assembled.committed_beat_count, 1);
+  assert.equal(assembled.assembled_file, "state/chorus/01-opening/chorus-assemble/assembled.md");
+  const assembledRunDir = path.join(manuscriptRoot, assembled.run_dir);
+  assert(fs.existsSync(path.join(assembledRunDir, "judgments", "beat-001.json")));
+  assert(fs.existsSync(path.join(assembledRunDir, "commits", "beat-001.md")));
+  assert(fs.existsSync(path.join(assembledRunDir, "assembled.md")));
 
   const mockResponseRel = "state/chorus/mock-candidate-response.json";
   writeJson(path.join(manuscriptRoot, mockResponseRel), {
@@ -95,6 +113,8 @@ try {
   );
   assert.equal(mock.ok, true);
   assert.equal(mock.candidate_count, 2);
+  assert.equal(mock.committed_beat_count, 0);
+  assert(fs.existsSync(path.join(manuscriptRoot, mock.contact_sheet_file)));
   const mockRunDir = path.join(manuscriptRoot, mock.run_dir);
   const roster = JSON.parse(fs.readFileSync(path.join(mockRunDir, "roster.json"), "utf8"));
   assert.deepEqual(
@@ -104,7 +124,7 @@ try {
   const report = assertJsonCommand(["chorus", "report", "01-opening.md", "--json"], { cwd: draftRoot });
   assert.equal(report.ok, true);
   assert.equal(report.target, "draft/01-opening.md");
-  assert(report.run_count >= 4);
+  assert(report.run_count >= 5);
 
   assert.equal(fs.existsSync(path.join(workspace, "state")), false, "chorus should not write state at workspace root");
   assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "chorus should not write state under draft/");

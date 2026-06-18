@@ -140,13 +140,14 @@ state/runtime/<section-id>/
 
 Use this before writing, reviewing, revising, or verifying a section.
 
-### Chorus Prose Ensemble
+### Chorus Line Lab
 
 ```bash
 npm run chorus -- plan draft/<section>.md --beats 4
 npm run chorus -- plan draft/<section>.md --from-room <room-run-id>
 npm run chorus -- run draft/<section>.md
-npm run chorus -- run draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
+npm run chorus -- run draft/<section>.md --assemble
 npm run chorus -- sample draft/<section>.md --run <chorus-run-id>
 npm run chorus -- judge draft/<section>.md --run <chorus-run-id>
 npm run chorus -- assemble draft/<section>.md --run <chorus-run-id>
@@ -154,14 +155,16 @@ npm run chorus -- report draft/<section>.md
 mlab chorus run draft/<section>.md --json
 ```
 
-Runs the first Chorus prose-production protocol. `plan` builds a voice pack and
-beat plan from section context, style, taste, and optionally a room beat board.
-`run` samples candidate prose per beat, uses a pick-only MVP judgment strategy,
-and assembles provisional prose under `state/chorus/<section-id>/<run-id>/`.
+Runs the Chorus line-lab protocol. `plan` builds a voice pack, a beat plan, and
+plan-quality warnings from section context, style, taste, continuity, and
+optionally a room beat board. `run` samples short candidate prose per beat and
+writes `CONTACT_SHEET.md`, per-beat contact sheets, metrics, and
+`CHORUS_REPORT.md` under `state/chorus/<section-id>/<run-id>/`.
 
-Chorus does not modify `draft/` in this MVP. Read `CHORUS_REPORT.md` and
-`assembled.md`, then decide whether the output should inform a later manual edit,
-candidate arena, or section contract change.
+Chorus does not modify `draft/`. Treat the contact sheet as comparison material:
+mine phrases, pressure, risks, and sentence movement manually. `--assemble` or
+`chorus assemble` preserves the old pick-and-assemble path, but assembled output
+is optional and should not be merged wholesale.
 
 ### Context Audit
 

@@ -475,7 +475,7 @@ function printText(report) {
       console.log(`- room/${run.run_id}: ${run.operation || "room"} ${run.status} on ${run.target || run.section_id} -> ${artifact}`);
     }
     for (const run of report.chorus_runs.slice(0, 5)) {
-      const artifact = run.files?.report || run.files?.assembled || run.path;
+      const artifact = run.files?.contact_sheet || run.files?.report || run.files?.assembled || run.path;
       console.log(`- chorus/${run.run_id}: ${run.operation || "chorus"} ${run.status} on ${run.target || run.section_id} -> ${artifact}`);
     }
   } else {
@@ -533,7 +533,7 @@ function renderHtml(report) {
     ? report.chorus_runs
         .map(
           (run) =>
-            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "chorus")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.beats}</td><td>${run.candidates}</td><td>${run.committed}</td><td>${escapeHtml(run.assembled ? "yes" : "no")}</td><td>${artifactLinks(run.files, ["report", "assembled", "beat_plan", "voice_pack", "metrics"])}</td></tr>`,
+            `<tr><td>${escapeHtml(run.run_id)}</td><td>${escapeHtml(run.operation || "chorus")}</td><td>${escapeHtml(run.target || run.section_id)}</td><td>${escapeHtml(run.status)}</td><td>${escapeHtml(run.modified_at || run.created_at || "")}</td><td>${run.beats}</td><td>${run.candidates}</td><td>${run.committed}</td><td>${escapeHtml(run.assembled ? "yes" : "no")}</td><td>${artifactLinks(run.files, ["contact_sheet", "report", "plan_quality", "beat_plan", "voice_pack", "metrics", "assembled"])}</td></tr>`,
         )
         .join("\n")
     : `<tr><td colspan="10">No Chorus runs.</td></tr>`;
