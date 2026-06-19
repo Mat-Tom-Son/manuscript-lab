@@ -7,9 +7,12 @@ const META_PATTERNS = [
   { id: "prose-submission", pattern: /\bprose submission\b/i },
   { id: "test-result", pattern: /\b(?:passes|fails?) (?:the )?(?:hidden )?test\b/i },
   { id: "exercise-meta", pattern: /\bthe exercise (?:asks|requires|demands|is about)\b/i },
+  { id: "reasoning-tag", pattern: /<\/?(?:think|thinking|reasoning|analysis)\b[^>]*>/i },
+  { id: "analysis-heading", pattern: /^\s*(?:analysis|plan|reasoning|thought process|notes?)\s*:/im },
+  { id: "task-meta", pattern: /\b(?:the task|this prompt|the prompt) (?:asks|requires|wants|demands|is asking)\b/i },
   {
     id: "planning-language",
-    pattern: /\b(?:the user wants me(?: to)?|let me|i need to|i should|i will|i'm going to)\s+(?:revise|think|try|write|add|replace|choose|make|go)\b/i,
+    pattern: /\b(?:the user wants me(?: to)?|let me|i need to|i should|i will|i'm going to|we need to)\s+(?:revise|think|try|write|add|replace|choose|make|go|answer|respond|ensure)\b/i,
   },
   {
     id: "revision-list",

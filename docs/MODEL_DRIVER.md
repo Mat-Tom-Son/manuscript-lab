@@ -484,10 +484,11 @@ model-call audit path for persisted driver runs. Ephemeral `--dry-run` and
 
 Tool results should feed the next decision with compact parsed-result summaries
 and artifact paths, not raw stdout. For example, a practice benchmark result can
-surface the run directory, winner source, first-pass win rate, final win rate,
-and `RESULTS.md` path so the model can choose whether to inspect, repair, widen,
-or stop. A strategy-comparison result should additionally surface
-`STRATEGY_REPORT.md`, per-strategy win/cost summaries, and per-exercise
+surface the run directory, winner source, evaluated rows, error rows,
+first-pass win rate, final win rate, and `RESULTS.md` path so the model can
+choose whether to inspect, repair, widen, rerun with a different timeout/model
+roster, or stop. A strategy-comparison result should additionally surface
+`STRATEGY_REPORT.md`, per-strategy win/cost/error summaries, and per-exercise
 recommendations so the model can choose a loop shape from measured behavior
 instead of assuming revision or repair is always worth the extra spend.
 

@@ -1,6 +1,6 @@
 {
   "name": "manuscript-lab",
-  "version": "1.5.0",
+  "version": "1.5.1",
   "private": false,
   "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
   "license": "MIT",

@@ -1,5 +1,18 @@
 # Changelog
 
+## 1.5.1 - 2026-06-19
+
+- Hardened practice benchmark and strategy runs for heterogeneous model
+  testing: per-row provider/model failures now persist as error rows with
+  evaluated/error denominators in summaries, reports, console output, and
+  practice-strategy eval snapshots. Runs with some errors now report `partial`;
+  runs where every comparison errors fail instead of masquerading as a pass.
+- Cleaned generated-artifact discovery so incomplete practice-strategy runs are
+  marked `in_progress` without polluting recommendations, while completed
+  benchmark/eval artifacts expose evaluated/error row counts.
+- Expanded the practice prose guard to catch visible reasoning tags, analysis
+  headings, and prompt/task chatter from reasoning-heavy models before judging.
+
 ## 1.5.0 - 2026-06-19
 
 - Added generated-artifact discovery across driver runs, practice runs,

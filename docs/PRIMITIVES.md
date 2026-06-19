@@ -117,7 +117,12 @@ models, and seeds. It writes a self-contained benchmark ledger under
 `runs.jsonl`, `summary.json`, and `RESULTS.md`. Bench summaries separate
 first-pass wins from post-repair workflow recoveries, aggregate by model and
 exercise, classify recurring failure modes, and record known token/cost usage
-when providers return it. This is an oracle-guided workflow benchmark: the
+when providers return it. Heterogeneous model matrices are fault-tolerant:
+provider timeouts, malformed model responses, and other per-row failures are
+persisted as `status: "error"` rows with `error_rows` and `evaluated_rows`
+tracked separately, so win rates describe completed comparisons instead of
+silently mixing reliability failures into quality scores. This is an
+oracle-guided workflow benchmark: the
 direct baseline sees only the public prompt, while the mlab loop may use hidden
 rubric feedback for candidate selection, revision, and repair. Use
 `--judge-model` to evaluate candidates and pairwise comparisons with a different
@@ -131,13 +136,17 @@ exercise axis. The built-in presets are `single`, `select`, `revise`, and
 `state/practice-strategies/<run-id>/`, nests the child benchmark ledgers under
 `benchmarks/<strategy>/`, and emits `STRATEGY_REPORT.md` plus JSON summaries
 with per-exercise recommendations. Recommendations are aggregate signals over
-win rate, score delta, known cost, and repair recovery, not hard-coded answers.
+evaluated-row win rate, score delta, known cost, error rate, and repair
+recovery, not hard-coded answers.
 
 When the driver invokes practice primitives, comparison and benchmark outputs
 return compact result summaries and artifact paths into the next driver step.
 `practice.bench` and `practice.strategies` are exposed with bounded knobs for
 exercise set or id list, seeds, candidate count, repair rounds, and strategy
 sets so the model can choose a small experiment before spending on a wider run.
+The compact summaries include evaluated/error counts so a driver model can
+distinguish "the harness lost" from "this model family needs a different
+timeout, prompt shape, or routing preset."
 
 Practice generation also treats meta/planning leakage as recoverable. Direct
 baselines and candidates are prose-guarded before judging; when an output

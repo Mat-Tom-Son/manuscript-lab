@@ -770,7 +770,7 @@ function summarizeParsedJson(value) {
   if (value.winner_source) parts.push(`winner=${oneLine(value.winner_source)}`);
   if (value.winner_id) parts.push(`winner=${oneLine(value.winner_id)}`);
   if (value.summary && typeof value.summary === "object" && !Array.isArray(value.summary)) {
-    for (const key of ["total", "completed", "first_pass_mlab_win_rate", "mlab_win_rate", "direct_win_rate", "average_score_delta"]) {
+    for (const key of ["total", "total_rows", "completed", "evaluated_rows", "error_rows", "first_pass_mlab_win_rate", "mlab_win_rate", "direct_win_rate", "average_score_delta"]) {
       if (value.summary[key] !== undefined) parts.push(`${key}=${formatSummaryValue(value.summary[key])}`);
     }
   }

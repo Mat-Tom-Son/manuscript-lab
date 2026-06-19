@@ -12,6 +12,7 @@ const KIND_DEFS = [
   { key: "eval_runs", kind: "eval", root: "evals", depth: 1, marker: "EVAL_REPORT.md" },
   { key: "golden_paths", kind: "golden-path", root: "golden-path", depth: 1, marker: "GOLDEN_PATH.md" },
 ];
+const RECOMMENDATION_SCAN_LIMIT = 50;
 
 export function artifactKindNames() {
   return KIND_DEFS.map((def) => def.kind);
@@ -34,12 +35,15 @@ export function collectGeneratedArtifacts(paths, { kind = "all", limit = 5 } = {
   for (const def of KIND_DEFS) {
     if (!(def.key in artifacts)) artifacts[def.key] = [];
   }
+  const recommendationArtifacts = Object.fromEntries(
+    KIND_DEFS.map((def) => [def.key, listArtifactsForKind(paths, def, RECOMMENDATION_SCAN_LIMIT)]),
+  );
 
   return {
     schema_version: GENERATED_ARTIFACT_SCHEMA,
     generated_at: new Date().toISOString(),
     artifacts,
-    recommendations: recommendFromArtifacts(artifacts),
+    recommendations: recommendFromArtifacts(recommendationArtifacts),
   };
 }
 
@@ -72,14 +76,17 @@ function listArtifactsForKind(paths, def, limit) {
 
 function artifactFromDir(paths, def, dir) {
   const markerFile = path.join(dir, def.marker);
+  const markerExists = fs.existsSync(markerFile);
+  const summaryFile = path.join(dir, "summary.json");
   const summary = readFirstJson([
-    path.join(dir, "summary.json"),
+    summaryFile,
     path.join(dir, "FINAL.json"),
     path.join(dir, "final.json"),
     path.join(dir, "plan.json"),
-    path.join(dir, "input.json"),
   ]);
-  if (!fs.existsSync(markerFile) && !summary) return null;
+  const input = readJson(path.join(dir, "input.json"), null);
+  const metadata = summary ?? input;
+  if (!markerExists && !metadata) return null;
 
   const modifiedAt = latestArtifactMtime(dir, [
     def.marker,
@@ -90,16 +97,16 @@ function artifactFromDir(paths, def, dir) {
     "input.json",
     "events.jsonl",
   ]);
-  const runId = summary?.run_id || summary?.run?.run_id || path.basename(dir);
+  const runId = metadata?.run_id || metadata?.run?.run_id || path.basename(dir);
   const artifact = {
     kind: def.kind,
     run_id: runId,
-    status: summary?.status || summary?.summary?.state || summary?.latest_step?.status || summary?.disposition || "unknown",
+    status: artifactStatus({ markerExists, summary, metadata }),
     path: paths.projectRel(dir),
-    report: fs.existsSync(markerFile) ? paths.projectRel(markerFile) : "",
-    summary_file: fs.existsSync(path.join(dir, "summary.json")) ? paths.projectRel(path.join(dir, "summary.json")) : "",
-    created_at: summary?.created_at || summary?.run?.created_at || "",
-    updated_at: summary?.updated_at || summary?.generated_at || modifiedAt,
+    report: markerExists ? paths.projectRel(markerFile) : "",
+    summary_file: fs.existsSync(summaryFile) ? paths.projectRel(summaryFile) : "",
+    created_at: metadata?.created_at || metadata?.run?.created_at || "",
+    updated_at: metadata?.updated_at || metadata?.generated_at || modifiedAt,
     modified_at: modifiedAt,
   };
 
@@ -110,11 +117,27 @@ function artifactFromDir(paths, def, dir) {
   return artifact;
 }
 
+function artifactStatus({ markerExists, summary, metadata }) {
+  if (!markerExists && !summary) return "in_progress";
+  if (!markerExists) return summary?.status === "error" || metadata?.status === "error" ? "error" : "in_progress";
+  return summary?.status
+    || summary?.summary?.state
+    || summary?.latest_step?.status
+    || summary?.disposition
+    || metadata?.status
+    || (markerExists ? "pass" : "unknown");
+}
+
 function addPracticeStrategyFields(artifact, summary) {
   const strategies = summary?.strategies ?? {};
   artifact.total = Number(summary?.total ?? 0);
+  artifact.evaluated_rows = Number(summary?.evaluated_rows ?? summary?.total ?? 0);
+  artifact.error_rows = Number(summary?.error_rows ?? 0);
   artifact.strategies = Object.fromEntries(Object.entries(strategies).map(([id, item]) => [id, {
     total: Number(item.total ?? 0),
+    evaluated_rows: Number(item.evaluated_rows ?? item.total ?? 0),
+    error_rows: Number(item.error_rows ?? 0),
+    error_rate: Number(item.error_rate ?? 0),
     mlab_wins: Number(item.mlab_wins ?? 0),
     mlab_win_rate: Number(item.mlab_win_rate ?? 0),
     average_score_delta: Number(item.average_score_delta ?? 0),
@@ -126,6 +149,8 @@ function addPracticeStrategyFields(artifact, summary) {
 
 function addPracticeBenchFields(artifact, summary) {
   artifact.total = Number(summary?.total ?? 0);
+  artifact.evaluated_rows = Number(summary?.evaluated_rows ?? summary?.total ?? 0);
+  artifact.error_rows = Number(summary?.error_rows ?? 0);
   artifact.mlab_win_rate = Number(summary?.mlab_win_rate ?? 0);
   artifact.average_score_delta = Number(summary?.average_score_delta ?? 0);
   artifact.known_cost = Number(summary?.known_usage?.cost ?? 0);
@@ -140,30 +165,35 @@ function addDriverFields(artifact, summary) {
 function addEvalFields(artifact, summary) {
   artifact.subject = summary?.subject ?? "";
   artifact.disposition = summary?.disposition ?? "";
+  artifact.total_rows = Number(summary?.total_rows ?? 0);
+  artifact.evaluated_rows = Number(summary?.evaluated_rows ?? summary?.total_rows ?? 0);
+  artifact.error_rows = Number(summary?.error_rows ?? 0);
   artifact.regressions = Number(summary?.regressions ?? 0);
   artifact.improvements = Number(summary?.improvements ?? 0);
 }
 
 function recommendFromArtifacts(artifacts) {
   const recommendations = [];
-  const latestStrategy = artifacts.practice_strategies[0];
-  if (latestStrategy?.recommendations && Object.keys(latestStrategy.recommendations).length) {
-    const [exercise, item] = Object.entries(latestStrategy.recommendations)[0];
+  const completedStrategies = artifacts.practice_strategies.filter((artifact) => artifact.report && artifact.status !== "in_progress");
+  const latestStrategyWithRecommendation = completedStrategies.find((artifact) => artifact.recommendations && Object.keys(artifact.recommendations).length);
+  if (latestStrategyWithRecommendation) {
+    const [exercise, item] = Object.entries(latestStrategyWithRecommendation.recommendations)[0];
     recommendations.push({
       id: "practice-strategy-latest",
       priority: "medium",
       message: `Latest practice strategy run recommends ${item.strategy || "a strategy"} for ${exercise}.`,
-      artifact: latestStrategy.report || latestStrategy.path,
-      next_command: `mlab artifacts inspect --run ${latestStrategy.run_id}`,
+      artifact: latestStrategyWithRecommendation.report || latestStrategyWithRecommendation.path,
+      next_command: `mlab artifacts inspect --run ${latestStrategyWithRecommendation.run_id}`,
     });
   }
-  if (artifacts.practice_strategies.length && !artifacts.eval_runs.length) {
+  const latestCompleteStrategy = completedStrategies[0];
+  if (latestCompleteStrategy && !artifacts.eval_runs.length) {
     recommendations.push({
       id: "eval-first-strategy-run",
       priority: "medium",
       message: "Snapshot the latest practice strategy run into the eval spine so future harness changes can be compared.",
-      artifact: latestStrategy?.path ?? "",
-      next_command: latestStrategy ? `mlab eval practice-strategies --from ${latestStrategy.path}` : "mlab eval practice-strategies --from state/practice-strategies/<run-id>",
+      artifact: latestCompleteStrategy.path,
+      next_command: `mlab eval practice-strategies --from ${latestCompleteStrategy.path}`,
     });
   }
   if (!artifacts.driver_runs.length) {

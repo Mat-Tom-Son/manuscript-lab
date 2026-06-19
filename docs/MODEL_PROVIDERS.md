@@ -182,6 +182,15 @@ multi-candidate selection, revision, and repair. It writes model-call audit
 entries through the same provider layer and stores aggregate recommendations
 under `state/practice-strategies/`.
 
+Practice benchmark matrices are intentionally reliability-aware. A timeout,
+provider rejection, malformed model response, or other per-row failure is stored
+as a benchmark error row instead of aborting the whole run. Summaries and
+reports expose both `evaluated_rows` and `error_rows`; interpret win rates over
+evaluated rows, then separately decide whether the error rate makes a model
+unsuitable for interactive driver loops. For unfamiliar OpenRouter models, start
+with a small `practice strategies --strategies single --seeds 1` screen and tune
+`MODEL_PROVIDER_TIMEOUT_MS` before widening the exercise/model matrix.
+
 ## Checks And Audits
 
 Override check models:

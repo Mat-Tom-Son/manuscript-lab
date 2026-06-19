@@ -110,7 +110,19 @@ function printArtifact(artifact) {
 }
 
 function printSummary(summary) {
-  const keys = ["total", "mlab_wins", "direct_wins", "mlab_win_rate", "average_score_delta", "disposition", "regressions", "improvements"];
+  const keys = [
+    "total",
+    "total_rows",
+    "evaluated_rows",
+    "error_rows",
+    "mlab_wins",
+    "direct_wins",
+    "mlab_win_rate",
+    "average_score_delta",
+    "disposition",
+    "regressions",
+    "improvements",
+  ];
   const visible = keys.filter((key) => summary[key] !== undefined);
   if (!visible.length) return;
   console.log("");

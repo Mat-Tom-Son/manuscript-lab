@@ -193,8 +193,9 @@ runs under `state/driver/`, and creative-writing practice proposals under
 `state/practice-bench/`. Strategy comparison runs live under
 `state/practice-strategies/` and compare preset mlab loop shapes such as
 single-candidate, multi-candidate selection, revision, and repair, then
-recommend per-exercise defaults from aggregate win rate, score delta, cost, and
-repair recovery evidence. Model-backed `drive` runs default to a four-step
+recommend per-exercise defaults from evaluated-row win rate, score delta,
+error rate, cost, and repair recovery evidence. Model-backed `drive` runs
+default to a four-step
 observe/decide/act loop, can resume persisted run history with `--resume`, and
 can inspect generated evidence through read-only artifact primitives, while
 credential-free heuristic runs stay one step unless `--max-steps` is set.
@@ -203,9 +204,11 @@ when the direct baseline wins and include copy checks so near-copied baselines
 do not count as mlab wins. Practice benchmarks report first-pass and
 post-repair win rates, score deltas, failure modes, judge relation, and known
 token/cost usage, including one-shot recoveries from invalid planning/meta
-outputs. They are oracle-guided workflow benchmarks: the direct baseline sees
-the public prompt, while the mlab loop may use hidden-rubric feedback for
-candidate selection, revision, and repair.
+outputs. Heterogeneous model failures are recorded as error rows; partial runs
+remain inspectable, while all-error benchmark/strategy runs exit as errors.
+They are oracle-guided workflow benchmarks: the direct baseline sees the public
+prompt, while the mlab loop may use hidden-rubric feedback for candidate
+selection, revision, and repair.
 `artifacts list` and `artifacts inspect` expose generated driver, practice,
 eval, and golden-path evidence; `eval practice-strategies` snapshots strategy
 comparisons into `state/evals/` and can fail on baseline regressions for CI;

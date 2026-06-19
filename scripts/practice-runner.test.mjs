@@ -18,7 +18,11 @@ try {
   testMockPropose();
   testMockCompare();
   testMockBench();
+  testMockBenchContinuesAfterRowError();
+  testMockBenchErrorsWhenEveryRowFails();
   testMockStrategies();
+  testMockStrategiesContinueAfterRowError();
+  testMockStrategiesPreferReliableRecommendation();
   testUnknownExercise();
   console.log("practice runner tests passed");
 } finally {
@@ -50,6 +54,12 @@ function testProseGuard() {
   assert(bad.reasons.includes("hidden-test"));
   assert(bad.reasons.includes("blind-reader"));
   assert(bad.reasons.includes("planning-language"));
+  const reasoningLeak = assessPracticeProse("<think>Plan the answer.</think>\n\nShe set the cup down.");
+  assert.equal(reasoningLeak.ok, false);
+  assert(reasoningLeak.reasons.includes("reasoning-tag"));
+  const analysisLeak = assessPracticeProse("Plan: make the desire visible.\n\nShe set the cup down.");
+  assert.equal(analysisLeak.ok, false);
+  assert(analysisLeak.reasons.includes("analysis-heading"));
   const distinct = assessDistinctPracticeProse(
     "Marlene set the third plate by the window and polished the fork until it caught the late sun.",
     "Marlene set the third plate by the window and polished the fork until it caught the late sun.",
@@ -146,6 +156,8 @@ function testMockBench() {
   assert.match(result.run_dir, /^state\/practice-bench\/practice-bench-/);
   assert.equal(result.rows.length, 8);
   assert.equal(result.summary.total, 8);
+  assert.equal(result.summary.evaluated_rows, 8);
+  assert.equal(result.summary.error_rows, 0);
   assert.equal(result.summary.mlab_wins, 8);
   assert.equal(result.summary.direct_wins, 0);
   assert.equal(result.summary.copy_check_failures, 0);
@@ -183,6 +195,81 @@ function testMockBench() {
   assert.match(JSON.parse(typo.stdout).error, /Unknown benchmark exercise/);
 }
 
+function testMockBenchContinuesAfterRowError() {
+  const workspace = freshWorkspace("bench-error");
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const direct = path.join(workspace, "direct.md");
+  const mlab = path.join(workspace, "mlab.md");
+  fs.writeFileSync(direct, "Mara came in wanting the blue folder and looked around the archive.\n");
+  fs.writeFileSync(mlab, "Mara entered the archive and counted the chairs before she touched the shelves. The blue folder was gone.\n");
+  const result = assertJson(run([
+    cli,
+    "practice",
+    "bench",
+    "--exercises",
+    "want-in-room",
+    "--models",
+    "mock:good,mock:bad",
+    "--mock-direct-file",
+    direct,
+    "--mock-mlab-file",
+    mlab,
+    "--mock-fail-model",
+    "mock:bad",
+    "--json",
+  ], { cwd: workspace }));
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "partial");
+  assert.equal(result.rows.length, 2);
+  assert.equal(result.summary.total, 2);
+  assert.equal(result.summary.evaluated_rows, 1);
+  assert.equal(result.summary.error_rows, 1);
+  assert.equal(result.summary.mlab_wins, 1);
+  assert.equal(result.summary.by_model["mock:good"].evaluated_rows, 1);
+  assert.equal(result.summary.by_model["mock:bad"].error_rows, 1);
+  assert.equal(result.summary.failure_modes.mock_failure, 1);
+  assert.equal(result.summary.failure_modes.model_call_error, 1);
+
+  const badRow = result.rows.find((row) => row.model === "mock:bad");
+  assert.equal(badRow.status, "error");
+  assert.match(badRow.error_message, /Mock benchmark failure/);
+  assert(fs.existsSync(path.join(manuscriptRoot, badRow.comparison_run_dir, "error.json")));
+
+  const report = fs.readFileSync(path.join(manuscriptRoot, result.run_dir, "RESULTS.md"), "utf8");
+  assert.match(report, /Errors: 1/);
+  assert.match(report, /Mock benchmark failure/);
+}
+
+function testMockBenchErrorsWhenEveryRowFails() {
+  const workspace = freshWorkspace("bench-all-error");
+  const direct = path.join(workspace, "direct.md");
+  const mlab = path.join(workspace, "mlab.md");
+  fs.writeFileSync(direct, "Mara came in wanting the blue folder and looked around the archive.\n");
+  fs.writeFileSync(mlab, "Mara entered the archive and counted the chairs before she touched the shelves. The blue folder was gone.\n");
+  const runResult = run([
+    cli,
+    "practice",
+    "bench",
+    "--exercises",
+    "want-in-room",
+    "--models",
+    "mock:bad",
+    "--mock-direct-file",
+    direct,
+    "--mock-mlab-file",
+    mlab,
+    "--mock-fail-model",
+    "mock:bad",
+    "--json",
+  ], { cwd: workspace });
+  assert.equal(runResult.status, 2);
+  const result = JSON.parse(runResult.stdout);
+  assert.equal(result.ok, false);
+  assert.equal(result.status, "error");
+  assert.equal(result.summary.evaluated_rows, 0);
+  assert.equal(result.summary.error_rows, 1);
+}
+
 function testMockStrategies() {
   const workspace = freshWorkspace("strategies");
   const manuscriptRoot = path.join(workspace, "manuscript");
@@ -214,7 +301,11 @@ function testMockStrategies() {
   assert.equal(result.rows.length, 4);
   assert.equal(result.strategy_runs.length, 2);
   assert.equal(result.summary.strategies.single.total, 2);
+  assert.equal(result.summary.strategies.single.evaluated_rows, 2);
+  assert.equal(result.summary.strategies.single.error_rows, 0);
   assert.equal(result.summary.strategies.revise.total, 2);
+  assert.equal(result.summary.strategies.revise.evaluated_rows, 2);
+  assert.equal(result.summary.strategies.revise.error_rows, 0);
   assert.equal(result.summary.strategies.single.mlab_wins, 2);
   assert.equal(result.summary.recommendations["want-in-room"].strategy, "single");
   assert(fs.existsSync(path.join(manuscriptRoot, result.run_dir, "summary.json")));
@@ -254,6 +345,86 @@ function testMockStrategies() {
   ], { cwd: workspace });
   assert.equal(typo.status, 2);
   assert.match(JSON.parse(typo.stdout).error, /Unknown strategy/);
+}
+
+function testMockStrategiesContinueAfterRowError() {
+  const workspace = freshWorkspace("strategies-error");
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const direct = path.join(workspace, "direct.md");
+  const mlab = path.join(workspace, "mlab.md");
+  fs.writeFileSync(direct, "Mara came in wanting the blue folder and looked around the archive.\n");
+  fs.writeFileSync(mlab, "Mara entered the archive and counted the chairs before she touched the shelves. The blue folder was gone.\n");
+  const result = assertJson(run([
+    cli,
+    "practice",
+    "strategies",
+    "--exercises",
+    "want-in-room",
+    "--models",
+    "mock:good,mock:bad",
+    "--strategies",
+    "single,revise",
+    "--mock-direct-file",
+    direct,
+    "--mock-mlab-file",
+    mlab,
+    "--mock-fail-model",
+    "mock:bad",
+    "--json",
+  ], { cwd: workspace }));
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "partial");
+  assert.equal(result.rows.length, 4);
+  assert.equal(result.summary.total, 4);
+  assert.equal(result.summary.evaluated_rows, 2);
+  assert.equal(result.summary.error_rows, 2);
+  assert.equal(result.summary.strategies.single.total, 2);
+  assert.equal(result.summary.strategies.single.evaluated_rows, 1);
+  assert.equal(result.summary.strategies.single.error_rows, 1);
+  assert.equal(result.summary.strategies.single.mlab_wins, 1);
+  assert.equal(result.summary.strategies.revise.total, 2);
+  assert.equal(result.summary.strategies.revise.evaluated_rows, 1);
+  assert.equal(result.summary.strategies.revise.error_rows, 1);
+  assert.equal(result.summary.recommendations["want-in-room"].rationale.includes("1/1 evaluated"), true);
+
+  const report = fs.readFileSync(path.join(manuscriptRoot, result.run_dir, "STRATEGY_REPORT.md"), "utf8");
+  assert.match(report, /Errors: 2/);
+  assert.match(report, /\| single \| 1 candidate, no revision, 0 repairs \| 1\/1 \| 1 \| 100\.0%/);
+  assert.match(report, /Mock benchmark failure/);
+}
+
+function testMockStrategiesPreferReliableRecommendation() {
+  const workspace = freshWorkspace("strategies-reliable");
+  const direct = path.join(workspace, "direct.md");
+  const mlab = path.join(workspace, "mlab.md");
+  fs.writeFileSync(direct, "Mara came in wanting the blue folder and looked around the archive.\n");
+  fs.writeFileSync(mlab, "Mara entered the archive and counted the chairs before she touched the shelves. The blue folder was gone.\n");
+  const result = assertJson(run([
+    cli,
+    "practice",
+    "strategies",
+    "--exercises",
+    "want-in-room",
+    "--models",
+    "mock:one,mock:two",
+    "--strategies",
+    "single,revise",
+    "--mock-direct-file",
+    direct,
+    "--mock-mlab-file",
+    mlab,
+    "--mock-fail-strategy",
+    "single",
+    "--json",
+  ], { cwd: workspace }));
+  assert.equal(result.ok, true);
+  assert.equal(result.status, "partial");
+  assert.equal(result.summary.strategies.single.evaluated_rows, 0);
+  assert.equal(result.summary.strategies.single.error_rows, 2);
+  assert.equal(result.summary.strategies.revise.evaluated_rows, 2);
+  assert.equal(result.summary.strategies.revise.error_rows, 0);
+  assert.equal(result.summary.recommendations["want-in-room"].strategy, "revise");
+  assert.match(result.summary.recommendations["want-in-room"].rationale, /2\/2 evaluated/);
 }
 
 function testUnknownExercise() {

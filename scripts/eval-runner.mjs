@@ -68,6 +68,8 @@ function runPracticeStrategiesEval() {
     regressions: comparison.regressions,
     improvements: comparison.improvements,
     total_rows: Number(sourceSummary.total ?? rows.length ?? 0),
+    evaluated_rows: Number(sourceSummary.evaluated_rows ?? sourceSummary.total ?? rows.length ?? 0),
+    error_rows: Number(sourceSummary.error_rows ?? 0),
     strategies: summarizeStrategies(sourceSummary),
     recommendations: sourceSummary.recommendations ?? {},
     known_usage: sourceSummary.known_usage ?? {},
@@ -109,6 +111,9 @@ function resolveSourceDir(value) {
 function summarizeStrategies(summary) {
   return Object.fromEntries(Object.entries(summary.strategies ?? {}).map(([id, item]) => [id, {
     total: Number(item.total ?? 0),
+    evaluated_rows: Number(item.evaluated_rows ?? item.total ?? 0),
+    error_rows: Number(item.error_rows ?? 0),
+    error_rate: Number(item.error_rate ?? 0),
     mlab_wins: Number(item.mlab_wins ?? 0),
     mlab_win_rate: Number(item.mlab_win_rate ?? 0),
     average_score_delta: Number(item.average_score_delta ?? 0),
@@ -139,9 +144,10 @@ function compareStrategySummaries(current, baseline) {
     const delta = {
       mlab_win_rate: Number(now.mlab_win_rate ?? 0) - Number(before.mlab_win_rate ?? 0),
       average_score_delta: Number(now.average_score_delta ?? 0) - Number(before.average_score_delta ?? 0),
+      error_rows: Number(now.error_rows ?? 0) - Number(before.error_rows ?? 0),
       cost: Number(now.known_usage?.cost ?? now.cost ?? 0) - Number(before.known_usage?.cost ?? before.cost ?? 0),
     };
-    if (delta.mlab_win_rate <= -0.2 || delta.average_score_delta <= -2) regressions += 1;
+    if (delta.mlab_win_rate <= -0.2 || delta.average_score_delta <= -2 || delta.error_rows > 0) regressions += 1;
     if (delta.mlab_win_rate >= 0.2 || delta.average_score_delta >= 2) improvements += 1;
     strategyDeltas[id] = delta;
   }
@@ -165,12 +171,14 @@ function writeEvalReport(runDir, summary) {
     `Regressions: ${summary.regressions}`,
     `Improvements: ${summary.improvements}`,
     `Rows: ${summary.total_rows}`,
+    `Evaluated rows: ${summary.evaluated_rows}`,
+    `Errors: ${summary.error_rows}`,
     "",
     "## Strategies",
     "",
-    "| Strategy | Total | MLab Wins | Win Rate | Avg Delta | Cost |",
-    "| --- | ---: | ---: | ---: | ---: | ---: |",
-    ...Object.entries(summary.strategies).map(([id, item]) => `| ${id} | ${item.total} | ${item.mlab_wins} | ${(item.mlab_win_rate * 100).toFixed(1)}% | ${item.average_score_delta.toFixed(2)} | $${item.cost.toFixed(4)} |`),
+    "| Strategy | Total | Evaluated | Errors | MLab Wins | Win Rate | Avg Delta | Cost |",
+    "| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |",
+    ...Object.entries(summary.strategies).map(([id, item]) => `| ${id} | ${item.total} | ${item.evaluated_rows} | ${item.error_rows} | ${item.mlab_wins} | ${(item.mlab_win_rate * 100).toFixed(1)}% | ${item.average_score_delta.toFixed(2)} | $${item.cost.toFixed(4)} |`),
     "",
   ];
   writeFileAtomic(path.join(runDir, "EVAL_REPORT.md"), lines.join("\n"), "utf8");
@@ -189,6 +197,7 @@ function emit(payload, opts) {
   console.log(`Eval ${payload.status}: ${payload.summary.subject}`);
   if (payload.run_dir) console.log(`Run: ${payload.run_dir}`);
   console.log(`Disposition: ${payload.summary.disposition}`);
+  if (payload.summary.error_rows) console.log(`Errors: ${payload.summary.error_rows}`);
 }
 
 function parseArgs(args) {

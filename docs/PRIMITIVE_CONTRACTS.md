@@ -65,8 +65,9 @@ Eval commands record product evidence that can become a release guard.
 
 `mlab eval practice-strategies` snapshots a strategy comparison run under
 `state/evals/<run-id>/`. With `--baseline`, it compares strategy win rate,
-score delta, and cost. With `--fail-on-regression`, it exits `1` when the
-comparison finds a regression, making it suitable for CI or release checks.
+score delta, error rows, and cost. With `--fail-on-regression`, it exits `1`
+when the comparison finds a regression, making it suitable for CI or release
+checks.
 
 The eval layer should measure generic workflow behavior. Do not hard-code
 exercise answers or expected prose; preserve blind tests and held-out judgment
