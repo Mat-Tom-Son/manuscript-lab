@@ -1,6 +1,56 @@
 # Changelog
 
-## Unreleased
+## 1.4.0 - 2026-06-19
+
+- Scoped the future `mlab drive` model-driver primitive: an interactive,
+  policy-bound command loop that exposes Manuscript Lab tools to a model,
+  records decisions under `state/driver/`, and preserves gates and approvals as
+  the readiness boundary.
+- Added the first bounded `mlab drive` implementation slice with a validated
+  tool catalog, curated policy packs, strict project-relative path fences,
+  dry-run, mock-decision, and live model decision support, persisted
+  `state/driver/` step ledgers, wrapper/npm routing, and installed-package
+  smoke coverage.
+- Hardened `mlab drive` after adversarial review: child primitives now inherit
+  pinned workspace/config roots, ephemeral live-model driver runs do not force
+  model-call audit writes, `review-only` has an enforced allowlist, `--no-write`
+  blocks mutating primitives, traversal segments are rejected, and `--resume`
+  is explicitly rejected until real history reconstruction ships.
+- Tuned `mlab drive` for actual model use: model-backed runs now default to a
+  four-step observe/decide/act loop and carry compact parsed-result summaries
+  into the next decision, while heuristic runs still default to one conservative
+  step.
+- Made the driver-exposed `practice.bench` primitive less macro-shaped by adding
+  bounded model-controlled knobs for exercise set/id list, seeds, candidate
+  count, and repair rounds.
+- Hardened practice generation from live GLM traces: direct baselines and
+  candidates now prose-guard outputs before judging and retry once with a strict
+  `final_prose` contract when a model leaks planning/meta text.
+- Added `mlab practice propose` / `npm run practice` as a safe creative-writing
+  exercise primitive: it generates multiple candidates, judges them against a
+  hidden exercise test, revises the winner, writes `state/practice/` artifacts,
+  and is exposed to the driver as the approval-gated `practice.propose` tool.
+- Added `mlab practice compare` for controlled direct-vs-mlab evidence: it runs
+  a direct same-model baseline, a practice proposal loop, and a blind pairwise
+  judge, then writes comparison artifacts under `state/practice-evals/`.
+- Hardened practice comparisons with structured prose-only revision outputs,
+  prose/meta leakage guards, bounded repair rounds when the direct baseline
+  wins, and copy checks so duplicated direct baselines cannot count as distinct
+  mlab wins.
+- Expanded the practice exercise battery and added `mlab practice bench`, which
+  runs direct-vs-mlab comparison matrices across exercise sets, models, and
+  seeds, writes self-contained `state/practice-bench/` ledgers, separates
+  first-pass wins from repair recoveries, supports `--judge-model`, and exposes
+  `practice.bench` to the model driver as an approval-gated oracle-guided
+  workflow benchmark tool.
+- Added `mlab practice strategies`, a first-class strategy-comparison command
+  that runs preset practice-loop shapes, writes `state/practice-strategies/`
+  ledgers with nested benchmark artifacts, recommends per-exercise strategies
+  from aggregate win/delta/cost/recovery evidence, and exposes
+  `practice.strategies` to the model driver and installed-package smoke tests.
+- Aligned GLM examples and taste-arbiter defaults on OpenRouter GLM 5.2 so the
+  driver, practice lab, provider docs, and release examples point at the same
+  current model route.
 
 ## 1.3.0 - 2026-06-17
 

@@ -36,7 +36,7 @@ const decision = loadJsonSafe(path.join(runDir, "decision.json"), null);
 const baseText = readIfExists(path.join(runDirRel, "base.md")) || targetText;
 const selectedCandidateId = options.candidate || decision?.winner || "";
 const selectedCandidate = selectedCandidateId ? loadCandidate(candidateMeta, selectedCandidateId) : null;
-const models = options.models.length ? options.models : ["openrouter:z-ai/glm-5.1"];
+const models = options.models.length ? options.models : ["openrouter:z-ai/glm-5.2"];
 const taste = loadTasteContext(options.tasteRoot, options.maxTasteChars);
 const outputRel = normalizeRel(path.join(runDirRel, "taste-arbiter.json"));
 const markdownRel = normalizeRel(path.join(runDirRel, "TASTE_ARBITER.md"));
@@ -736,14 +736,14 @@ function printHelp() {
 
 Usage:
   npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id>
-  npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.1
+  npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.2
 
 Options:
   --run id              Candidate run ID. Defaults to latest run for the section.
   --candidate id        Override decision.json and gate a specific candidate.
   --out dir             Candidate root directory. Default: state/candidates.
   --taste-root dir      Project taste directory. Default: taste.
-  --models a,b          Arbiter models. Default: openrouter:z-ai/glm-5.1.
+  --models a,b          Arbiter models. Default: openrouter:z-ai/glm-5.2.
   --mock-response file  Use local JSON response(s) instead of calling a model.
   --temperature n       Arbiter temperature. Default: 0.
   --max-tokens n        Max response tokens per model. Default: 1800.

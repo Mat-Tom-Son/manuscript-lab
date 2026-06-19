@@ -21,6 +21,7 @@ const commands = {
   "context:audit": ["scripts/context-audit.mjs"],
   "diff:audit": ["scripts/revision-diff-audit.mjs"],
   "doctor": ["scripts/doctor.mjs"],
+  "drive": ["scripts/model-driver.mjs"],
   "done": ["scripts/done-gate.mjs"],
   "done:no-export": ["scripts/done-gate.mjs", "--skip-exports"],
   "evidence": ["scripts/evidence-spine.mjs", "evidence"],
@@ -30,6 +31,7 @@ const commands = {
   "model:calls": ["scripts/model-call-report.mjs"],
   "model:capabilities": ["scripts/model-capabilities.mjs"],
   "model:smoke": ["scripts/model-smoke.mjs"],
+  "practice": ["scripts/practice-runner.mjs"],
   "project": ["scripts/story-workspace.mjs"],
   "report": ["scripts/report.mjs"],
   "revise:candidates": ["scripts/revision-candidates.mjs"],
@@ -237,6 +239,11 @@ Common commands:
   init --profile whitepaper --root manuscript --title "My Whitepaper"
   validate
   status
+  drive --goal "find the next useful command" --dry-run
+  drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+  practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+  practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
+  practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
   compose -- draft/<section>.md
   chorus run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
   check --static-only
@@ -287,6 +294,8 @@ Compatibility command names:
   compare:candidates
   merge:winner
   diff:audit
+  drive
+  practice
   words -- draft/<section>.md
 
 Project commands (template clone compatibility only):

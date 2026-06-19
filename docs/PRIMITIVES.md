@@ -47,6 +47,10 @@ mlab issues list --status open
 mlab revise draft/<section>.md --issue <issue-id> --candidates 3 --dry-run
 mlab compare draft/<section>.md --run <candidate-run-id> --dry-run
 mlab merge draft/<section>.md --run <candidate-run-id>
+mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2
+mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2
+mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3
+mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default
 mlab audit --before before.md --after draft/<section>.md --static-only
 mlab gate manuscript --write
 mlab report --write
@@ -55,6 +59,85 @@ mlab report --write
 Compatibility names such as `review:run`, `revise:candidates`,
 `compare:candidates`, `merge:winner`, and `diff:audit` still work. The friendly
 aliases are thin routers over those existing commands.
+
+### Model Driver
+
+First implementation:
+
+```bash
+mlab drive
+mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+mlab drive --goal "inspect the current project" --max-steps 3 --mock-decision-file decisions.json
+mlab drive --goal "prepare draft/01-opening.md for review" --policy pi --model openrouter:z-ai/glm-5.2 --max-steps 4
+```
+
+The model driver is the orchestration primitive for putting a model in the
+operator seat without giving it shell access. The first slice exposes a
+structured catalog of Manuscript Lab tools, validates model/mock decisions
+against strict schemas and project-relative path fences, executes only
+allowlisted `mlab` primitives through the package wrapper, records persisted
+step ledgers under `state/driver/`, and stops on approvals, dry-run boundaries,
+explicit stop decisions, or the step cap. Model-backed runs default to four
+loop steps; heuristic runs default to one conservative step. See
+`docs/MODEL_DRIVER.md`.
+
+### Practice Proposals
+
+```bash
+mlab practice list
+mlab practice propose --exercise want-in-room --brief "two siblings in a garage" --model openrouter:z-ai/glm-5.2
+mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2
+mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3
+mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default
+```
+
+`practice propose` is a safe prose-generation primitive for creative-writing
+exercises. It generates multiple candidates, judges them against a hidden
+exercise test, revises the winner, and writes the full run under
+`state/practice/<exercise>/<run-id>/`. It does not edit `draft/`.
+
+`practice compare` runs the controlled benchmark: one direct baseline call to
+the same model, one `practice propose` loop, and a blind pairwise judge. It
+writes `direct.md`, `mlab-initial.md`, `mlab-final.md`,
+`pairwise-judgment.json`, and `REPORT.md` under
+`state/practice-evals/<exercise>/<run-id>/`. When the direct baseline wins,
+compare can run bounded repair rounds (`--repair-rounds`, default `1`) using
+the blind critique, then rejudge. The final judge record includes a copy check
+so copied or near-copied direct baselines cannot count as distinct mlab wins.
+
+`practice bench` runs a matrix of practice comparisons across exercise sets,
+models, and seeds. It writes a self-contained benchmark ledger under
+`state/practice-bench/<run-id>/`, including child comparison artifacts,
+`runs.jsonl`, `summary.json`, and `RESULTS.md`. Bench summaries separate
+first-pass wins from post-repair workflow recoveries, aggregate by model and
+exercise, classify recurring failure modes, and record known token/cost usage
+when providers return it. This is an oracle-guided workflow benchmark: the
+direct baseline sees only the public prompt, while the mlab loop may use hidden
+rubric feedback for candidate selection, revision, and repair. Use
+`--judge-model` to evaluate candidates and pairwise comparisons with a different
+model family than the writer model; summaries record whether the judge is
+self-family or held out.
+
+`practice strategies` runs benchmark presets against the same exercise/model
+matrix so the harness can learn which loop shape is worth using for a given
+exercise axis. The built-in presets are `single`, `select`, `revise`, and
+`repair`; `default` runs all of them. It writes a strategy ledger under
+`state/practice-strategies/<run-id>/`, nests the child benchmark ledgers under
+`benchmarks/<strategy>/`, and emits `STRATEGY_REPORT.md` plus JSON summaries
+with per-exercise recommendations. Recommendations are aggregate signals over
+win rate, score delta, known cost, and repair recovery, not hard-coded answers.
+
+When the driver invokes practice primitives, comparison and benchmark outputs
+return compact result summaries and artifact paths into the next driver step.
+`practice.bench` and `practice.strategies` are exposed with bounded knobs for
+exercise set or id list, seeds, candidate count, repair rounds, and strategy
+sets so the model can choose a small experiment before spending on a wider run.
+
+Practice generation also treats meta/planning leakage as recoverable. Direct
+baselines and candidates are prose-guarded before judging; when an output
+contains planning language or other non-prose markers, the primitive retries
+once with a strict `final_prose` JSON contract and records both the recovery
+state and the extra usage.
 
 ### CLI Diagnostics
 
@@ -327,7 +410,7 @@ Generation, comparison, and taste arbitration support bounded parallelism with `
 ### Narrative Taste
 
 ```bash
-npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.1 draft/<section>.md
+npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.2 draft/<section>.md
 npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id>
 ```
 
@@ -412,7 +495,7 @@ Credentials belong in `.env`. Model choices belong in panels, suites, or flags.
 ```bash
 npm run model:smoke -- --dry-run
 npm run model:capabilities -- lightning:lightning-ai/glm-5
-npm run model:capabilities -- openrouter:z-ai/glm-5.1
+npm run model:capabilities -- openrouter:z-ai/glm-5.2
 npm run review:run -- --panel lightning.clean draft/<section>.md
 npm run review:run -- --models lightning:lightning-ai/gpt-oss-120b draft/<section>.md
 DOCHECK_MODEL=lightning:lightning-ai/gpt-oss-120b npm run check:model -- draft/<section>.md

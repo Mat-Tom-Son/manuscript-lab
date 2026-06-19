@@ -16,9 +16,28 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
   assert.match(result.stdout, /room diagnose draft\/<section>\.md --json/);
   assert.match(result.stdout, /room blue-sky draft\/<section>\.md --json/);
   assert.match(result.stdout, /chorus run draft\/<section>\.md --json/);
+  assert.match(result.stdout, /drive --goal "find the next useful command" --dry-run/);
+  assert.match(result.stdout, /practice propose --exercise want-in-room --model openrouter:z-ai\/glm-5\.2 --json/);
+  assert.match(result.stdout, /practice bench --exercises core --models openrouter:z-ai\/glm-5\.2 --seeds 3 --json/);
+  assert.match(result.stdout, /practice strategies --exercises core --models openrouter:z-ai\/glm-5\.2 --strategies default --json/);
   assert.match(result.stdout, /review draft\/<section>\.md --dry-run --panel prose\.clean/);
   assert.match(result.stdout, /revise draft\/<section>\.md --issue <issue-id> --candidates 3 --dry-run/);
   assert.match(result.stdout, /Compatibility command names:/);
+}
+
+{
+  const result = run([cli, "drive", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /model-driver - bounded Manuscript Lab driver loop/);
+}
+
+{
+  const result = run([cli, "practice", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /practice - generate and judge creative-writing exercise candidates/);
+  assert.match(result.stdout, /practice compare --exercise want-in-room --model openrouter:z-ai\/glm-5\.2 --json/);
+  assert.match(result.stdout, /practice bench --exercises core --models openrouter:z-ai\/glm-5\.2 --seeds 3 --json/);
+  assert.match(result.stdout, /practice strategies --exercises want-in-room,thing-unsaid --model openrouter:z-ai\/glm-5\.2 --json/);
 }
 
 {

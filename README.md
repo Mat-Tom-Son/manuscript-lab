@@ -159,6 +159,11 @@ npx mlab room report draft/01-opening.md
 npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus report draft/01-opening.md
+npx mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
+npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -178,8 +183,26 @@ typed review runs, `review:report`, Markdown/HTML export, and `done` with
 configurable export requirements. It also includes root-aware candidate-loop
 command routing for accepted issues, candidate generation, candidate
 comparison, taste gates, merge previews, diff audits, writers' room runs under
-`state/room/`, and Chorus line-lab runs under `state/chorus/`. `status` and
-`report` surface recent Room and Chorus artifacts as part of the cockpit.
+`state/room/`, Chorus line-lab runs under `state/chorus/`, bounded model-driver
+runs under `state/driver/`, and creative-writing practice proposals under
+`state/practice/` with direct-vs-mlab comparisons under
+`state/practice-evals/` and aggregate practice benchmarks under
+`state/practice-bench/`. Strategy comparison runs live under
+`state/practice-strategies/` and compare preset mlab loop shapes such as
+single-candidate, multi-candidate selection, revision, and repair, then
+recommend per-exercise defaults from aggregate win rate, score delta, cost, and
+repair recovery evidence. Model-backed `drive` runs default to a four-step
+observe/decide/act loop, while credential-free heuristic runs stay one step
+unless `--max-steps` is set. Practice comparisons can run bounded repair rounds
+when the direct baseline wins and include copy checks so near-copied baselines
+do not count as mlab wins. Practice benchmarks report first-pass and
+post-repair win rates, score deltas, failure modes, judge relation, and known
+token/cost usage, including one-shot recoveries from invalid planning/meta
+outputs. They are oracle-guided workflow benchmarks: the direct baseline sees
+the public prompt, while the mlab loop may use hidden-rubric feedback for
+candidate selection, revision, and repair.
+`status` and `report` surface recent Room and Chorus artifacts as part of the
+cockpit.
 Template project switching commands are guarded as template-clone compatibility
 commands.
 
@@ -336,6 +359,7 @@ are ignored by default so the public repo stays reusable.
 - `docs/ARCHITECTURE.md`: layers and file boundaries
 - `docs/FILE_PROTOCOL.md`: project layout and config protocol
 - `docs/INSTALL_WORKFLOW.md`: npm/install-anywhere design record
+- `docs/MODEL_DRIVER.md`: model-driven interactive orchestration design
 - `docs/GATE_ENGINE.md`: readiness gate design and result format
 - `docs/EVIDENCE_SPINE.md`: claims and sources design
 - `examples/technical-whitepaper/README.md`: public tutorial fixture

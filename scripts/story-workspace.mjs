@@ -33,6 +33,11 @@ const archiveStateDirs = [
   "generation",
   "projections",
   "observations",
+  "driver",
+  "practice",
+  "practice-evals",
+  "practice-bench",
+  "practice-strategies",
 ];
 const generatedStateDirs = [
   "runtime",
@@ -50,6 +55,11 @@ const generatedStateDirs = [
   "generation",
   "projections",
   "observations",
+  "driver",
+  "practice",
+  "practice-evals",
+  "practice-bench",
+  "practice-strategies",
 ];
 const projectRoot = "projects";
 const transitionMarkerRel = "state/.transition.json";
@@ -1283,7 +1293,7 @@ This file is the first project-specific read after the generic harness docs. Kee
 \`\`\`bash
 npm run status
 npm run compose -- draft/<section>.md
-npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.1 draft/<section>.md
+npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.2 draft/<section>.md
 npm run done
 \`\`\`
 `;

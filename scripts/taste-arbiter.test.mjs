@@ -160,7 +160,7 @@ function testPassWithDebt() {
     "--mock-response",
     mockPassRel,
     "--models",
-    "openrouter:z-ai/glm-5.1",
+    "openrouter:z-ai/glm-5.2",
     "--json",
   ]);
   assert(result.status === 0, result.stderr || result.stdout);
@@ -183,7 +183,7 @@ function testMergeBlocksOnTasteGate() {
     "--mock-response",
     mockBlockRel,
     "--models",
-    "openrouter:z-ai/glm-5.1",
+    "openrouter:z-ai/glm-5.2",
   ]);
   assert(block.status === 2, "blocking gate should exit with status 2");
 

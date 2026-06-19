@@ -85,6 +85,11 @@ npx mlab room report draft/01-opening.md
 npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus report draft/01-opening.md
+npx mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
+npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -101,9 +106,13 @@ gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
 export gates are config-root aware. Typed review execution and the
 candidate-loop commands also work in install-anywhere projects. Room and Chorus
 commands are deterministic without API keys; pass provider-prefixed `--models`
-when you want Lightning/OpenRouter-backed generation. Chorus writes contact
-sheets by default and only assembles prose when `--assemble` or
-`chorus assemble` is used. Template project switching commands are
+when you want Lightning/OpenRouter-backed generation. The model driver and
+practice lab write their generated evidence under the configured manuscript
+`state/` directory, including `state/driver/`, `state/practice/`,
+`state/practice-evals/`, `state/practice-bench/`, and
+`state/practice-strategies/`. Chorus writes contact sheets by default and only
+assembles prose when `--assemble` or `chorus assemble` is used. Template project
+switching commands are
 template-clone compatibility commands and refuse outside the template clone root
 while the installed CLI matures.
 

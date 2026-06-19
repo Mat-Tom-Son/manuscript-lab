@@ -330,6 +330,15 @@ function assertEvidenceAndGate(workspace, runner = runMlab) {
 function assertInstalledCommandSurface(workspace, runner) {
   const manuscriptRoot = path.join(workspace, "manuscript");
   const draftRoot = path.join(manuscriptRoot, "draft");
+  const practiceCandidates = path.join(workspace, "practice-candidates.json");
+  fs.writeFileSync(practiceCandidates, `${JSON.stringify([
+    "Jules entered the studio and touched only the frames turned toward the wall.",
+    "Jules wanted the hidden painting and looked for it in the studio.",
+  ])}\n`);
+  const practiceDirect = path.join(workspace, "practice-direct.md");
+  const practiceMlab = path.join(workspace, "practice-mlab.md");
+  fs.writeFileSync(practiceDirect, "Jules wanted the hidden painting and searched the studio.\n");
+  fs.writeFileSync(practiceMlab, "Jules entered the studio and touched only the frames turned toward the wall.\n");
   const cwdCases = [workspace, manuscriptRoot, draftRoot];
 
   for (const [index, cwd] of cwdCases.entries()) {
@@ -345,6 +354,100 @@ function assertInstalledCommandSurface(workspace, runner) {
 
     const check = assertJsonCommand(runner, ["check", "--static-only", "--json", "draft/01-opening.md"], { cwd });
     assert.equal(check.pass, true);
+
+    const drive = assertJsonCommand(
+      runner,
+      ["drive", "--goal", "prepare opening", "--target", "draft/01-opening.md", "--dry-run", "--write", "--json"],
+      { cwd },
+    );
+    assert.equal(drive.ok, true);
+    assert.equal(drive.status, "dry_run");
+    assert.equal(drive.persisted, true);
+    assert.equal(drive.decision.tool_id, "compose.section");
+    assert.match(drive.run_dir, /^state\/driver\/runs\/driver-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, drive.run_dir, "events.jsonl")));
+    assert(fs.existsSync(path.join(manuscriptRoot, drive.run_dir, "decisions", "step-001.json")));
+
+    const practice = assertJsonCommand(
+      runner,
+      ["practice", "propose", "--exercise", "want-in-room", "--mock-candidates-file", practiceCandidates, "--json"],
+      { cwd },
+    );
+    assert.equal(practice.ok, true);
+    assert.equal(practice.status, "pass");
+    assert.match(practice.run_dir, /^state\/practice\/want-in-room\/practice-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, practice.run_dir, "final.md")));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "practice")), false, "practice must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "practice")), false, "practice must not write state under draft/");
+
+    const practiceCompare = assertJsonCommand(
+      runner,
+      ["practice", "compare", "--exercise", "want-in-room", "--mock-direct-file", practiceDirect, "--mock-mlab-file", practiceMlab, "--json"],
+      { cwd },
+    );
+    assert.equal(practiceCompare.ok, true);
+    assert.equal(practiceCompare.status, "pass");
+    assert.equal(practiceCompare.winner_source, "mlab");
+    assert.match(practiceCompare.run_dir, /^state\/practice-evals\/want-in-room\/practice-eval-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, practiceCompare.run_dir, "pairwise-judgment.json")));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "practice-evals")), false, "practice compare must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "practice-evals")), false, "practice compare must not write state under draft/");
+
+    const practiceBench = assertJsonCommand(
+      runner,
+      [
+        "practice",
+        "bench",
+        "--exercises",
+        "want-in-room,thing-unsaid",
+        "--models",
+        "mock:installed",
+        "--mock-direct-file",
+        practiceDirect,
+        "--mock-mlab-file",
+        practiceMlab,
+        "--json",
+      ],
+      { cwd },
+    );
+    assert.equal(practiceBench.ok, true);
+    assert.equal(practiceBench.status, "pass");
+    assert.equal(practiceBench.summary.total, 2);
+    assert.equal(practiceBench.summary.mlab_wins, 2);
+    assert.match(practiceBench.run_dir, /^state\/practice-bench\/practice-bench-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, practiceBench.run_dir, "summary.json")));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "practice-bench")), false, "practice bench must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "practice-bench")), false, "practice bench must not write state under draft/");
+
+    const practiceStrategies = assertJsonCommand(
+      runner,
+      [
+        "practice",
+        "strategies",
+        "--exercises",
+        "want-in-room",
+        "--models",
+        "mock:installed",
+        "--strategies",
+        "single,revise",
+        "--mock-direct-file",
+        practiceDirect,
+        "--mock-mlab-file",
+        practiceMlab,
+        "--json",
+      ],
+      { cwd },
+    );
+    assert.equal(practiceStrategies.ok, true);
+    assert.equal(practiceStrategies.status, "pass");
+    assert.equal(practiceStrategies.summary.total, 2);
+    assert.equal(practiceStrategies.summary.strategies.single.mlab_wins, 1);
+    assert.equal(practiceStrategies.summary.strategies.revise.mlab_wins, 1);
+    assert.match(practiceStrategies.run_dir, /^state\/practice-strategies\/practice-strategies-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, practiceStrategies.run_dir, "summary.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, practiceStrategies.run_dir, "STRATEGY_REPORT.md")));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "practice-strategies")), false, "practice strategies must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "practice-strategies")), false, "practice strategies must not write state under draft/");
 
     const report = assertJsonCommand(runner, ["review:report", "--json"], { cwd });
     assert.equal(report.totals.runs, 0);
@@ -772,7 +875,7 @@ function assertInstalledCandidatePreview(workspace, runner) {
 
   const taste = assertJsonCommand(
     runner,
-    ["taste:arbiter", targetRel, "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.1", "--json"],
+    ["taste:arbiter", targetRel, "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.2", "--json"],
     { cwd: workspace },
   );
   assert.equal(taste.gate.disposition, "pass");
@@ -907,7 +1010,7 @@ function assertInstalledMockRevisionModelSurface({ workspace, runner, manuscript
   });
   const taste = assertJsonCommand(
     runner,
-    ["taste:arbiter", "01-opening.md", "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.1", "--json"],
+    ["taste:arbiter", "01-opening.md", "--run", runId, "--mock-response", `${runRel}/taste-pass.json`, "--models", "openrouter:z-ai/glm-5.2", "--json"],
     { cwd: draftRoot },
   );
   assert.equal(taste.gate.disposition, "pass");

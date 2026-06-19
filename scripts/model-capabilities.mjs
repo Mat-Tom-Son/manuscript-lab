@@ -169,7 +169,7 @@ function printHelp() {
   console.log(`Usage:
   npm run model:capabilities -- [provider:model-or-query]
   npm run model:capabilities -- --provider lightning --search glm
-  npm run model:capabilities -- openrouter:z-ai/glm-5.1 --json
+  npm run model:capabilities -- openrouter:z-ai/glm-5.2 --json
 
 Lists model catalog metadata from provider /models endpoints. OpenRouter includes
 supported_parameters; Lightning includes model ids, context, max tokens, pricing,

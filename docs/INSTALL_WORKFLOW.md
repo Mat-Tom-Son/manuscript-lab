@@ -85,6 +85,11 @@ npx mlab room report draft/01-opening.md
 npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
 npx mlab chorus report draft/01-opening.md
+npx mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
+npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
+npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -164,7 +169,10 @@ npx mlab done --export-formats md,html --include-todo-exports --json
 ```
 
 It also has root-aware command routing and packed-tarball smoke coverage for
-the first Room/Chorus and candidate-loop slices. Room diagnosis runs
+the first Room/Chorus, model-driver, practice lab, and candidate-loop slices.
+Practice strategy comparisons write under `state/practice-strategies/` in the
+configured manuscript root and keep child benchmark artifacts nested under the
+strategy run. Room diagnosis runs
 deterministically without provider keys; pass provider-prefixed `--models`
 values when you want Lightning/OpenRouter-backed room generation. Chorus writes
 contact sheets by default; use `--assemble` or `chorus assemble` only when you

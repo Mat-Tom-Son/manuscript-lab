@@ -1,6 +1,6 @@
 {
   "name": "manuscript-lab",
-  "version": "1.3.0",
+  "version": "1.4.0",
   "private": false,
   "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
   "license": "MIT",
@@ -59,6 +59,7 @@
     "codex:validate-skill": "node scripts/validate-codex-skill.mjs",
     "doccheck": "node scripts/doccheck.mjs",
     "doctor": "node scripts/doctor.mjs",
+    "drive": "node scripts/model-driver.mjs",
     "done": "node scripts/done-gate.mjs",
     "done:json": "node scripts/done-gate.mjs --json",
     "done:no-export": "node scripts/done-gate.mjs --skip-exports",
@@ -70,6 +71,7 @@
     "model:capabilities": "node scripts/model-capabilities.mjs",
     "model:json-test": "node scripts/model-json.test.mjs",
     "model:response-test": "node scripts/model-provider-response.test.mjs",
+    "practice": "node scripts/practice-runner.mjs",
     "project:list": "node scripts/story-workspace.mjs list-projects",
     "project:log": "node scripts/story-workspace.mjs log-project",
     "project:init": "node scripts/story-workspace.mjs init",

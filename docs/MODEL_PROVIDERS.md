@@ -36,7 +36,7 @@ You can route one model explicitly by prefixing it:
 lightning:lightning-ai/gpt-oss-20b
 lightning:lightning-ai/gpt-oss-120b
 openrouter:qwen/qwen3.7-plus
-openrouter:z-ai/glm-5.1
+openrouter:z-ai/glm-5.2
 custom:local-model-name
 ```
 
@@ -116,7 +116,7 @@ Lightning panels use provider-prefixed model IDs and are intentionally swappable
 - `lightning.clean` favors cleaner structured output for verification and issue-ledger work, currently `lightning:lightning-ai/deepseek-v4-pro`, with GLM added for narrative taste.
 - `lightning.board` is the broader taste/opinion panel. It uses `lightning:lightning-ai/glm-5` for taste and voice, DeepSeek for clean editorial structure, Nemotron for science/logic, and selected frontier routes such as Claude Opus or GPT-5.5 for high-value arbitration.
 
-At the time of the latest smoke test, Lightning exposed `lightning-ai/glm-5` rather than an explicit `glm-5.1` model ID. The repo still supports OpenRouter GLM 5.1 as `openrouter:z-ai/glm-5.1`.
+At the time of the latest smoke test, Lightning exposed `lightning-ai/glm-5` rather than an explicit `glm-5.2` model ID. The repo still supports OpenRouter GLM 5.2 as `openrouter:z-ai/glm-5.2`.
 
 You can also override models directly:
 
@@ -164,6 +164,24 @@ with `operation: chorus.sample`. The default workflow writes contact sheets and
 does not modify `draft/`; pick/assemble remains explicit with `--assemble` or
 `chorus assemble`.
 
+## Practice Lab
+
+Creative-writing practice commands use the same provider routing as reviews and
+Chorus. OpenRouter GLM 5.2 is the default documented route for the current
+practice lab:
+
+```bash
+npm run practice -- propose --exercise want-in-room --model openrouter:z-ai/glm-5.2
+npm run practice -- compare --exercise want-in-room --model openrouter:z-ai/glm-5.2
+npm run practice -- bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3
+npm run practice -- strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default
+```
+
+`practice strategies` compares loop presets such as single-candidate,
+multi-candidate selection, revision, and repair. It writes model-call audit
+entries through the same provider layer and stores aggregate recommendations
+under `state/practice-strategies/`.
+
 ## Checks And Audits
 
 Override check models:
@@ -184,10 +202,10 @@ Refresh style fingerprint through Lightning:
 npm run style:fingerprint -- draft/<section>.md --model lightning:lightning-ai/gpt-oss-120b
 ```
 
-Run a narrative taste arbiter through OpenRouter GLM 5.1:
+Run a narrative taste arbiter through OpenRouter GLM 5.2:
 
 ```bash
-npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.1
+npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.2
 ```
 
 Run the taste arbiter through Lightning GLM:
@@ -222,7 +240,7 @@ Provider defaults:
 | Route | Structured default |
 |---|---|
 | `lightning:lightning-ai/glm-5` | JSON mode plus `thinking: {"type":"disabled"}`. Hidden reasoning may still appear in provider responses; the harness ignores it for structured parsing. |
-| `openrouter:z-ai/glm-5.1` | JSON mode plus `reasoning: {"effort":"none","exclude":true}` and `provider.require_parameters: true`. |
+| `openrouter:z-ai/glm-5.2` | JSON mode plus `reasoning: {"effort":"none","exclude":true}` and `provider.require_parameters: true`. |
 | Other OpenRouter models | JSON mode when requested; `provider.require_parameters: true` when structured/reasoning/tool parameters are present. |
 | Custom OpenAI-compatible endpoints | JSON mode when requested, with fallback if the endpoint rejects the parameter. |
 
@@ -263,7 +281,7 @@ Cheap JSON-mode smoke test:
 
 ```bash
 npm run model:smoke -- --model lightning:lightning-ai/glm-5 --json-mode --prompt '{"ok": true, "note": "Return this shape with a short note."}'
-npm run model:smoke -- --model openrouter:z-ai/glm-5.1 --json-mode --prompt '{"ok": true, "note": "Return this shape with a short note."}'
+npm run model:smoke -- --model openrouter:z-ai/glm-5.2 --json-mode --prompt '{"ok": true, "note": "Return this shape with a short note."}'
 ```
 
 Model IDs stay in panels, suites, or command flags. Do not put model choices in `.env`.
@@ -286,7 +304,7 @@ Use `npm run model:capabilities` before swapping in unfamiliar models:
 
 ```bash
 npm run model:capabilities -- lightning:lightning-ai/glm-5
-npm run model:capabilities -- openrouter:z-ai/glm-5.1
+npm run model:capabilities -- openrouter:z-ai/glm-5.2
 npm run model:capabilities -- --provider openrouter --search nemotron --limit 10
 ```
 
@@ -303,5 +321,5 @@ References:
 - Lightning Model APIs: <https://lightning.ai/docs/overview/model-apis>
 - Lightning LitAI tools: <https://lightning.ai/docs/litai/features/tools>
 - Lightning LitAI streaming/full response: <https://lightning.ai/docs/litai/features/streaming>
-- OpenRouter GLM 5.1: <https://openrouter.ai/z-ai/glm-5.1/api>
+- OpenRouter GLM 5.2: <https://openrouter.ai/z-ai/glm-5.2/api>
 - OpenRouter parameters: <https://www.openrouter.ai/docs/api/reference/parameters>

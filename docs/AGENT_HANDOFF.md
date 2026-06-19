@@ -105,8 +105,8 @@ Useful model commands:
 
 ```bash
 npm run compose -- draft/<section>.md
-npm run model:capabilities -- openrouter:z-ai/glm-5.1
-npm run model:smoke -- --model openrouter:z-ai/glm-5.1 --json-mode
+npm run model:capabilities -- openrouter:z-ai/glm-5.2
+npm run model:smoke -- --model openrouter:z-ai/glm-5.2 --json-mode
 npm run check:model -- --no-cache
 npm run review:run -- --panel lightning.clean draft/<section>.md
 npm run review:run -- --panel prose.clean draft/<section>.md

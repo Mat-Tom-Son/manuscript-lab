@@ -247,13 +247,13 @@ Useful commands:
 ```bash
 npm run model:smoke -- --dry-run
 npm run model:capabilities -- lightning:lightning-ai/glm-5
-npm run model:capabilities -- openrouter:z-ai/glm-5.1
-npm run model:smoke -- --model openrouter:z-ai/glm-5.1 --json-mode
+npm run model:capabilities -- openrouter:z-ai/glm-5.2
+npm run model:smoke -- --model openrouter:z-ai/glm-5.2 --json-mode
 npm run review:run -- --panel lightning.clean draft/<section>.md
 OPENROUTER_API_KEY=... npm run review:run -- --panel prose.clean draft/<section>.md
 OPENROUTER_API_KEY=... npm run review:run -- --panel prose.board --passes cold.reader,line.editor --force draft/<section>.md
 OPENROUTER_API_KEY=... npm run review:run -- --passes style.pattern_saturation --panel style.calibration draft/<section>.md
-OPENROUTER_API_KEY=... npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.1 draft/<section>.md
+OPENROUTER_API_KEY=... npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.2 draft/<section>.md
 npm run review:report -- draft/<section>.md
 ```
 
@@ -312,13 +312,13 @@ taste/EXEMPLARS.md
 Run `narrative.taste` as a sensor when you want issue-ledger evidence:
 
 ```bash
-npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.1 draft/<section>.md
+npm run review:run -- --passes narrative.taste --models openrouter:z-ai/glm-5.2 draft/<section>.md
 ```
 
 Run the arbiter as a gate after candidate comparison:
 
 ```bash
-npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.1
+npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.2
 ```
 
 The arbiter returns `pass`, `pass_with_debt`, `patch_required`, `block`, or `unstable_judgment`. If it blocks a winner, `merge:winner --apply` stops unless a human passes `--force`.

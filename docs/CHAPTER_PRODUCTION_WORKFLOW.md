@@ -110,7 +110,7 @@ When one issue has multiple plausible fixes:
 npm run plan:revision -- draft/<section>.md
 npm run revise:candidates -- draft/<section>.md --issue <issue-id> --n 3 --concurrency 3
 npm run compare:candidates -- draft/<section>.md --run <candidate-run-id> --concurrency 2
-npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.1
+npm run taste:arbiter -- draft/<section>.md --run <candidate-run-id> --models openrouter:z-ai/glm-5.2
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id>
 npm run merge:winner -- draft/<section>.md --run <candidate-run-id> --apply --audit
 ```

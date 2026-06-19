@@ -407,7 +407,54 @@ Agent instructions should say:
 - merge only after a winner is selected
 - run gates before export
 
-### Phase 8: CI And Pull Request Workflows
+### Phase 8: Model Driver
+
+Goal: put a model in the operator seat without making the model the protocol.
+
+Target command:
+
+```bash
+mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md
+mlab drive --interactive --policy pi --model openrouter:z-ai/glm-5.2
+mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2
+mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2
+mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3
+mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default
+```
+
+The driver should expose Manuscript Lab primitives as a structured tool catalog,
+run bounded observe-decide-act loops, persist every decision under
+`state/driver/`, and stop on gates, budgets, approvals, human input, or the
+step cap. Model-backed runs should have enough default loop budget to observe
+tool results and adapt; heuristic runs should remain conservative.
+Practice proposals give that loop a safe prose-generation target: generate
+candidates into `state/practice/`, judge them against hidden exercise tests, and
+leave draft edits to explicit later apply workflows. Practice comparisons turn
+that into evidence by running one direct baseline, one mlab loop, and a blind
+pairwise judge under `state/practice-evals/`. When the baseline wins, the
+comparison loop can spend bounded repair rounds from the critique and rejudge,
+while a copy guard prevents copied direct baselines from counting as mlab wins.
+Practice benchmarks scale that evidence across exercise axes, seeds, and model
+families, while reporting first-pass quality separately from repair recovery.
+Practice strategy comparisons run preset loop shapes across that same matrix and
+write per-exercise recommendations under `state/practice-strategies/`, letting
+the harness learn when direct calls, candidate selection, revision, or repair
+are actually buying quality for a given creative task.
+They should be read as oracle-guided workflow benchmarks, not equal-budget
+single-call model duels.
+
+The important boundary:
+
+```text
+model chooses primitive -> CLI executes allowlisted command -> files record
+evidence -> gates decide readiness
+```
+
+Pi, Codex, Cursor, Claude, and future agent adapters can teach policy and
+operator style. They should not become the durable execution boundary. See
+`docs/MODEL_DRIVER.md`.
+
+### Phase 9: CI And Pull Request Workflows
 
 Goal: make "writing like software" easy.
 
@@ -439,7 +486,7 @@ Advanced PR workflow:
 - build export preview
 - comment with manuscript status
 
-### Phase 9: Export Through Existing Publishing Tools
+### Phase 10: Export Through Existing Publishing Tools
 
 Goal: make export a release step.
 
@@ -463,7 +510,7 @@ mlab export --format docx --allow-dirty
 # Creates export but marks manifest dirty.
 ```
 
-### Phase 10: One Excellent Example Project
+### Phase 11: One Excellent Example Project
 
 Goal: create one demo that shows the full lifecycle.
 
@@ -498,6 +545,7 @@ Keep the public CLI small:
 mlab init
 mlab doctor
 mlab status
+mlab drive
 mlab import
 mlab compose
 mlab check
