@@ -51,6 +51,10 @@ mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2
 mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2
 mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3
 mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default
+mlab artifacts list --json
+mlab artifacts inspect --run <run-id> --json
+mlab eval practice-strategies --from state/practice-strategies/<run-id> --json
+mlab golden-path --write --json
 mlab audit --before before.md --after draft/<section>.md --static-only
 mlab gate manuscript --write
 mlab report --write
@@ -78,7 +82,9 @@ against strict schemas and project-relative path fences, executes only
 allowlisted `mlab` primitives through the package wrapper, records persisted
 step ledgers under `state/driver/`, and stops on approvals, dry-run boundaries,
 explicit stop decisions, or the step cap. Model-backed runs default to four
-loop steps; heuristic runs default to one conservative step. See
+loop steps; heuristic runs default to one conservative step. Persisted runs can
+resume with `--resume <run-id>`; the resumed run keeps prior plan steps and
+appends from the next step number. See
 `docs/MODEL_DRIVER.md`.
 
 ### Practice Proposals
@@ -138,6 +144,35 @@ baselines and candidates are prose-guarded before judging; when an output
 contains planning language or other non-prose markers, the primitive retries
 once with a strict `final_prose` JSON contract and records both the recovery
 state and the extra usage.
+
+### Generated Artifacts, Evals, And Golden Path
+
+```bash
+mlab artifacts list --json
+mlab artifacts inspect --run <run-id> --json
+mlab eval list --json
+mlab eval practice-strategies --from state/practice-strategies/<run-id> --json
+mlab eval practice-strategies --from state/practice-strategies/<run-id> --baseline state/evals/<eval-id>/summary.json --fail-on-regression
+mlab golden-path --write --json
+```
+
+`artifacts` is the read-only index over generated evidence. It currently covers
+driver runs, practice proposals, practice pairwise evals, practice benchmarks,
+practice strategy comparisons, eval snapshots, and golden-path guides. The
+model driver can call `artifacts.list` and `artifacts.inspect` as read-only
+tools, including under the `review-only` policy.
+
+`eval practice-strategies` snapshots a strategy comparison under
+`state/evals/<run-id>/` and writes `summary.json` plus `EVAL_REPORT.md`. With a
+baseline it reports improvements/regressions; with `--fail-on-regression` it
+exits `1` when regressions are detected, making it suitable for release gates.
+
+`golden-path` prints the smallest onboarding sequence that demonstrates
+protocol validation, status, compose, persisted driver dry-run, practice
+strategy evidence, eval snapshotting, and report output. With `--write`, it
+persists that guide under `state/golden-path/`.
+
+For the contributor checklist, see `docs/PRIMITIVE_CONTRACTS.md`.
 
 ### CLI Diagnostics
 

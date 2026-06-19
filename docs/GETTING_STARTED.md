@@ -90,6 +90,9 @@ npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.
 npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
 npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
 npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
+npx mlab artifacts list --json
+npx mlab eval practice-strategies --from state/practice-strategies/<run-id> --json
+npx mlab golden-path --write --json
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -110,7 +113,10 @@ when you want Lightning/OpenRouter-backed generation. The model driver and
 practice lab write their generated evidence under the configured manuscript
 `state/` directory, including `state/driver/`, `state/practice/`,
 `state/practice-evals/`, `state/practice-bench/`, and
-`state/practice-strategies/`. Chorus writes contact sheets by default and only
+`state/practice-strategies/`. `artifacts` lists and inspects generated runs,
+`eval practice-strategies` snapshots strategy evidence under `state/evals/`,
+and `golden-path` writes onboarding evidence under `state/golden-path/`.
+Chorus writes contact sheets by default and only
 assembles prose when `--assemble` or `chorus assemble` is used. Template project
 switching commands are
 template-clone compatibility commands and refuse outside the template clone root

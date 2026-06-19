@@ -5,6 +5,7 @@ import { practiceExerciseById, practiceExerciseIds } from "./practice-exercises.
 const SAFE_ID_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$/;
 const SAFE_PANEL_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$/;
 const SAFE_FORMAT_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,31}$/;
+const ARTIFACT_KINDS = new Set(["all", "driver", "practice", "practice-eval", "practice-bench", "practice-strategy", "eval", "golden-path"]);
 
 export const DRIVER_EFFECTS = Object.freeze([
   "reads_project",
@@ -266,6 +267,52 @@ const TOOL_DEFS = [
     json_output: "required",
   },
   {
+    tool_id: "artifacts.list",
+    public_command: "mlab artifacts list --kind <kind> --json",
+    effects: ["reads_project"],
+    approval: "auto",
+    args: {
+      kind: "optional_artifact_kind",
+      limit: "optional_small_positive_integer",
+    },
+    argv: ({ kind = "all", limit = 5 }) => ["artifacts", "list", "--kind", kind, "--limit", String(limit), "--json"],
+    json_output: "required",
+  },
+  {
+    tool_id: "artifacts.inspect",
+    public_command: "mlab artifacts inspect --run <run-id> --json",
+    effects: ["reads_project"],
+    approval: "auto",
+    args: {
+      run_id: "safe_id",
+      kind: "optional_artifact_kind",
+    },
+    argv: ({ run_id, kind = "all" }) => ["artifacts", "inspect", "--run", run_id, "--kind", kind, "--json"],
+    json_output: "required",
+  },
+  {
+    tool_id: "eval.practice_strategies",
+    public_command: "mlab eval practice-strategies --from state/practice-strategies/<run-id> --json",
+    effects: ["reads_project", "writes_state"],
+    approval: "auto_in_operate",
+    args: {
+      run_id: "optional_safe_id",
+    },
+    argv: ({ run_id = "" }) => ["eval", "practice-strategies", ...(run_id ? ["--from", `state/practice-strategies/${run_id}`] : []), "--json"],
+    json_output: "required",
+  },
+  {
+    tool_id: "golden_path.guide",
+    public_command: "mlab golden-path --json",
+    effects: ["reads_project"],
+    approval: "auto",
+    args: {
+      target: "optional_project_relative_draft_path",
+    },
+    argv: ({ target = "" }) => ["golden-path", ...(target ? ["--target", target] : []), "--json"],
+    json_output: "required",
+  },
+  {
     tool_id: "export.reader",
     public_command: "mlab export --formats <formats> --json",
     effects: ["reads_project", "writes_exports"],
@@ -447,6 +494,7 @@ function normalizeArgValue(kind, value, context) {
   if (baseKind === "practice_exercise_id") return normalizePracticeExerciseId(value);
   if (baseKind === "practice_exercise_set") return normalizePracticeExerciseSet(value);
   if (baseKind === "practice_strategy_set") return normalizePracticeStrategySet(value);
+  if (baseKind === "artifact_kind") return normalizeArtifactKind(value);
   if (baseKind === "prompt_text") return normalizePromptText(value);
   if (baseKind === "panel_id") return normalizePanelId(value);
   if (baseKind === "format_list") return normalizeFormatList(value);
@@ -557,6 +605,15 @@ function normalizePracticeStrategySet(value) {
   const bad = ids.find((id) => !SAFE_ID_PATTERN.test(id) || !allowed.has(id));
   if (bad) return { ok: false, error: "unknown practice strategy; available: default, all, single, select, revise, repair" };
   return { ok: true, value: ids.join(",") };
+}
+
+function normalizeArtifactKind(value) {
+  const text = String(value ?? "").trim().toLowerCase();
+  if (!text) return { ok: false, error: "must not be empty" };
+  if (!ARTIFACT_KINDS.has(text)) {
+    return { ok: false, error: `unknown artifact kind; available: ${[...ARTIFACT_KINDS].join(", ")}` };
+  }
+  return { ok: true, value: text };
 }
 
 function normalizeBoundedInteger(value, { min, max }) {

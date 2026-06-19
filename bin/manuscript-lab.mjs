@@ -13,6 +13,7 @@ const pkg = readPackageJson();
 
 const commands = {
   "check": ["scripts/doccheck.mjs"],
+  "artifacts": ["scripts/artifact-inspector.mjs"],
   "chorus": ["scripts/chorus-runner.mjs"],
   "citations": ["scripts/evidence-spine.mjs", "citations"],
   "claims": ["scripts/evidence-spine.mjs", "claims"],
@@ -25,8 +26,10 @@ const commands = {
   "done": ["scripts/done-gate.mjs"],
   "done:no-export": ["scripts/done-gate.mjs", "--skip-exports"],
   "evidence": ["scripts/evidence-spine.mjs", "evidence"],
+  "eval": ["scripts/eval-runner.mjs"],
   "export": ["scripts/export-manuscript.mjs"],
   "gate": ["scripts/gate.mjs"],
+  "golden-path": ["scripts/golden-path.mjs"],
   "issues": ["scripts/issue-ledger.mjs"],
   "model:calls": ["scripts/model-call-report.mjs"],
   "model:capabilities": ["scripts/model-capabilities.mjs"],
@@ -241,6 +244,9 @@ Common commands:
   status
   drive --goal "find the next useful command" --dry-run
   drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
+  artifacts list --json
+  golden-path --json
+  eval practice-strategies --from state/practice-strategies/<run-id> --json
   practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
   practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
   practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json

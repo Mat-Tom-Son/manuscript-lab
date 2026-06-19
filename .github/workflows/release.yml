@@ -1,0 +1,88 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Package version to release, matching package.json"
+        required: true
+        type: string
+      dry_run:
+        description: "Run all release checks without publishing"
+        required: true
+        default: true
+        type: boolean
+
+permissions:
+  contents: write
+  id-token: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Verify requested version
+        run: |
+          node -e 'const pkg=require("./package.json"); const wanted=process.env.RELEASE_VERSION; if (pkg.version !== wanted) { console.error(`package.json version ${pkg.version} does not match ${wanted}`); process.exit(1); }'
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+
+      - name: Run tests
+        run: npm test
+
+      - name: Run template audit
+        run: npm run template:audit -- --strict
+
+      - name: Run context audit
+        run: npm run context:audit -- --strict
+
+      - name: Run doctor
+        run: npm run doctor -- --no-network
+
+      - name: Verify package contents
+        run: npm pack --dry-run
+
+      - name: Dry-run npm publish
+        if: ${{ inputs.dry_run }}
+        run: npm publish --dry-run --access public
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Publish npm package
+        if: ${{ !inputs.dry_run }}
+        run: npm publish --access public --provenance
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+
+      - name: Create tag if needed
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          if ! git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            git tag "v${VERSION}"
+            git push origin "v${VERSION}"
+          fi
+
+      - name: Create GitHub release
+        if: ${{ !inputs.dry_run }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          if gh release view "v${VERSION}" >/dev/null 2>&1; then
+            echo "GitHub release v${VERSION} already exists."
+          else
+            gh release create "v${VERSION}" --title "v${VERSION}" --notes "Release v${VERSION}."
+          fi

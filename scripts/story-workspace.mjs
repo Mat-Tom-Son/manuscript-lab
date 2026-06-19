@@ -34,6 +34,8 @@ const archiveStateDirs = [
   "projections",
   "observations",
   "driver",
+  "evals",
+  "golden-path",
   "practice",
   "practice-evals",
   "practice-bench",
@@ -56,6 +58,8 @@ const generatedStateDirs = [
   "projections",
   "observations",
   "driver",
+  "evals",
+  "golden-path",
   "practice",
   "practice-evals",
   "practice-bench",
@@ -360,7 +364,14 @@ function ensureRequiredScaffoldDirs() {
     "taste/rejected_patches",
     "state",
     "state/chorus",
+    "state/driver",
+    "state/evals",
+    "state/golden-path",
     "state/issues",
+    "state/practice",
+    "state/practice-bench",
+    "state/practice-evals",
+    "state/practice-strategies",
     "state/runtime",
     "state/reviews",
     "state/room",
@@ -378,7 +389,14 @@ function ensureRequiredScaffoldDirs() {
     ensureDir(dir);
   }
   ensureReadme("state/chorus/README.md", "Chorus line-lab artifacts live here.\n");
+  ensureReadme("state/driver/README.md", "Model-driver run artifacts live here.\n");
+  ensureReadme("state/evals/README.md", "Evaluation snapshots and regression comparisons live here.\n");
+  ensureReadme("state/golden-path/README.md", "Golden-path onboarding evidence artifacts live here.\n");
   ensureReadme("state/issues/README.md", "Issue ledger artifacts live here.\n");
+  ensureReadme("state/practice/README.md", "Creative practice generation artifacts live here.\n");
+  ensureReadme("state/practice-bench/README.md", "Practice benchmark artifacts live here.\n");
+  ensureReadme("state/practice-evals/README.md", "Practice pairwise evaluation artifacts live here.\n");
+  ensureReadme("state/practice-strategies/README.md", "Practice strategy comparison artifacts live here.\n");
   ensureReadme("state/runtime/README.md", "Composed runtime packets live here.\n");
   ensureReadme("state/reviews/README.md", "Review run artifacts live here.\n");
   ensureReadme("state/room/README.md", "Writers' room protocol artifacts live here.\n");

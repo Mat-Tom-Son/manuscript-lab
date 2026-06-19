@@ -39,7 +39,7 @@ function testDryRun() {
   assert.equal(result.ok, true);
   assert.equal(result.status, "dry_run");
   assert.equal(result.run_dir, "");
-  assert.equal(fs.existsSync(path.join(workspace, "manuscript", "state", "practice")), false);
+  assert.equal(fs.existsSync(path.join(workspace, "manuscript", "state", "practice", "want-in-room")), false);
 }
 
 function testProseGuard() {

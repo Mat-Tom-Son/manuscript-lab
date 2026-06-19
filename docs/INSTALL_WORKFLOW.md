@@ -423,6 +423,8 @@ Before a package release:
 - README, package docs, and CHANGELOG describe the supported npm workflow
 - `npm pack --dry-run` output is reviewed in the release PR
 - `npm publish --dry-run` passes
+- `.github/workflows/release.yml` dry run passes when maintainers use the manual
+  release workflow
 - the public registry smoke passes after publish
 - the matching GitHub tag/release points at the same source state as the npm
   package

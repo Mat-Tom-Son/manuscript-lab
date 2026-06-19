@@ -1,8 +1,11 @@
 # CI
 
-The active GitHub Actions workflow lives at `.github/workflows/ci.yml`.
+The active GitHub Actions workflows live under `.github/workflows/`.
 
-It runs on pushes and pull requests to `main`:
+- `ci.yml` runs on pushes and pull requests to `main`.
+- `release.yml` is a manual `workflow_dispatch` scaffold for maintainers.
+
+CI runs:
 
 ```yaml
 name: CI
@@ -66,3 +69,31 @@ validation, evidence gates, and template-command refusal.
 
 Changing this workflow requires a GitHub token with `workflow` scope. Normal
 code and docs pushes do not need that extra scope.
+
+## Release Workflow
+
+`.github/workflows/release.yml` is intentionally manual. Dispatch it with the
+package version that is already present in `package.json`.
+
+Dry run mode:
+
+- verifies the requested version matches `package.json`
+- runs `npm test`
+- runs strict template and context audits
+- runs `npm run doctor -- --no-network`
+- runs `npm pack --dry-run`
+- runs `npm publish --dry-run --access public`
+
+Publish mode does the same checks, then runs:
+
+- `npm publish --access public --provenance`
+- creates/pushes `v<version>` if the tag does not exist
+- creates the matching GitHub release if it does not exist
+
+Required repository secret:
+
+- `NPM_TOKEN`: npm automation token with publish rights for `manuscript-lab`
+
+The workflow has `contents: write` for tags/releases and `id-token: write` for
+npm provenance. It does not bump versions; version changes stay as ordinary
+reviewed commits.

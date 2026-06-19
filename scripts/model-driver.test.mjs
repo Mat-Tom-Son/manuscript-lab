@@ -24,6 +24,7 @@ try {
   testDriverDryRun();
   testDriverWriteAndPathFence();
   testDriverMockLoop();
+  testDriverResume();
   testDriverExecuteSafeTool();
   testDriverApprovalStop();
   console.log("model-driver tests passed");
@@ -41,6 +42,10 @@ function testCatalog() {
   assert(ids.includes("practice.compare"));
   assert(ids.includes("practice.bench"));
   assert(ids.includes("practice.strategies"));
+  assert(ids.includes("artifacts.list"));
+  assert(ids.includes("artifacts.inspect"));
+  assert(ids.includes("eval.practice_strategies"));
+  assert(ids.includes("golden_path.guide"));
   assert(ids.includes("export.reader"));
   assert(listDriverPolicies().some((policy) => policy.name === "pi"));
   assert(driverPolicyByName("pi").trusted_rules.some((rule) => /Pi/i.test(rule)));
@@ -93,6 +98,24 @@ function testCatalog() {
   );
   assert.equal(badStrategies.ok, false);
   assert.match(badStrategies.errors.join("\n"), /unknown practice strategy/);
+  const artifacts = buildDriverToolCommand("artifacts.list", { kind: "practice-strategy", limit: 3 }, { discovery, paths });
+  assert.equal(artifacts.argv.join(" "), "artifacts list --kind practice-strategy --limit 3 --json");
+  const artifactInspect = buildDriverToolCommand("artifacts.inspect", { run_id: "practice-strategies-abc", kind: "practice-strategy" }, { discovery, paths });
+  assert.equal(artifactInspect.argv.join(" "), "artifacts inspect --run practice-strategies-abc --kind practice-strategy --json");
+  const evalStrategy = buildDriverToolCommand("eval.practice_strategies", { run_id: "practice-strategies-abc" }, { discovery, paths });
+  assert.equal(evalStrategy.argv.join(" "), "eval practice-strategies --from state/practice-strategies/practice-strategies-abc --json");
+  const goldenPath = buildDriverToolCommand("golden_path.guide", { target: "draft/01-opening.md" }, { discovery, paths });
+  assert.equal(goldenPath.argv.join(" "), "golden-path --target draft/01-opening.md --json");
+  const badArtifactKind = normalizeDriverDecision(
+    {
+      action: "run_tool",
+      tool_id: "artifacts.list",
+      args: { kind: "nope" },
+    },
+    { discovery, paths },
+  );
+  assert.equal(badArtifactKind.ok, false);
+  assert.match(badArtifactKind.errors.join("\n"), /unknown artifact kind/);
 
   const bad = normalizeDriverDecision(
     {
@@ -134,7 +157,7 @@ function testDriverDryRun() {
   assert.equal(result.persisted, false);
   assert.equal(result.decision.tool_id, "compose.section");
   assert.equal(result.command.display, "mlab compose draft/01-opening.md --json");
-  assert.equal(fs.existsSync(path.join(workspace, "manuscript", "state", "driver")), false);
+  assert.equal(fs.existsSync(path.join(workspace, "manuscript", "state", "driver", "runs")), false);
 
   const badPolicy = run([cli, "drive", "--goal", "x", "--policy", "unknown", "--dry-run", "--json"], { cwd: workspace });
   assert.equal(badPolicy.status, 2);
@@ -189,9 +212,9 @@ function testDriverWriteAndPathFence() {
   assert.equal(badResume.status, 2);
   assert.match(JSON.parse(badResume.stdout).error, /safe driver run id/);
 
-  const unsupportedResume = run([cli, "drive", "--goal", "resume", "--resume", "driver-existing", "--dry-run", "--json"], { cwd: workspace });
-  assert.equal(unsupportedResume.status, 2);
-  assert.match(JSON.parse(unsupportedResume.stdout).error, /not implemented/);
+  const missingResume = run([cli, "drive", "--goal", "resume", "--resume", "driver-existing", "--dry-run", "--json"], { cwd: workspace });
+  assert.equal(missingResume.status, 2);
+  assert.match(JSON.parse(missingResume.stdout).error, /No persisted driver run found/);
 }
 
 function testDriverMockLoop() {
@@ -255,6 +278,61 @@ function testDriverMockLoop() {
   assert.equal(modelDefault.steps[0].tool_id, "status.project");
   assert.match(modelDefault.steps[0].result_summary, /drafts=/);
   assert.equal(modelDefault.steps[1].action, "stop");
+}
+
+function testDriverResume() {
+  const workspace = freshWorkspace("resume");
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const firstDecision = path.join(workspace, "resume-first.json");
+  fs.writeFileSync(
+    firstDecision,
+    `${JSON.stringify({
+      action: "run_tool",
+      tool_id: "status.project",
+      args: {},
+      rationale: "Capture the starting cockpit.",
+    })}\n`,
+  );
+  const first = assertJson(
+    run([cli, "drive", "--goal", "resume me", "--mode", "operate", "--max-steps", "1", "--json", "--mock-decision-file", firstDecision], { cwd: workspace }),
+  );
+  assert.equal(first.ok, true);
+  assert.equal(first.status, "pass");
+  assert.equal(first.steps.length, 1);
+  const runDir = path.join(manuscriptRoot, first.run_dir);
+  const firstObservation = fs.readFileSync(path.join(runDir, "observations", "step-001.json"), "utf8");
+
+  const stopDecision = path.join(workspace, "resume-stop.json");
+  fs.writeFileSync(
+    stopDecision,
+    `${JSON.stringify({
+      action: "stop",
+      rationale: "Prior state is enough.",
+      message: "Stopped after resume.",
+    })}\n`,
+  );
+  const resumed = assertJson(
+    run([cli, "drive", "--resume", first.run_id, "--max-steps", "1", "--json", "--mock-decision-file", stopDecision], { cwd: workspace }),
+  );
+  assert.equal(resumed.ok, true);
+  assert.equal(resumed.status, "stopped");
+  assert.equal(resumed.run_id, first.run_id);
+  assert.equal(resumed.resumed, true);
+  assert.equal(resumed.step_budget, 1);
+  assert.equal(resumed.max_steps, 2);
+  assert.equal(resumed.steps.length, 2);
+  assert.equal(resumed.steps[0].tool_id, "status.project");
+  assert.equal(resumed.steps[1].step, 2);
+  assert.equal(resumed.steps[1].action, "stop");
+  assert.equal(fs.readFileSync(path.join(runDir, "observations", "step-001.json"), "utf8"), firstObservation);
+  assert(fs.existsSync(path.join(runDir, "observations", "step-002.json")));
+  assert(fs.existsSync(path.join(runDir, "decisions", "step-002.json")));
+  assert(fs.existsSync(path.join(runDir, "resume.json")));
+  const events = fs.readFileSync(path.join(runDir, "events.jsonl"), "utf8");
+  assert.match(events, /"type":"resume"/);
+  assert.match(events, /"step":2/);
+  const latest = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, "state", "driver", "latest.json"), "utf8"));
+  assert.equal(latest.run_id, first.run_id);
 }
 
 function testDriverExecuteSafeTool() {

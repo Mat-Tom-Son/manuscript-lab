@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { collectGeneratedArtifacts } from "./lib/generated-artifacts.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const root = discovery.manuscriptRoot;
@@ -27,6 +28,7 @@ const exports = unloaded ? [] : listExports();
 const candidateRuns = listCandidateRuns();
 const roomRuns = unloaded ? [] : listRoomRuns();
 const chorusRuns = unloaded ? [] : listChorusRuns();
+const generatedArtifacts = unloaded ? emptyGeneratedArtifacts() : safeGeneratedArtifacts();
 const nextDraft = drafts.find((draft) => draft.status === "todo" && draft.file.startsWith("draft/"));
 const activeReview = drafts.find((draft) => ["review", "revise"].includes(draft.status) && draft.words > 50);
 const activeDraft = drafts.find((draft) => draft.status === "draft" && draft.words > 50);
@@ -45,6 +47,8 @@ const summary = {
   candidate_runs: candidateRuns,
   room_runs: roomRuns,
   chorus_runs: chorusRuns,
+  generated_artifacts: generatedArtifacts.artifacts,
+  artifact_recommendations: generatedArtifacts.recommendations,
   project_workspace: projectWorkspace,
   exports,
   suggested_next: suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }),
@@ -283,6 +287,38 @@ function listChorusRuns() {
   return runs.sort((a, b) => b.modified_at.localeCompare(a.modified_at)).slice(0, 10);
 }
 
+function safeGeneratedArtifacts() {
+  try {
+    return collectGeneratedArtifacts(paths, { limit: 5 });
+  } catch (error) {
+    return {
+      artifacts: emptyGeneratedArtifacts().artifacts,
+      recommendations: [{
+        id: "artifact-discovery-error",
+        priority: "high",
+        message: error.message,
+        artifact: "",
+        next_command: "",
+      }],
+    };
+  }
+}
+
+function emptyGeneratedArtifacts() {
+  return {
+    artifacts: {
+      driver_runs: [],
+      practice_runs: [],
+      practice_evals: [],
+      practice_benches: [],
+      practice_strategies: [],
+      eval_runs: [],
+      golden_paths: [],
+    },
+    recommendations: [],
+  };
+}
+
 function presentFiles(runDir, spec) {
   const files = {};
   for (const [key, rel] of Object.entries(spec)) {
@@ -487,6 +523,34 @@ function printText(data) {
     }
   } else {
     console.log(`- none yet; run ${labCommand("chorus", "run draft/<section>.md")}`);
+  }
+  console.log("");
+
+  console.log("Generated Artifacts:");
+  const generatedGroups = [
+    ["Driver", data.generated_artifacts?.driver_runs ?? []],
+    ["Practice", data.generated_artifacts?.practice_runs ?? []],
+    ["Practice Bench", data.generated_artifacts?.practice_benches ?? []],
+    ["Practice Strategy", data.generated_artifacts?.practice_strategies ?? []],
+    ["Eval", data.generated_artifacts?.eval_runs ?? []],
+    ["Golden Path", data.generated_artifacts?.golden_paths ?? []],
+  ];
+  const visibleGroups = generatedGroups.filter(([, items]) => items.length);
+  if (visibleGroups.length) {
+    for (const [label, items] of visibleGroups) {
+      for (const item of items.slice(0, 3)) {
+        const report = item.report || item.path;
+        console.log(`- ${label}/${item.run_id}: ${item.status} -> ${report}`);
+      }
+    }
+  } else {
+    console.log(`- none yet; run ${labCommand("golden-path", "--write")} or ${labCommand("drive", "--goal \"find the next useful command\" --dry-run --write")}`);
+  }
+  if (data.artifact_recommendations?.length) {
+    for (const item of data.artifact_recommendations.slice(0, 3)) {
+      console.log(`- recommendation: ${item.message}`);
+      if (item.next_command) console.log(`  ${item.next_command}`);
+    }
   }
   console.log("");
 

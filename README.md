@@ -164,6 +164,9 @@ npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.
 npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
 npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
 npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
+npx mlab artifacts list --json
+npx mlab eval practice-strategies --from state/practice-strategies/<run-id> --json
+npx mlab golden-path --write --json
 npx mlab check --static-only draft/01-opening.md
 npx mlab claims list --json
 npx mlab citations check --json
@@ -192,8 +195,10 @@ runs under `state/driver/`, and creative-writing practice proposals under
 single-candidate, multi-candidate selection, revision, and repair, then
 recommend per-exercise defaults from aggregate win rate, score delta, cost, and
 repair recovery evidence. Model-backed `drive` runs default to a four-step
-observe/decide/act loop, while credential-free heuristic runs stay one step
-unless `--max-steps` is set. Practice comparisons can run bounded repair rounds
+observe/decide/act loop, can resume persisted run history with `--resume`, and
+can inspect generated evidence through read-only artifact primitives, while
+credential-free heuristic runs stay one step unless `--max-steps` is set.
+Practice comparisons can run bounded repair rounds
 when the direct baseline wins and include copy checks so near-copied baselines
 do not count as mlab wins. Practice benchmarks report first-pass and
 post-repair win rates, score deltas, failure modes, judge relation, and known
@@ -201,7 +206,11 @@ token/cost usage, including one-shot recoveries from invalid planning/meta
 outputs. They are oracle-guided workflow benchmarks: the direct baseline sees
 the public prompt, while the mlab loop may use hidden-rubric feedback for
 candidate selection, revision, and repair.
-`status` and `report` surface recent Room and Chorus artifacts as part of the
+`artifacts list` and `artifacts inspect` expose generated driver, practice,
+eval, and golden-path evidence; `eval practice-strategies` snapshots strategy
+comparisons into `state/evals/` and can fail on baseline regressions for CI;
+`golden-path` prints or persists the first useful onboarding sequence.
+`status` and `report` surface recent generated artifacts as part of the
 cockpit.
 Template project switching commands are guarded as template-clone compatibility
 commands.
@@ -360,6 +369,9 @@ are ignored by default so the public repo stays reusable.
 - `docs/FILE_PROTOCOL.md`: project layout and config protocol
 - `docs/INSTALL_WORKFLOW.md`: npm/install-anywhere design record
 - `docs/MODEL_DRIVER.md`: model-driven interactive orchestration design
+- `docs/GOLDEN_PATH.md`: first useful product path and evidence tour
+- `docs/PRIMITIVE_CONTRACTS.md`: contributor contract for public commands,
+  driver tools, generated artifacts, and evals
 - `docs/GATE_ENGINE.md`: readiness gate design and result format
 - `docs/EVIDENCE_SPINE.md`: claims and sources design
 - `examples/technical-whitepaper/README.md`: public tutorial fixture

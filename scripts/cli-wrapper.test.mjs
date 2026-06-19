@@ -20,6 +20,9 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
   assert.match(result.stdout, /practice propose --exercise want-in-room --model openrouter:z-ai\/glm-5\.2 --json/);
   assert.match(result.stdout, /practice bench --exercises core --models openrouter:z-ai\/glm-5\.2 --seeds 3 --json/);
   assert.match(result.stdout, /practice strategies --exercises core --models openrouter:z-ai\/glm-5\.2 --strategies default --json/);
+  assert.match(result.stdout, /artifacts list --json/);
+  assert.match(result.stdout, /golden-path --json/);
+  assert.match(result.stdout, /eval practice-strategies --from state\/practice-strategies\/<run-id> --json/);
   assert.match(result.stdout, /review draft\/<section>\.md --dry-run --panel prose\.clean/);
   assert.match(result.stdout, /revise draft\/<section>\.md --issue <issue-id> --candidates 3 --dry-run/);
   assert.match(result.stdout, /Compatibility command names:/);
@@ -38,6 +41,24 @@ const cli = path.join(root, "bin/manuscript-lab.mjs");
   assert.match(result.stdout, /practice compare --exercise want-in-room --model openrouter:z-ai\/glm-5\.2 --json/);
   assert.match(result.stdout, /practice bench --exercises core --models openrouter:z-ai\/glm-5\.2 --seeds 3 --json/);
   assert.match(result.stdout, /practice strategies --exercises want-in-room,thing-unsaid --model openrouter:z-ai\/glm-5\.2 --json/);
+}
+
+{
+  const result = run([cli, "artifacts", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /artifacts - inspect generated Manuscript Lab evidence/);
+}
+
+{
+  const result = run([cli, "eval", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /eval - snapshot and compare Manuscript Lab workflow evidence/);
+}
+
+{
+  const result = run([cli, "golden-path", "--help"]);
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /golden-path - show the first useful Manuscript Lab product path/);
 }
 
 {

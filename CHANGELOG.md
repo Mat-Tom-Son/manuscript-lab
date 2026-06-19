@@ -1,5 +1,22 @@
 # Changelog
 
+## 1.5.0 - 2026-06-19
+
+- Added generated-artifact discovery across driver runs, practice runs,
+  practice benchmarks, strategy comparisons, eval snapshots, and golden-path
+  guides, surfaced through `mlab artifacts`, `status`, and `report`.
+- Added `mlab eval practice-strategies` to snapshot strategy-comparison
+  evidence under `state/evals/`, compare against baselines, and optionally fail
+  CI/release checks with `--fail-on-regression`.
+- Added `mlab golden-path` as a first-use product guide that can persist
+  onboarding evidence under `state/golden-path/`.
+- Extended `mlab drive` with resume-safe continuation, read-only artifact
+  inspection tools, an eval snapshot primitive, and generated-artifact context
+  in model observations.
+- Added contributor primitive-contract docs, installed-package smoke coverage
+  for artifacts/evals/golden-path, and a manual GitHub Actions release workflow
+  scaffold.
+
 ## 1.4.0 - 2026-06-19
 
 - Scoped the future `mlab drive` model-driver primitive: an interactive,

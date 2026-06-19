@@ -40,10 +40,6 @@ async function main() {
   if (!["ask", "never", "always-safe"].includes(options.approve)) {
     failCli(`Unsupported --approve ${options.approve}. Use ask, never, or always-safe.`, options);
   }
-  const policy = driverPolicyByName(options.policy);
-  if (!policy) {
-    failCli(`Unknown --policy ${options.policy}. Available policies: ${listDriverPolicies().map((item) => item.name).join(", ")}.`, options);
-  }
   if (options.noWrite && options.mode !== "advise") {
     failCli("--no-write is only allowed in advise mode.", options);
   }
@@ -59,23 +55,40 @@ async function main() {
   }
 
   const paths = protocolPaths(discovery, { cwd: process.cwd() });
-  if (!options.goal && !options.json) options.goal = await promptForGoal();
-  if (!options.goal) options.goal = "Find the safest next Manuscript Lab action.";
-
   const catalogValidation = validateDriverCatalog();
   if (!catalogValidation.ok) failCli(catalogValidation.errors.join("\n"), options, { discovery });
 
-  if (options.resume) {
-    normalizeRunId(options.resume, options);
-    failCli("--resume is not implemented yet; start a new driver run instead.", options);
+  const resumeState = options.resume ? loadResumeState({ paths, discovery, options }) : null;
+  if (resumeState) applyResumeDefaults(options, resumeState);
+  finalizeDefaultMaxSteps(options);
+
+  if (!["advise", "operate", "ci"].includes(options.mode)) {
+    failCli(`Unsupported --mode ${options.mode}. Use advise, operate, or ci.`, options);
+  }
+  if (!["ask", "never", "always-safe"].includes(options.approve)) {
+    failCli(`Unsupported --approve ${options.approve}. Use ask, never, or always-safe.`, options);
+  }
+  if (options.noWrite && options.mode !== "advise") {
+    failCli("--no-write is only allowed in advise mode.", options);
   }
 
-  const persist = (!options.dryRun && !options.noWrite) || (options.dryRun && options.write);
-  const runId = makeRunId();
-  const runDir = paths.stateAbs(path.join("driver", "runs", runId));
-  const run = createRun({ runId, runDir, discovery, paths, options, persist, policy });
+  if (!options.goal && !options.json) options.goal = await promptForGoal();
+  if (!options.goal) options.goal = "Find the safest next Manuscript Lab action.";
 
-  if (persist) initializeRunArtifacts(run);
+  const policy = driverPolicyByName(options.policy);
+  if (!policy) {
+    failCli(`Unknown --policy ${options.policy}. Available policies: ${listDriverPolicies().map((item) => item.name).join(", ")}.`, options);
+  }
+
+  const persist = Boolean(resumeState) || (!options.dryRun && !options.noWrite) || (options.dryRun && options.write);
+  const runId = resumeState?.runId ?? makeRunId();
+  const runDir = paths.stateAbs(path.join("driver", "runs", runId));
+  const run = createRun({ runId, runDir, discovery, paths, options, persist, policy, resumeState });
+
+  if (persist) {
+    if (resumeState) initializeResumedRunArtifacts(run, resumeState);
+    else initializeRunArtifacts(run);
+  }
 
   const result = await runDriverLoop({ run, options, discovery, paths });
   emitResult(result, options);
@@ -85,7 +98,7 @@ async function main() {
 async function runDriverLoop({ run, options, discovery, paths }) {
   let final = null;
 
-  for (let step = 1; step <= run.max_steps; step += 1) {
+  for (let step = run.next_step; step <= run.max_steps; step += 1) {
     const observation = observeProject(run);
     recordEvent(run, step, {
       type: "observation",
@@ -261,8 +274,12 @@ function finalizeDriverRun(run, result) {
   };
 }
 
-function createRun({ runId, runDir, discovery, paths, options, persist, policy }) {
+function createRun({ runId, runDir, discovery, paths, options, persist, policy, resumeState = null }) {
   const createdAt = new Date().toISOString();
+  const priorSteps = resumeState?.steps ?? [];
+  const nextStep = priorSteps.length
+    ? Math.max(...priorSteps.map((step) => Number(step.step) || 0)) + 1
+    : 1;
   return {
     schema_version: DRIVER_SCHEMA,
     run_id: runId,
@@ -275,7 +292,12 @@ function createRun({ runId, runDir, discovery, paths, options, persist, policy }
     dry_run: options.dryRun,
     no_write: options.noWrite,
     persist,
-    max_steps: options.maxSteps,
+    resumed: Boolean(resumeState),
+    resumed_at: resumeState ? createdAt : "",
+    prior_step_count: priorSteps.length,
+    step_budget: options.maxSteps,
+    next_step: nextStep,
+    max_steps: resumeState ? nextStep + options.maxSteps - 1 : options.maxSteps,
     model: options.model || "",
     discovery: {
       mode: discovery.mode,
@@ -287,7 +309,7 @@ function createRun({ runId, runDir, discovery, paths, options, persist, policy }
     },
     paths,
     run_dir: runDir,
-    steps: [],
+    steps: [...priorSteps],
   };
 }
 
@@ -319,6 +341,49 @@ function initializeRunArtifacts(run) {
     run_id: run.run_id,
     run_dir: displayProjectPath(run, run.run_dir),
     updated_at: new Date().toISOString(),
+  });
+}
+
+function initializeResumedRunArtifacts(run, resumeState) {
+  fs.mkdirSync(run.run_dir, { recursive: true });
+  writeJsonAtomic(path.join(run.run_dir, "resume.json"), {
+    schema_version: "manuscript-lab.driver-resume.v1",
+    run_id: run.run_id,
+    resumed_at: run.resumed_at,
+    prior_step_count: run.prior_step_count,
+    next_step: run.next_step,
+    step_budget: run.step_budget,
+    max_steps: run.max_steps,
+    previous_policy: resumeState.policyRecord,
+    previous_plan_status: resumeState.plan?.status ?? "",
+  });
+  writeJsonAtomic(path.join(run.run_dir, "policy.json"), {
+    policy: run.policy,
+    mode: run.mode,
+    approve: run.approve,
+    dry_run: run.dry_run,
+    max_steps: run.max_steps,
+    step_budget: run.step_budget,
+    model: run.model,
+    discovery: run.discovery,
+    resumed_at: run.resumed_at,
+  });
+  writeJsonAtomic(path.join(run.run_dir, "tool-catalog.json"), {
+    schema_version: "manuscript-lab.driver-tool-catalog.v1",
+    tools: listDriverTools(),
+  });
+  writeJsonAtomic(path.join(path.dirname(path.dirname(run.run_dir)), "latest.json"), {
+    schema_version: DRIVER_SCHEMA,
+    run_id: run.run_id,
+    run_dir: displayProjectPath(run, run.run_dir),
+    resumed_at: run.resumed_at,
+    updated_at: new Date().toISOString(),
+  });
+  recordEvent(run, run.next_step, {
+    type: "resume",
+    status: "pass",
+    summary: `Resumed driver run after ${run.prior_step_count} prior step(s).`,
+    artifacts: [displayProjectPath(run, path.join(run.run_dir, "resume.json"))],
   });
 }
 
@@ -732,6 +797,10 @@ function collectArtifactPaths(value, paths, depth) {
       if (key === "run_dir") {
         paths.add(`${artifact.replace(/\/$/, "")}/REPORT.md`);
         if (artifact.includes("practice-bench")) paths.add(`${artifact.replace(/\/$/, "")}/RESULTS.md`);
+        if (artifact.includes("driver/runs")) paths.add(`${artifact.replace(/\/$/, "")}/FINAL_REPORT.md`);
+        if (artifact.includes("practice-strategies")) paths.add(`${artifact.replace(/\/$/, "")}/STRATEGY_REPORT.md`);
+        if (artifact.includes("evals")) paths.add(`${artifact.replace(/\/$/, "")}/EVAL_REPORT.md`);
+        if (artifact.includes("golden-path")) paths.add(`${artifact.replace(/\/$/, "")}/GOLDEN_PATH.md`);
       }
     } else if (raw && typeof raw === "object") {
       collectArtifactPaths(raw, paths, depth + 1);
@@ -782,6 +851,8 @@ function buildDriverPrompt({ run, observation, step }) {
           drafts: observation.status.json.drafts,
           runtime_packets: observation.status.json.runtime_packets,
           issues: observation.status.json.issues,
+          generated_artifacts: observation.status.json.generated_artifacts,
+          artifact_recommendations: observation.status.json.artifact_recommendations,
           suggested_next: observation.status.json.suggested_next,
         }
       : null,
@@ -882,6 +953,9 @@ function emitResult(result, options) {
     dry_run: result.run.dry_run,
     policy: result.run.policy.name,
     max_steps: result.run.max_steps,
+    step_budget: result.run.step_budget,
+    resumed: result.run.resumed,
+    next_step: result.run.next_step,
     goal: result.run.goal,
     target: result.run.target,
     steps: result.steps ?? [],
@@ -943,6 +1017,10 @@ function parseArgs(args) {
     approve: "ask",
     maxSteps: null,
     maxStepsExplicit: false,
+    modelExplicit: false,
+    policyExplicit: false,
+    modeExplicit: false,
+    approveExplicit: false,
     config: "",
     workspace: "",
     resume: "",
@@ -969,14 +1047,17 @@ function parseArgs(args) {
     if (key === "maxSteps") {
       parsed.maxSteps = positiveInteger(value, DEFAULT_MAX_STEPS);
       parsed.maxStepsExplicit = true;
+    } else if (key in parsed) {
+      parsed[key] = value ?? "";
+      if (key === "model") parsed.modelExplicit = true;
+      if (key === "policy") parsed.policyExplicit = true;
+      if (key === "mode") parsed.modeExplicit = true;
+      if (key === "approve") parsed.approveExplicit = true;
     }
-    else if (key in parsed) parsed[key] = value ?? "";
     else parsed._.push(arg);
   }
   if (parsed._.length && !parsed.goal) parsed.goal = parsed._.join(" ");
-  if (!parsed.maxStepsExplicit) {
-    parsed.maxSteps = parsed.model ? DEFAULT_MODEL_MAX_STEPS : DEFAULT_MAX_STEPS;
-  }
+  finalizeDefaultMaxSteps(parsed);
   return parsed;
 }
 
@@ -998,6 +1079,103 @@ function normalizeRunId(value, options) {
     failCli("--resume must be a safe driver run id, not a path.", options);
   }
   return runId;
+}
+
+function finalizeDefaultMaxSteps(options) {
+  if (!options.maxStepsExplicit) options.maxSteps = options.model ? DEFAULT_MODEL_MAX_STEPS : DEFAULT_MAX_STEPS;
+}
+
+function loadResumeState({ paths, discovery, options }) {
+  const runId = normalizeRunId(options.resume, options);
+  const runDir = paths.stateAbs(path.join("driver", "runs", runId));
+  if (!fs.existsSync(runDir) || !fs.statSync(runDir).isDirectory()) {
+    failCli(`No persisted driver run found for --resume ${runId}.`, options);
+  }
+
+  const policyRecord = readJsonFile(path.join(runDir, "policy.json"), null);
+  const plan = readJsonFile(path.join(runDir, "plan.json"), null);
+  if (!policyRecord || !plan) {
+    failCli(`Driver run ${runId} is missing policy.json or plan.json and cannot be resumed safely.`, options);
+  }
+
+  const priorRoot = policyRecord.discovery?.manuscript_root || "";
+  if (priorRoot && !sameResolvedPath(priorRoot, discovery.manuscriptRoot)) {
+    failCli(`Driver run ${runId} belongs to a different manuscript root and cannot be resumed here.`, options);
+  }
+
+  return {
+    runId,
+    runDir,
+    policyRecord,
+    plan,
+    steps: loadResumeSteps(runDir, plan),
+  };
+}
+
+function applyResumeDefaults(options, resumeState) {
+  const storedPolicy = resumeState.policyRecord ?? {};
+  const storedPlan = resumeState.plan ?? {};
+  if (!options.goal) options.goal = storedPlan.goal || readObjective(resumeState.runDir) || "Resume the persisted Manuscript Lab driver run.";
+  if (!options.target) options.target = storedPlan.target || "";
+  if (!options.policyExplicit && storedPolicy.policy?.name) options.policy = storedPolicy.policy.name;
+  if (!options.modelExplicit && storedPolicy.model) options.model = storedPolicy.model;
+  if (!options.modeExplicit && storedPolicy.mode) options.mode = storedPolicy.mode;
+  if (!options.approveExplicit && storedPolicy.approve) options.approve = storedPolicy.approve;
+}
+
+function loadResumeSteps(runDir, plan) {
+  const planSteps = Array.isArray(plan?.steps) ? plan.steps : [];
+  return planSteps
+    .map((step) => {
+      const stepNumber = Number(step.step) || 0;
+      if (!stepNumber) return null;
+      const result = readJsonFile(path.join(runDir, stepPath("command-results", stepNumber)), null);
+      const observation = readJsonFile(path.join(runDir, stepPath("observations", stepNumber)), null);
+      return {
+        step: stepNumber,
+        status: step.status ?? result?.status ?? "unknown",
+        action: step.action ?? result?.type ?? "",
+        tool_id: step.tool_id ?? "",
+        command: result?.command?.display ?? "",
+        summary: step.summary ?? result?.summary ?? "",
+        result_summary: result?.parsed_summary ?? "",
+        artifacts: result?.artifacts ?? [],
+        observation_summary: observation?.summary ?? "",
+        exit_code: result?.exit_code ?? 0,
+      };
+    })
+    .filter(Boolean)
+    .sort((left, right) => left.step - right.step);
+}
+
+function readObjective(runDir) {
+  try {
+    return fs.readFileSync(path.join(runDir, "objective.md"), "utf8").replace(/^# Driver Objective\s*/i, "").trim();
+  } catch {
+    return "";
+  }
+}
+
+function readJsonFile(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) return fallback;
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return fallback;
+  }
+}
+
+function sameResolvedPath(left, right) {
+  return resolveMaybeReal(left) === resolveMaybeReal(right);
+}
+
+function resolveMaybeReal(file) {
+  const resolved = path.resolve(file);
+  try {
+    return fs.realpathSync(resolved);
+  } catch {
+    return resolved;
+  }
 }
 
 function makeRunId() {

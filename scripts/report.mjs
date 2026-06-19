@@ -100,6 +100,7 @@ function buildReport() {
     chorus_runs: (status.chorus_runs ?? []).length,
     chorus_runs_by_status: countBy(status.chorus_runs ?? [], (run) => run.status || "unknown"),
     chorus_runs_by_operation: countBy(status.chorus_runs ?? [], (run) => run.operation || "unknown"),
+    generated_artifacts: summarizeGeneratedArtifacts(status.generated_artifacts ?? {}),
     model_calls: modelCalls.count,
     exports: (status.exports ?? []).length,
   };
@@ -137,6 +138,8 @@ function buildReport() {
     candidate_runs: status.candidate_runs ?? [],
     room_runs: status.room_runs ?? [],
     chorus_runs: status.chorus_runs ?? [],
+    generated_artifacts: status.generated_artifacts ?? {},
+    artifact_recommendations: status.artifact_recommendations ?? [],
     model_calls: modelCalls,
     exports: status.exports ?? [],
     export_manifest: exportManifest,
@@ -394,6 +397,15 @@ function readModelCalls() {
   };
 }
 
+function summarizeGeneratedArtifacts(artifacts = {}) {
+  const counts = {};
+  for (const [key, items] of Object.entries(artifacts)) counts[key] = Array.isArray(items) ? items.length : 0;
+  return {
+    total: Object.values(counts).reduce((sum, value) => sum + value, 0),
+    ...counts,
+  };
+}
+
 function modelLedgerPath() {
   if (process.env.MODEL_CALL_AUDIT_DIR) return path.join(path.resolve(process.env.MODEL_CALL_AUDIT_DIR), "ledger.jsonl");
 
@@ -452,6 +464,7 @@ function printText(report) {
   console.log(`- revision trail: ${report.summary.revision_trail.accepted_issues} accepted issue(s), ${report.summary.revision_trail.candidate_runs} candidate run(s), ${report.summary.revision_trail.audits} audit(s)`);
   console.log(`- room runs: ${report.summary.room_runs}`);
   console.log(`- chorus runs: ${report.summary.chorus_runs}`);
+  console.log(`- generated artifacts: ${report.summary.generated_artifacts.total}`);
   console.log(`- model calls: ${report.summary.model_calls}`);
   console.log(`- exports: ${report.summary.exports}`);
   if (report.export_manifest?.file) console.log(`- export manifest: ${report.export_manifest.file}`);
@@ -480,6 +493,21 @@ function printText(report) {
     }
   } else {
     console.log("- none");
+  }
+
+  console.log("");
+  console.log("Generated Artifacts:");
+  const artifactItems = flattenGeneratedArtifacts(report.generated_artifacts).slice(0, 10);
+  if (artifactItems.length) {
+    for (const item of artifactItems) console.log(`- ${item.kind}/${item.run_id}: ${item.status} -> ${item.report || item.path}`);
+  } else {
+    console.log("- none");
+  }
+  if (report.artifact_recommendations.length) {
+    for (const item of report.artifact_recommendations.slice(0, 5)) {
+      console.log(`- recommendation: ${item.message}`);
+      if (item.next_command) console.log(`  ${item.next_command}`);
+    }
   }
 
   if (report.suggested_next.length) {
@@ -537,6 +565,16 @@ function renderHtml(report) {
         )
         .join("\n")
     : `<tr><td colspan="10">No Chorus runs.</td></tr>`;
+  const generatedRows = flattenGeneratedArtifacts(report.generated_artifacts).length
+    ? flattenGeneratedArtifacts(report.generated_artifacts)
+        .map((item) => `<tr><td>${escapeHtml(item.kind)}</td><td>${escapeHtml(item.run_id)}</td><td>${escapeHtml(item.status)}</td><td><code>${escapeHtml(item.report || item.path)}</code></td></tr>`)
+        .join("\n")
+    : `<tr><td colspan="4">No generated artifacts.</td></tr>`;
+  const recommendationRows = report.artifact_recommendations.length
+    ? report.artifact_recommendations
+        .map((item) => `<li>${escapeHtml(item.message)}${item.next_command ? ` <code>${escapeHtml(item.next_command)}</code>` : ""}</li>`)
+        .join("\n")
+    : "<li>None</li>";
 
   return `<!doctype html>
 <html lang="en">
@@ -583,6 +621,7 @@ function renderHtml(report) {
       <div class="metric"><strong>${report.summary.revision_trail.candidate_runs}</strong> candidate runs</div>
       <div class="metric"><strong>${report.summary.room_runs}</strong> room runs</div>
       <div class="metric"><strong>${report.summary.chorus_runs}</strong> Chorus runs</div>
+      <div class="metric"><strong>${report.summary.generated_artifacts.total}</strong> artifacts</div>
       <div class="metric"><strong>${report.summary.revision_trail.audits}</strong> diff audits</div>
       <div class="metric"><strong>${report.summary.model_calls}</strong> model calls</div>
     </section>
@@ -619,6 +658,13 @@ function renderHtml(report) {
       <tbody>${chorusRows}</tbody>
     </table>
 
+    <h2>Generated Artifacts</h2>
+    <table>
+      <thead><tr><th>Kind</th><th>Run</th><th>Status</th><th>Report</th></tr></thead>
+      <tbody>${generatedRows}</tbody>
+    </table>
+    <ul>${recommendationRows}</ul>
+
     <h2>Exports</h2>
     ${exportManifest}
     <ul>${exportRows}</ul>
@@ -651,6 +697,12 @@ function artifactLinks(files = {}, order = []) {
     .filter((key) => files?.[key])
     .map((key) => `<span><code>${escapeHtml(key)}</code>: <code>${escapeHtml(files[key])}</code></span>`);
   return items.length ? items.join("<br>") : `<code>${escapeHtml(files?.path || "")}</code>`;
+}
+
+function flattenGeneratedArtifacts(artifacts = {}) {
+  return Object.values(artifacts)
+    .flatMap((items) => Array.isArray(items) ? items : [])
+    .sort((left, right) => String(right.modified_at || "").localeCompare(String(left.modified_at || "")));
 }
 
 function displayPath(file) {

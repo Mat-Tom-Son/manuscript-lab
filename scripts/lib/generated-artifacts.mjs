@@ -1,0 +1,241 @@
+import fs from "node:fs";
+import path from "node:path";
+
+export const GENERATED_ARTIFACT_SCHEMA = "manuscript-lab.generated-artifacts.v1";
+
+const KIND_DEFS = [
+  { key: "driver_runs", kind: "driver", root: "driver/runs", depth: 1, marker: "FINAL_REPORT.md" },
+  { key: "practice_runs", kind: "practice", root: "practice", depth: 2, marker: "REPORT.md" },
+  { key: "practice_evals", kind: "practice-eval", root: "practice-evals", depth: 2, marker: "REPORT.md" },
+  { key: "practice_benches", kind: "practice-bench", root: "practice-bench", depth: 1, marker: "RESULTS.md" },
+  { key: "practice_strategies", kind: "practice-strategy", root: "practice-strategies", depth: 1, marker: "STRATEGY_REPORT.md" },
+  { key: "eval_runs", kind: "eval", root: "evals", depth: 1, marker: "EVAL_REPORT.md" },
+  { key: "golden_paths", kind: "golden-path", root: "golden-path", depth: 1, marker: "GOLDEN_PATH.md" },
+];
+
+export function artifactKindNames() {
+  return KIND_DEFS.map((def) => def.kind);
+}
+
+export function collectGeneratedArtifacts(paths, { kind = "all", limit = 5 } = {}) {
+  const normalizedKind = String(kind || "all").trim().toLowerCase();
+  const maxItems = clampInteger(limit, 1, 50);
+  const selected = normalizedKind === "all"
+    ? KIND_DEFS
+    : KIND_DEFS.filter((def) => def.kind === normalizedKind || def.key === normalizedKind.replace(/-/g, "_"));
+  if (!selected.length) {
+    throw new Error(`Unknown artifact kind: ${kind}. Available: all, ${artifactKindNames().join(", ")}`);
+  }
+
+  const artifacts = {};
+  for (const def of selected) {
+    artifacts[def.key] = listArtifactsForKind(paths, def, maxItems);
+  }
+  for (const def of KIND_DEFS) {
+    if (!(def.key in artifacts)) artifacts[def.key] = [];
+  }
+
+  return {
+    schema_version: GENERATED_ARTIFACT_SCHEMA,
+    generated_at: new Date().toISOString(),
+    artifacts,
+    recommendations: recommendFromArtifacts(artifacts),
+  };
+}
+
+export function findGeneratedArtifact(paths, { runId = "", kind = "all" } = {}) {
+  const all = collectGeneratedArtifacts(paths, { kind, limit: 50 }).artifacts;
+  for (const items of Object.values(all)) {
+    const found = items.find((item) => item.run_id === runId || item.path === runId || item.path.endsWith(`/${runId}`));
+    if (found) return found;
+  }
+  return null;
+}
+
+export function readArtifactJson(paths, artifact, filename, fallback = null) {
+  if (!artifact?.path) return fallback;
+  const file = paths.projectAbs(path.join(artifact.path, filename));
+  if (!isInside(paths.projectAbs(), file) || !fs.existsSync(file)) return fallback;
+  return readJson(file, fallback);
+}
+
+function listArtifactsForKind(paths, def, limit) {
+  const root = paths.stateAbs(def.root);
+  if (!fs.existsSync(root)) return [];
+  const dirs = collectRunDirs(root, def.depth);
+  return dirs
+    .map((dir) => artifactFromDir(paths, def, dir))
+    .filter(Boolean)
+    .sort((a, b) => b.modified_at.localeCompare(a.modified_at) || b.run_id.localeCompare(a.run_id))
+    .slice(0, limit);
+}
+
+function artifactFromDir(paths, def, dir) {
+  const markerFile = path.join(dir, def.marker);
+  const summary = readFirstJson([
+    path.join(dir, "summary.json"),
+    path.join(dir, "FINAL.json"),
+    path.join(dir, "final.json"),
+    path.join(dir, "plan.json"),
+    path.join(dir, "input.json"),
+  ]);
+  if (!fs.existsSync(markerFile) && !summary) return null;
+
+  const modifiedAt = latestArtifactMtime(dir, [
+    def.marker,
+    "summary.json",
+    "FINAL.json",
+    "final.json",
+    "plan.json",
+    "input.json",
+    "events.jsonl",
+  ]);
+  const runId = summary?.run_id || summary?.run?.run_id || path.basename(dir);
+  const artifact = {
+    kind: def.kind,
+    run_id: runId,
+    status: summary?.status || summary?.summary?.state || summary?.latest_step?.status || summary?.disposition || "unknown",
+    path: paths.projectRel(dir),
+    report: fs.existsSync(markerFile) ? paths.projectRel(markerFile) : "",
+    summary_file: fs.existsSync(path.join(dir, "summary.json")) ? paths.projectRel(path.join(dir, "summary.json")) : "",
+    created_at: summary?.created_at || summary?.run?.created_at || "",
+    updated_at: summary?.updated_at || summary?.generated_at || modifiedAt,
+    modified_at: modifiedAt,
+  };
+
+  if (def.kind === "practice-strategy") addPracticeStrategyFields(artifact, summary);
+  if (def.kind === "practice-bench") addPracticeBenchFields(artifact, summary);
+  if (def.kind === "driver") addDriverFields(artifact, summary);
+  if (def.kind === "eval") addEvalFields(artifact, summary);
+  return artifact;
+}
+
+function addPracticeStrategyFields(artifact, summary) {
+  const strategies = summary?.strategies ?? {};
+  artifact.total = Number(summary?.total ?? 0);
+  artifact.strategies = Object.fromEntries(Object.entries(strategies).map(([id, item]) => [id, {
+    total: Number(item.total ?? 0),
+    mlab_wins: Number(item.mlab_wins ?? 0),
+    mlab_win_rate: Number(item.mlab_win_rate ?? 0),
+    average_score_delta: Number(item.average_score_delta ?? 0),
+    cost: Number(item.known_usage?.cost ?? 0),
+  }]));
+  artifact.recommendations = summary?.recommendations ?? {};
+  artifact.known_cost = Number(summary?.known_usage?.cost ?? 0);
+}
+
+function addPracticeBenchFields(artifact, summary) {
+  artifact.total = Number(summary?.total ?? 0);
+  artifact.mlab_win_rate = Number(summary?.mlab_win_rate ?? 0);
+  artifact.average_score_delta = Number(summary?.average_score_delta ?? 0);
+  artifact.known_cost = Number(summary?.known_usage?.cost ?? 0);
+}
+
+function addDriverFields(artifact, summary) {
+  artifact.goal = summary?.goal || "";
+  artifact.latest_step = summary?.latest_step ?? null;
+  artifact.steps = Array.isArray(summary?.steps) ? summary.steps.length : 0;
+}
+
+function addEvalFields(artifact, summary) {
+  artifact.subject = summary?.subject ?? "";
+  artifact.disposition = summary?.disposition ?? "";
+  artifact.regressions = Number(summary?.regressions ?? 0);
+  artifact.improvements = Number(summary?.improvements ?? 0);
+}
+
+function recommendFromArtifacts(artifacts) {
+  const recommendations = [];
+  const latestStrategy = artifacts.practice_strategies[0];
+  if (latestStrategy?.recommendations && Object.keys(latestStrategy.recommendations).length) {
+    const [exercise, item] = Object.entries(latestStrategy.recommendations)[0];
+    recommendations.push({
+      id: "practice-strategy-latest",
+      priority: "medium",
+      message: `Latest practice strategy run recommends ${item.strategy || "a strategy"} for ${exercise}.`,
+      artifact: latestStrategy.report || latestStrategy.path,
+      next_command: `mlab artifacts inspect --run ${latestStrategy.run_id}`,
+    });
+  }
+  if (artifacts.practice_strategies.length && !artifacts.eval_runs.length) {
+    recommendations.push({
+      id: "eval-first-strategy-run",
+      priority: "medium",
+      message: "Snapshot the latest practice strategy run into the eval spine so future harness changes can be compared.",
+      artifact: latestStrategy?.path ?? "",
+      next_command: latestStrategy ? `mlab eval practice-strategies --from ${latestStrategy.path}` : "mlab eval practice-strategies --from state/practice-strategies/<run-id>",
+    });
+  }
+  if (!artifacts.driver_runs.length) {
+    recommendations.push({
+      id: "driver-first-dry-run",
+      priority: "low",
+      message: "Run a persisted driver dry-run to capture the model-operator starting point.",
+      artifact: "",
+      next_command: "mlab drive --goal \"find the next useful command\" --dry-run --write --json",
+    });
+  }
+  return recommendations;
+}
+
+function collectRunDirs(root, depth) {
+  const out = [];
+  walk(root, depth, out);
+  return out;
+}
+
+function walk(dir, depth, out) {
+  if (depth === 0) {
+    out.push(dir);
+    return;
+  }
+  for (const entry of safeReadDir(dir)) {
+    if (!entry.isDirectory()) continue;
+    walk(path.join(dir, entry.name), depth - 1, out);
+  }
+}
+
+function safeReadDir(dir) {
+  try {
+    return fs.readdirSync(dir, { withFileTypes: true });
+  } catch {
+    return [];
+  }
+}
+
+function readFirstJson(files) {
+  for (const file of files) {
+    const data = readJson(file, null);
+    if (data) return data;
+  }
+  return null;
+}
+
+function readJson(file, fallback) {
+  try {
+    if (!fs.existsSync(file)) return fallback;
+    return JSON.parse(fs.readFileSync(file, "utf8"));
+  } catch {
+    return fallback;
+  }
+}
+
+function latestArtifactMtime(dir, files) {
+  const times = [fs.statSync(dir).mtimeMs];
+  for (const rel of files) {
+    const full = path.join(dir, rel);
+    if (fs.existsSync(full)) times.push(fs.statSync(full).mtimeMs);
+  }
+  return new Date(Math.max(...times)).toISOString();
+}
+
+function isInside(parent, child) {
+  const rel = path.relative(path.resolve(parent), path.resolve(child));
+  return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
+}
+
+function clampInteger(value, min, max) {
+  const number = Number(value);
+  if (!Number.isInteger(number)) return min;
+  return Math.max(min, Math.min(max, number));
+}

@@ -449,6 +449,34 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(fs.existsSync(path.join(workspace, "state", "practice-strategies")), false, "practice strategies must not write state at workspace root");
     assert.equal(fs.existsSync(path.join(draftRoot, "state", "practice-strategies")), false, "practice strategies must not write state under draft/");
 
+    const artifactList = assertJsonCommand(runner, ["artifacts", "list", "--kind", "practice-strategy", "--json"], { cwd });
+    assert.equal(artifactList.ok, true);
+    assert.equal(artifactList.schema_version, "manuscript-lab.artifacts.v1");
+    assert(artifactList.artifacts.practice_strategies.some((item) => item.path === practiceStrategies.run_dir));
+
+    const strategyRunId = path.basename(practiceStrategies.run_dir);
+    const artifactInspect = assertJsonCommand(runner, ["artifacts", "inspect", "--run", strategyRunId, "--kind", "practice-strategy", "--json"], { cwd });
+    assert.equal(artifactInspect.ok, true);
+    assert.equal(artifactInspect.artifact.run_id, strategyRunId);
+    assert.equal(artifactInspect.summary.total, 2);
+
+    const evalSnapshot = assertJsonCommand(runner, ["eval", "practice-strategies", "--from", practiceStrategies.run_dir, "--json"], { cwd });
+    assert.equal(evalSnapshot.ok, true);
+    assert.equal(evalSnapshot.status, "pass");
+    assert.match(evalSnapshot.run_dir, /^state\/evals\/eval-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, evalSnapshot.run_dir, "summary.json")));
+    assert(fs.existsSync(path.join(manuscriptRoot, evalSnapshot.run_dir, "EVAL_REPORT.md")));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "evals")), false, "evals must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "evals")), false, "evals must not write state under draft/");
+
+    const goldenPath = assertJsonCommand(runner, ["golden-path", "--write", "--json"], { cwd });
+    assert.equal(goldenPath.ok, true);
+    assert.equal(goldenPath.status, "pass");
+    assert.match(goldenPath.run_dir, /^state\/golden-path\/golden-path-/);
+    assert(fs.existsSync(path.join(manuscriptRoot, goldenPath.report)));
+    assert.equal(fs.existsSync(path.join(workspace, "state", "golden-path")), false, "golden path must not write state at workspace root");
+    assert.equal(fs.existsSync(path.join(draftRoot, "state", "golden-path")), false, "golden path must not write state under draft/");
+
     const report = assertJsonCommand(runner, ["review:report", "--json"], { cwd });
     assert.equal(report.totals.runs, 0);
 

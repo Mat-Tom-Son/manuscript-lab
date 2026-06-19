@@ -1,8 +1,8 @@
 # Model Driver
 
-Status: V1 bounded loop shipped; resume is planned, and practice prose
-proposals, comparisons, benchmarks, and strategy comparisons are available as
-approval-gated driver tools.
+Status: V1 bounded loop shipped with resume-safe persisted runs, read-only
+artifact inspection, and approval-gated practice prose proposals, comparisons,
+benchmarks, strategy comparisons, and eval snapshots.
 
 The model driver is the orchestration layer for Manuscript Lab. It puts a
 model in the operator seat while keeping the durable product boundary intact:
@@ -54,9 +54,8 @@ comes from checks, issues, gates, and explicit human approvals.
 - Expose Manuscript Lab primitives as a structured tool catalog.
 - Let the model choose tools dynamically based on the goal, target, current
   project state, and artifacts from previous steps.
-- Support bounded loops: max steps, budget limits, and stop conditions. Resume is
-  a planned follow-on and is rejected by the current CLI until it reconstructs
-  prior run history safely.
+- Support bounded loops: max steps, budget limits, stop conditions, and
+  resume-safe continuation of persisted run history.
 - Work in both template-first and install-anywhere projects.
 - Route model calls through `scripts/lib/model-provider.mjs`.
 - Support OpenRouter models through provider-prefixed IDs such as
@@ -111,7 +110,7 @@ Useful flags:
 | `--write` | Persist a dry run under the configured state directory. Non-dry-run driver runs persist by default. |
 | `--no-write` | Ephemeral advisory run. Allows read-only primitive execution only; mutating primitives stop because there would be no durable driver ledger. Not allowed in `operate` or `ci`. |
 | `--json` | Emit machine-readable summary output. |
-| `--resume <run-id>` | Planned. Current CLI rejects resume requests until history reconstruction ships. |
+| `--resume <run-id>` | Resume a persisted driver run under `state/driver/runs/`. The driver validates the same manuscript root, reloads prior plan steps, appends from the next step number, and treats `--max-steps` as an additional step budget. |
 | `--config <path>` | Resolve the project with an explicit config path. |
 | `--workspace <path>` | Resolve the project from an explicit workspace root. |
 
@@ -144,7 +143,7 @@ Interactive commands:
 /help         show available interactive commands
 /stop         end the run and write a final report
 /quit         alias for /stop
-/resume ID    planned resume of a saved run
+/resume ID    resume a saved run
 ```
 
 ## Driver Loop
@@ -152,8 +151,8 @@ Interactive commands:
 Each loop iteration should be explicit and durable.
 
 1. Discover the protocol with `discoverProtocol`.
-2. Create a driver run under the configured state directory. Resume will reload
-   prior history in a later phase.
+2. Create a driver run under the configured state directory, or resume an
+   existing run after validating that it belongs to the same manuscript root.
 3. Observe the current project using read-only primitives.
 4. Build a compact prompt from the goal, policy, tool catalog, latest plan, and
    recent artifacts.
@@ -173,8 +172,9 @@ truth.
 Non-dry-run driver runs are durable by default. `--dry-run` stays ephemeral
 unless paired with `--write`. Model-backed runs get a small default loop budget
 so they can observe, act, re-observe, and stop; credential-free heuristic runs
-still default to one safe action. Current `--resume` requests are rejected rather
-than risking partial overwrite of an existing run.
+still default to one safe action. `--resume` reloads prior plan steps, writes a
+`resume.json` marker, appends new events, and never reinitializes the existing
+run directory.
 
 Every driver run should pin discovery metadata at start:
 
@@ -356,6 +356,10 @@ Initial catalog candidates:
 | `practice.compare` | `mlab practice compare --exercise <exercise> --model <driver-model>` | `reads_project`, `writes_state`, `calls_model`, `spends_budget`, approval required |
 | `practice.bench` | `mlab practice bench --exercises <set> --models <driver-model> --seeds <n>` | `reads_project`, `writes_state`, `calls_model`, `spends_budget`, approval required |
 | `practice.strategies` | `mlab practice strategies --exercises <set> --strategies <list> --models <driver-model>` | `reads_project`, `writes_state`, `calls_model`, `spends_budget`, approval required |
+| `artifacts.list` | `mlab artifacts list --kind <kind> --json` | `reads_project` |
+| `artifacts.inspect` | `mlab artifacts inspect --run <run-id> --json` | `reads_project` |
+| `eval.practice_strategies` | `mlab eval practice-strategies --from state/practice-strategies/<run-id> --json` | `reads_project`, `writes_state` |
+| `golden_path.guide` | `mlab golden-path --json` | `reads_project` |
 | `audit.diff` | `mlab audit --before <file> --after <file> --static-only` | `reads_project`, `writes_state` |
 | `export.reader` | `mlab export --formats <formats>` | `writes_exports`, approval required |
 | `done.no_export` | `mlab done:no-export --json` | `writes_state`, `touches_workspace`, approval required |
@@ -613,7 +617,7 @@ Deliverables:
   tools in the catalog
 - model-call and cost counters
 - policy packs: `default`, `pi`, and `review-only`
-- resume support
+- artifact inspection and eval snapshot tools
 - JSON support for issue-ledger commands or removal of issue mutators from V1
 
 Acceptance:
@@ -622,6 +626,8 @@ Acceptance:
   based on goal and target state
 - model-backed primitives count against budget and preserve provider metadata
 - resume reconstructs plan, recent observations, and event history
+- the driver can inspect generated artifacts before choosing new model-spending
+  primitives
 
 ### Phase 4: Apply, Export, And Done Controls
 
@@ -660,6 +666,8 @@ Initial tests should cover:
 - installed-tarball smoke for `mlab drive --dry-run --write --json` from the
   workspace root, manuscript root, and nested draft directory, asserting
   `state/driver/` stays under the configured manuscript root
+- resume appends step history without overwriting `step-001` artifacts
+- artifact/eval/golden-path commands stay root-aware in installed smoke tests
 - approval-required tools stopping with `needs_approval` in `ci`
 - path-fence rejection for absolute, escaping, and wrong-root paths
 - issue and room decision tools producing proposals unless approval is present
@@ -717,8 +725,11 @@ Current implemented slice:
 - approval-gated `practice.propose`, `practice.compare`, `practice.bench`, and
   `practice.strategies` tools for safe prose candidate generation,
   direct-vs-mlab benchmark evaluation, and measured loop-strategy selection
+- read-only `artifacts.list`, `artifacts.inspect`, and `golden_path.guide`
+  tools plus the generated-state `eval.practice_strategies` snapshot tool
 - strict catalog/path validation before argv construction
 - approval stops for draft/export/workspace/model-spending effects
 - pinned `MLAB_WORKSPACE`/`MLAB_CONFIG` child command execution
-- explicit `--resume` rejection until real run reconstruction exists
+- resume-safe continuation with same-root validation and append-only step
+  numbering
 - wrapper and installed-package smoke coverage
