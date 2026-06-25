@@ -100,6 +100,8 @@ jobs:
         run: |
           VERSION="${{ inputs.version }}"
           if ! git rev-parse "v${VERSION}" >/dev/null 2>&1; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
             git tag -a "v${VERSION}" -m "Manuscript Lab v${VERSION}"
             git push origin "v${VERSION}"
           fi

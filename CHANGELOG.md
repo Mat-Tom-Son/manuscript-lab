@@ -2,6 +2,11 @@
 
 ## Unreleased
 
+## 1.5.3 - 2026-06-25
+
+- Fixed the manual release workflow so GitHub Actions configures a bot git
+  identity before creating annotated release tags.
+
 ## 1.5.2 - 2026-06-25
 
 - Added `--no-contents` to `mlab export` / `npm run export` and forwarded it
