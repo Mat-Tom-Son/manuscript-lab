@@ -496,9 +496,12 @@ Records static pattern signals and optional model-backed voice fingerprinting.
 ```bash
 npm run export
 npm run export -- --formats md,html --slug my-project --json
+npm run export -- --slug my-project --no-contents
 ```
 
 Writes reader-friendly Markdown, HTML, EPUB, and PDF files under `exports/`.
+Pass `--no-contents` to skip generated contents pages in Markdown, HTML, and
+PDF exports while keeping EPUB navigation metadata for reader compatibility.
 Every successful export also writes `exports/manifest.json` with the export ID,
 source commit when available, git dirty state, input hashes, output hashes, file
 sizes, formats, and chapter metadata.
@@ -508,6 +511,7 @@ sizes, formats, and chapter metadata.
 ```bash
 npm run done
 npm run done -- --export-formats md,html --include-todo-exports
+npm run done -- --no-contents
 npm run done:no-export
 ```
 
@@ -517,11 +521,13 @@ runtime packets, synced active project filesystem, no unresolved issues, no
 latest review-run errors, and the configured reader exports. By default it
 expects MD, HTML, EPUB, and PDF. Use `--export-formats md,html` for
 dependency-light Markdown/HTML release gates, and `--include-todo-exports` when
-checking a scaffold or tutorial fixture. It syncs the active project workspace
-and verifies the root mount in template mode. Historical review-run errors are
-superseded when a later successful run exists for the same section/pass/model.
-`npm run done:no-export` is for reusable-infrastructure maintenance, setup, or
-story-switching tasks where exports are not part of the requested work.
+checking a scaffold or tutorial fixture. Use `--no-contents` when regenerated
+reader exports should omit generated contents pages. It syncs the active project
+workspace and verifies the root mount in template mode. Historical review-run
+errors are superseded when a later successful run exists for the same
+section/pass/model. `npm run done:no-export` is for reusable-infrastructure
+maintenance, setup, or story-switching tasks where exports are not part of the
+requested work.
 
 For review-only tasks, unresolved issues may be the expected output. Report them instead of resolving them just to pass the gate.
 

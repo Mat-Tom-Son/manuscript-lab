@@ -598,7 +598,7 @@ function assertInstalledCommandSurface(workspace, runner) {
     const doneSlug = `packed-done-${index + 1}`;
     const doneWithExports = assertJsonCommand(
       runner,
-      ["done", "--export-formats=md,html", "--include-todo-exports", `--export-slug=${doneSlug}`, "--json"],
+      ["done", "--export-formats=md,html", "--include-todo-exports", "--no-contents", `--export-slug=${doneSlug}`, "--json"],
       { cwd },
     );
     assert.equal(doneWithExports.pass, true, JSON.stringify(doneWithExports, null, 2));
@@ -611,6 +611,7 @@ function assertInstalledCommandSurface(workspace, runner) {
     const doneManifest = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, "exports", "manifest.json"), "utf8"));
     assert.deepEqual(doneManifest.output_summary.formats.sort(), ["html", "md"]);
     assert.equal(doneManifest.options.include_todo, true);
+    assert.equal(doneManifest.options.include_contents, false);
   }
 
   const nestedCompose = assertJsonCommand(runner, ["compose", "01-opening.md", "--json"], { cwd: draftRoot });
@@ -635,12 +636,24 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(exportManifest.schema_version, "manuscript-lab.export-manifest.v1");
   assert("source_dirty" in exportManifest);
   assert.deepEqual(exportManifest.output_summary.formats.sort(), ["html", "md"]);
+  assert.equal(exportManifest.options.include_contents, true);
   assert.equal(exportManifest.outputs.length, 2);
   for (const output of exportManifest.outputs) {
     assert.equal(typeof output.sha256, "string");
     assert.equal(output.sha256.length, 64);
     assert(output.size > 0);
   }
+  const defaultMarkdown = fs.readFileSync(path.join(manuscriptRoot, "exports", "packed.md"), "utf8");
+  assert.match(defaultMarkdown, /^## Contents$/m);
+
+  const noContents = assertJsonCommand(runner, ["export", "--formats", "md,html", "--include-todo", "--slug", "packed-no-contents", "--no-contents", "--json"], { cwd: workspace });
+  assert.equal(noContents.chapters, 1);
+  const noContentsMarkdown = fs.readFileSync(path.join(manuscriptRoot, "exports", "packed-no-contents.md"), "utf8");
+  const noContentsHtml = fs.readFileSync(path.join(manuscriptRoot, "exports", "packed-no-contents.html"), "utf8");
+  assert.doesNotMatch(noContentsMarkdown, /^## Contents$/m);
+  assert.doesNotMatch(noContentsHtml, /<nav class="toc"/);
+  const noContentsManifest = JSON.parse(fs.readFileSync(exportManifestFile, "utf8"));
+  assert.equal(noContentsManifest.options.include_contents, false);
 
   const writtenReport = assertJsonCommand(runner, ["report", "--write", "--json"], { cwd: workspace });
   assert.equal(writtenReport.artifacts.json, "reports/latest.json");

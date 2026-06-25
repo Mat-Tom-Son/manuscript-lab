@@ -1,5 +1,17 @@
 # Changelog
 
+## Unreleased
+
+## 1.5.2 - 2026-06-25
+
+- Added `--no-contents` to `mlab export` / `npm run export` and forwarded it
+  through `mlab done` / `npm run done`, allowing reader exports to omit
+  generated Contents pages while keeping export manifests explicit about the
+  choice.
+- Aligned the manual release workflow with the public release checklist by
+  creating annotated tags and using the matching `CHANGELOG.md` section for
+  GitHub release notes.
+
 ## 1.5.1 - 2026-06-19
 
 - Hardened practice benchmark and strategy runs for heterogeneous model

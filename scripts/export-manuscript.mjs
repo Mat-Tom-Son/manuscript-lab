@@ -19,6 +19,7 @@ if (options.help) {
 
 const formats = new Set(splitList(options.formats ?? "md,html,epub,pdf"));
 const allowedFormats = new Set(["md", "html", "epub", "pdf"]);
+const includeContents = !options.noContents;
 if (!formats.size) fail("At least one export format is required.");
 for (const format of formats) {
   if (!allowedFormats.has(format)) fail(`Unsupported format: ${format}`);
@@ -95,6 +96,7 @@ function collectManuscript() {
     author: String(options.author ?? "").trim(),
     source_root: root,
     generated_at: new Date().toISOString(),
+    include_contents: includeContents,
     chapters,
   };
 }
@@ -105,9 +107,11 @@ function writeMarkdown(manuscript, file) {
   if (manuscript.subtitle) lines.push("", manuscript.subtitle);
   if (manuscript.author) lines.push("", `By ${manuscript.author}`);
   lines.push("", `Exported ${formatDate(manuscript.generated_at)} from ${path.basename(root)}.`);
-  lines.push("", "## Contents", "");
-  for (const chapter of manuscript.chapters) lines.push(`- ${chapter.title}`);
-  lines.push("");
+  if (includeContents) {
+    lines.push("", "## Contents", "");
+    for (const chapter of manuscript.chapters) lines.push(`- ${chapter.title}`);
+    lines.push("");
+  }
 
   for (const chapter of manuscript.chapters) {
     lines.push("", chapter.markdown.trim(), "");
@@ -137,12 +141,13 @@ function writeHtml(manuscript, file) {
       ${manuscript.subtitle ? `<p class="subtitle">${inlineMarkdownToHtml(manuscript.subtitle)}</p>` : ""}
       ${manuscript.author ? `<p class="author">${escapeHtml(manuscript.author)}</p>` : ""}
     </section>
+    ${includeContents ? `
     <nav class="toc" aria-label="Contents">
       <h2>Contents</h2>
       <ol>
         ${manuscript.chapters.map((chapter) => `<li><a href="#${escapeAttr(chapter.id)}">${escapeHtml(chapter.title)}</a></li>`).join("\n        ")}
       </ol>
-    </nav>
+    </nav>` : ""}
     ${chapterHtml}
   </main>
 </body>
@@ -225,6 +230,7 @@ function writeExportManifest(manuscript, { slug, outputs, outDir }) {
     options: {
       formats: [...formats].sort(),
       include_todo: Boolean(options.includeTodo),
+      include_contents: includeContents,
       output_dir: displayPath(outDir),
     },
     chapters: manuscript.chapters.map((chapter) => ({
@@ -573,8 +579,8 @@ function stripContract(text) {
 }
 
 function parseArgs(rawArgs) {
-  const parsed = { help: false, json: false, includeTodo: false, quiet: false };
-  const booleanOptions = new Set(["help", "json", "includeTodo", "quiet"]);
+  const parsed = { help: false, json: false, includeTodo: false, quiet: false, noContents: false };
+  const booleanOptions = new Set(["help", "json", "includeTodo", "quiet", "noContents"]);
   const valueOptions = new Set(["formats", "out", "slug", "title", "subtitle", "author"]);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
@@ -709,6 +715,7 @@ Options:
   --subtitle "Subtitle"       Override exported subtitle.
   --author "Name"             Add author metadata.
   --include-todo              Include todo chapter shells.
+  --no-contents               Skip generated contents pages in Markdown, HTML, and PDF.
   --json                      Print machine-readable output.
   --quiet                     Suppress child tool output.
   --help, -h                  Show this help.

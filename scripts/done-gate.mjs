@@ -224,6 +224,7 @@ function requiredExportFormats(rawOptions) {
 function exportArgs(rawOptions, formats) {
   const args = ["--quiet", "--formats", formats.join(",")];
   if (rawOptions["include-todo-exports"]) args.push("--include-todo");
+  if (rawOptions["no-contents"]) args.push("--no-contents");
   if (rawOptions["export-slug"]) args.push("--slug", rawOptions["export-slug"]);
   if (rawOptions["export-out"]) args.push("--out", rawOptions["export-out"]);
   return args;
@@ -340,6 +341,7 @@ Options:
   --export-out dir   Override export output directory
   --include-todo-exports
                      Include todo draft shells when regenerating exports
+  --no-contents      Skip generated contents pages in regenerated reader exports
   --profile name     Gate profile label to record. Default: done
   --require-done     Require every active section status to be done
   --warn-review-errors

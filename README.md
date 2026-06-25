@@ -435,6 +435,10 @@ For all formats, including EPUB and PDF:
 npm run export -- --slug my-project
 ```
 
+Add `--no-contents` when you want reader exports to skip the generated
+Contents page. Use `npm run done -- --no-contents` to regenerate exports that
+way during the final readiness gate.
+
 Each successful export writes `exports/manifest.json` with input hashes, output
 hashes, file sizes, formats, source commit when available, and git dirty state.
 

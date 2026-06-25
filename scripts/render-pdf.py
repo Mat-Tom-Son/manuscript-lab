@@ -55,10 +55,12 @@ def build_pdf(manuscript: dict, output_file: Path) -> None:
         story.append(Spacer(1, 0.3 * inch))
         story.append(Paragraph(xml_text(author), styles["Author"]))
 
-    story.append(PageBreak())
-    story.append(Paragraph("Contents", styles["ContentsHeading"]))
-    for chapter in manuscript.get("chapters", []):
-        story.append(Paragraph(xml_text(chapter.get("title", "")), styles["ContentsEntry"]))
+    include_contents = manuscript.get("include_contents", True)
+    if include_contents:
+        story.append(PageBreak())
+        story.append(Paragraph("Contents", styles["ContentsHeading"]))
+        for chapter in manuscript.get("chapters", []):
+            story.append(Paragraph(xml_text(chapter.get("title", "")), styles["ContentsEntry"]))
 
     for chapter in manuscript.get("chapters", []):
         story.append(PageBreak())

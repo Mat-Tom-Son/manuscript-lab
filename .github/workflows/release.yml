@@ -66,12 +66,41 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
 
+      - name: Write release notes
+        if: ${{ !inputs.dry_run }}
+        env:
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: |
+          node <<'NODE'
+          const fs = require("fs");
+          const version = process.env.RELEASE_VERSION;
+          const changelog = fs.readFileSync("CHANGELOG.md", "utf8").split(/\r?\n/);
+          const start = changelog.findIndex((line) => line.startsWith(`## ${version} `) || line === `## ${version}`);
+          if (start === -1) {
+            console.error(`CHANGELOG.md has no section for ${version}.`);
+            process.exit(1);
+          }
+          let end = changelog.length;
+          for (let index = start + 1; index < changelog.length; index += 1) {
+            if (changelog[index].startsWith("## ")) {
+              end = index;
+              break;
+            }
+          }
+          const notes = changelog.slice(start + 1, end).join("\n").trim();
+          if (!notes) {
+            console.error(`CHANGELOG.md section for ${version} is empty.`);
+            process.exit(1);
+          }
+          fs.writeFileSync("release-notes.md", `${notes}\n`);
+          NODE
+
       - name: Create tag if needed
         if: ${{ !inputs.dry_run }}
         run: |
           VERSION="${{ inputs.version }}"
           if ! git rev-parse "v${VERSION}" >/dev/null 2>&1; then
-            git tag "v${VERSION}"
+            git tag -a "v${VERSION}" -m "Manuscript Lab v${VERSION}"
             git push origin "v${VERSION}"
           fi
 
@@ -84,5 +113,5 @@ jobs:
           if gh release view "v${VERSION}" >/dev/null 2>&1; then
             echo "GitHub release v${VERSION} already exists."
           else
-            gh release create "v${VERSION}" --title "v${VERSION}" --notes "Release v${VERSION}."
+            gh release create "v${VERSION}" --title "Manuscript Lab v${VERSION}" --notes-file release-notes.md
           fi

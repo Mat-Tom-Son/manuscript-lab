@@ -257,4 +257,6 @@ state. The default export creates Markdown, HTML, EPUB, and PDF. EPUB needs
 npm run export -- --slug my-project --author ""
 ```
 
-Exports and their manifest land in `exports/`.
+Add `--no-contents` when the reader copy should start the chapters after the
+title page without an inserted generated Contents page. Exports and their
+manifest land in `exports/`.
