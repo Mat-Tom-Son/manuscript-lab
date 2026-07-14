@@ -12,21 +12,36 @@ gate:
   profiles:
     default:
       requires:
-        - id: claims.no_empty_placeholders
+        - id: evidence.claims.no_blocking_claims
           severity: block
-          sensor: citation_scan
-        - id: claims.no_unsupported_markers
+          sensor: evidence_spine
+        - id: evidence.claims.risk_classified
           severity: block
-          sensor: claims_register
-        - id: claims.source_keys_exist
+          sensor: evidence_spine
+        - id: evidence.claims.support_precise
           severity: block
-          sensor: claims_register
-        - id: sources.index_valid
+          sensor: evidence_spine
+        - id: evidence.claims.not_needed_explained
           severity: block
-          sensor: source_index
-        - id: sources.no_missing_files
+          sensor: evidence_spine
+        - id: evidence.claims.compatible_markdown_status
           severity: block
-          sensor: source_index
+          sensor: evidence_spine
+        - id: evidence.citations.no_placeholders
+          severity: block
+          sensor: evidence_spine
+        - id: evidence.citations.resolve_markers
+          severity: block
+          sensor: evidence_spine
+        - id: evidence.sources.cited_usable
+          severity: block
+          sensor: evidence_spine
+        - id: evidence.sources.bibliography_present
+          severity: block
+          sensor: evidence_spine
+        - id: evidence.sources.manifest_valid
+          severity: block
+          sensor: evidence_spine
   overrides:
     allowed: true
     require_actor: true

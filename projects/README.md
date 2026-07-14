@@ -1,6 +1,6 @@
 # Projects
 
-User projects are generated here by `npm run story:init`.
+User projects are generated here by `npm run project:init`.
 
 The public harness repo ignores:
 

@@ -6,6 +6,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeJsonAtomic } from "./lib/files.mjs";
+import { citationsCheckCommand } from "./lib/evidence-spine.mjs";
 import { scanReviewErrors } from "./lib/review-errors.mjs";
 import {
   discoverProtocol,
@@ -13,7 +14,6 @@ import {
   loadKnownCheckIds,
   loadKnownReviewIds,
   loadStatusByFile,
-  safeReadJson,
 } from "./lib/protocol.mjs";
 import {
   ALLOWED_SECTION_STATUSES,
@@ -21,10 +21,8 @@ import {
   minimumWordsForStartedSection,
   normalizeRel,
   parseContractList,
-  parseMarkdownTable,
   parseSectionContract,
   sectionIdForFile,
-  splitSourceKeys,
   stripCode,
   stripContract,
   wordCount,
@@ -33,9 +31,11 @@ import {
 const RESULT_SCHEMA = "manuscript-lab.gate-result.v1";
 const GATE_VERSION = 1;
 const DEFAULT_PROFILE = "default";
+const DEFAULT_WORDS_FLOOR_RATIO = 0.33;
+const NEAR_TARGET_RATIO = 0.8;
+const NOT_STARTED_STATUSES = new Set(["todo", "planned"]);
 const LOCAL_LINK_PATTERN = /\[[^\]\n]+\]\(([^)\n]+)\)/g;
 const PLACEHOLDER_PATTERN = /\[citation-needed(?::[^\]]*)?\]/gi;
-const EMPTY_MARKER_PATTERN = /\[(?:citation-needed|cite):\s*\]/gi;
 
 export function runGateCli(rawArgs, env = {}) {
   const cwd = env.cwd ?? process.cwd();
@@ -237,6 +237,19 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
     evidence: { errors: contractIssues },
   }));
 
+  const started = Boolean(contract) && !NOT_STARTED_STATUSES.has(status);
+  requirements.push(requirement({
+    id: "contract.status_started",
+    sensor: "section_contract",
+    status: contract ? passFail(started) : "skip",
+    message: contract
+      ? started
+        ? "Section status indicates writing has started."
+        : `Section status is "${status || "(blank)"}". Set status: draft in the section contract when writing begins.`
+      : "Skipped because the section contract is missing.",
+    evidence: { status: status || null },
+  }));
+
   const checkIds = contract ? parseContractList(text, "checks") : [];
   const unknownChecks = checkIds.filter((id) => !knownCheckIds.has(id));
   requirements.push(requirement({
@@ -283,6 +296,45 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
         : "Active section contains prose."
       : `${relPath}: section is marked ${status || "(blank)"} but has only ${proseWords} prose words.`,
     evidence: { status, words: proseWords, expected_minimum_words: expectedWords },
+  }));
+
+  const floor = sectionWordsFloor({ discovery, contract, targetWords });
+  const wordsFloorApplies = Boolean(contract) && started && !shortForm && floor.words != null;
+  requirements.push(requirement({
+    id: "words.floor",
+    sensor: "section_content",
+    status: wordsFloorApplies ? passFail(proseWords >= floor.words) : "skip",
+    message: wordsFloorSkipMessage({ contract, started, shortForm, floor })
+      ?? (proseWords >= floor.words
+        ? "Section word count meets the floor."
+        : `${relPath}: ${proseWords} prose words is below the word floor of ${floor.words} (${floor.reason}).`),
+    evidence: {
+      status,
+      words: proseWords,
+      floor_words: floor.words,
+      floor_source: floor.source,
+      floor_ratio: floor.ratio,
+      target_words: Number.isFinite(targetWords) ? targetWords : null,
+    },
+  }));
+
+  const nearTargetWords = Number.isFinite(targetWords) && targetWords > 0 ? Math.ceil(targetWords * NEAR_TARGET_RATIO) : null;
+  const nearTargetApplies = Boolean(contract) && started && !shortForm && nearTargetWords != null;
+  requirements.push(requirement({
+    id: "words.near_target",
+    severity: "warn",
+    sensor: "section_content",
+    status: nearTargetApplies ? (proseWords >= nearTargetWords ? "pass" : "warn") : "skip",
+    message: wordsFloorSkipMessage({ contract, started, shortForm, floor: { words: nearTargetWords } })
+      ?? (proseWords >= nearTargetWords
+        ? "Section word count is at or above 80% of target."
+        : `${relPath}: ${proseWords} prose words is below 80% of target ${targetWords} (${nearTargetWords} words).`),
+    evidence: {
+      status,
+      words: proseWords,
+      near_target_words: nearTargetWords,
+      target_words: Number.isFinite(targetWords) ? targetWords : null,
+    },
   }));
 
   const inBand = wordCountInBand({ status, targetWords, proseWords, shortForm });
@@ -362,87 +414,54 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
 }
 
 function evaluateCitationReady({ discovery, options = {}, command = "", startedAt = toIso(new Date()), now = new Date() }) {
-  const stateDir = stateDirFor(discovery);
-  const activeDrafts = draftRecords(discovery).filter((draft) => draft.status !== "todo");
-  const claims = readClaims(discovery);
-  const sources = readSources(discovery);
-  const requirements = [];
+  // Single source of truth: the same evidence-spine implementation that powers
+  // `mlab citations check`. The gate only adapts its result into requirements,
+  // so the two surfaces can never disagree.
   const warnings = [...(discovery.warnings ?? [])];
+  let spine;
+  try {
+    spine = citationsCheckCommand({ cwd: options.cwd ?? discovery.manuscriptRoot, discovery });
+  } catch (error) {
+    return errorResult({
+      gateId: "citation-ready",
+      scope: "citation",
+      target: { kind: "citation", id: "citations", sha256: null },
+      errors: [`Citation readiness engine failed: ${error.message}`],
+      warnings,
+      startedAt,
+      command,
+    });
+  }
 
-  const emptyMarkers = scanDrafts(activeDrafts, (draft) => matchesInText(draft.text, EMPTY_MARKER_PATTERN).map((match) => ({ file: draft.path, marker: match })));
-  requirements.push(requirement({
-    id: "claims.no_empty_placeholders",
-    sensor: "citation_scan",
-    status: passFail(emptyMarkers.length === 0),
-    message: emptyMarkers.length ? "Empty citation markers remain." : "No empty citation markers found.",
-    evidence: { count: emptyMarkers.length, markers: emptyMarkers },
-  }));
+  const issuesByRequirement = new Map();
+  for (const issue of spine.issues ?? []) {
+    const key = issue.requirement_id || "unspecified";
+    if (!issuesByRequirement.has(key)) issuesByRequirement.set(key, []);
+    issuesByRequirement.get(key).push(issue);
+  }
 
-  const placeholders = scanDrafts(activeDrafts, (draft) => matchesInText(draft.text, PLACEHOLDER_PATTERN).map((match) => ({ file: draft.path, marker: match })));
-  const unsupportedClaims = claims.rows.filter((row) => ["unsupported", "needs-review"].includes(String(row.status ?? "").toLowerCase()));
-  requirements.push(requirement({
-    id: "claims.no_unsupported_markers",
-    sensor: "claims_register",
-    status: claims.error ? "error" : passFail(placeholders.length === 0 && unsupportedClaims.length === 0),
-    message: claims.error
-      ? claims.error
-      : placeholders.length || unsupportedClaims.length
-        ? "Unresolved citation placeholders or unsupported claims remain."
-        : "No unresolved citation placeholders or unsupported claims remain.",
-    evidence: {
-      placeholders,
-      unsupported_claims: unsupportedClaims.map((row) => claimEvidence(row)),
-    },
-  }));
-
-  const missingSourceRefs = claims.rows.flatMap((row) => {
-    return splitSourceKeys(row.source ?? "").filter((key) => !sources.keys.has(key)).map((key) => ({
-      claim: row.claim ?? "",
-      section: row.section ?? "",
-      source: key,
-    }));
+  const requirements = (spine.requirements ?? []).map((req) => {
+    const issues = issuesByRequirement.get(req.id) ?? [];
+    return requirement({
+      id: req.id,
+      sensor: "evidence_spine",
+      status: req.status === "fail" ? "fail" : req.status === "warn" ? "warn" : "pass",
+      message: req.status === "pass"
+        ? req.message
+        : issues.map((issue) => issue.message).slice(0, 6).join("; ") || req.message,
+      evidence: {
+        blocking: req.blocking,
+        warnings: req.warnings,
+        issues: issues.slice(0, 20),
+      },
+    });
   });
-  requirements.push(requirement({
-    id: "claims.source_keys_exist",
-    sensor: "claims_register",
-    status: claims.error || sources.error ? "error" : passFail(missingSourceRefs.length === 0),
-    message: claims.error || sources.error
-      ? claims.error || sources.error
-      : missingSourceRefs.length
-        ? "Claim source keys are missing from sources/index.md."
-        : "All claim source keys resolve to sources/index.md.",
-    evidence: { missing: missingSourceRefs },
-  }));
 
-  requirements.push(requirement({
-    id: "sources.index_valid",
-    sensor: "source_index",
-    status: sources.error ? "error" : passFail(sources.validationErrors.length === 0),
-    message: sources.error
-      ? sources.error
-      : sources.validationErrors.length
-        ? sources.validationErrors.join("; ")
-        : "Source index is valid.",
-    evidence: { source_count: sources.rows.length, errors: sources.validationErrors },
-  }));
-
-  const missingLocalSources = sources.rows.flatMap((row) => {
-    const location = sourceLocation(row);
-    if (!location || isRemoteLocation(location) || isIntentionalNonFile(location)) return [];
-    const full = path.resolve(discovery.manuscriptRoot, location);
-    if (isOutside(full, discovery.manuscriptRoot)) return [{ key: sourceKey(row), location, reason: "path escapes project root" }];
-    return fs.existsSync(full) ? [] : [{ key: sourceKey(row), location, reason: "file does not exist" }];
-  });
-  requirements.push(requirement({
-    id: "sources.no_missing_files",
-    sensor: "source_index",
-    status: sources.error ? "error" : passFail(missingLocalSources.length === 0),
-    message: sources.error
-      ? sources.error
-      : missingLocalSources.length
-        ? "Local source files referenced by sources/index.md are missing."
-        : "Local source paths referenced by sources/index.md exist.",
-    evidence: { missing: missingLocalSources },
+  const claimsFile = path.join(discovery.manuscriptRoot, stateRel(discovery, "claims.md"));
+  const sourcesFile = path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md");
+  const draftHashes = (spine.files ?? []).map((rel) => ({
+    path: rel,
+    sha256: hashFileIfExists(path.join(discovery.manuscriptRoot, rel)),
   }));
 
   return finalizeResult({
@@ -452,9 +471,9 @@ function evaluateCitationReady({ discovery, options = {}, command = "", startedA
       kind: "citation",
       id: "citations",
       sha256: hashJson({
-        drafts: activeDrafts.map((draft) => ({ path: draft.path, sha256: draft.sha256 })),
-        claims: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "claims.md")),
-        sources: hashFileIfExists(path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md")),
+        drafts: draftHashes,
+        claims: hashFileIfExists(claimsFile),
+        sources: hashFileIfExists(sourcesFile),
       }),
     },
     command,
@@ -465,9 +484,9 @@ function evaluateCitationReady({ discovery, options = {}, command = "", startedA
     warnings,
     inputHashes: {
       config: hashDiscoveryConfig(discovery),
-      claims: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "claims.md")),
-      sources: hashFileIfExists(path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md")),
-      drafts: hashJson(activeDrafts.map((draft) => ({ path: draft.path, sha256: draft.sha256 }))),
+      claims: hashFileIfExists(claimsFile),
+      sources: hashFileIfExists(sourcesFile),
+      drafts: hashJson(draftHashes),
     },
   });
 }
@@ -501,6 +520,23 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     evidence: outline,
   }));
 
+  const doneDrafts = allDrafts.filter((draft) => draft.status === "done");
+  requirements.push(requirement({
+    id: "sections.any_started",
+    sensor: "section_contract",
+    status: allDrafts.length ? passFail(activeDrafts.length > 0 || doneDrafts.length > 0) : "skip",
+    message: !allDrafts.length
+      ? "Skipped because no draft sections were found."
+      : activeDrafts.length || doneDrafts.length
+        ? "At least one section has been started."
+        : "No section has been started — every draft is still \"todo\".",
+    evidence: {
+      total_sections: allDrafts.length,
+      active_sections: activeDrafts.length,
+      done_sections: doneDrafts.length,
+    },
+  }));
+
   const sectionResults = activeDrafts.map((draft) => evaluateSectionReady({
     discovery,
     targetArg: draft.path,
@@ -513,7 +549,9 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     file: result.target.path,
     id: result.target.id,
     status: result.status,
-    failures: result.requirements.filter((req) => req.severity === "block" && ["fail", "error"].includes(req.status)).map((req) => req.id),
+    failures: result.requirements
+      .filter((req) => req.severity === "block" && ["fail", "error"].includes(req.status))
+      .map((req) => ({ id: req.id, message: req.message })),
   }));
   if (!activeDrafts.length) warnings.push("No active non-todo draft sections found.");
   requirements.push(requirement({
@@ -523,7 +561,9 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     message: !activeDrafts.length
       ? "No active non-todo draft sections found."
       : failedSections.length
-        ? "One or more active sections are not ready."
+        ? `Sections not ready: ${failedSections
+          .map((section) => `${section.file} (${section.failures.map((failure) => failure.id).join(", ")})`)
+          .join("; ")}`
         : "All active sections pass section-ready.",
     evidence: {
       active_sections: activeDrafts.map((draft) => draft.path),
@@ -965,7 +1005,7 @@ function commandRequirement({ id, sensor, result, passMessage, failMessage }) {
 }
 
 function requiredExportFormats(options = {}) {
-  const raw = options.formats || "md,html,epub,pdf";
+  const raw = options.formats || "md,html";
   const formats = String(raw)
     .split(",")
     .map((item) => item.trim().toLowerCase())
@@ -1152,7 +1192,7 @@ function parseArgs(args) {
     profile: DEFAULT_PROFILE,
     config: "",
     workspace: "",
-    formats: "md,html,epub,pdf",
+    formats: "md,html",
     staticOnly: false,
     allowOverrides: false,
     noOverrides: false,
@@ -1247,6 +1287,37 @@ function validateBasicContract(contract, relPath) {
     issues.push(`${relPath}: target_words must be a positive number`);
   }
   return issues;
+}
+
+function sectionWordsFloor({ discovery, contract, targetWords }) {
+  // A blank (or non-numeric) min_words value falls through to the ratio floor;
+  // only an explicit numeric value such as `min_words: 0` overrides it.
+  const minWordsText = contract?.has("min_words") ? String(contract.get("min_words")).trim() : "";
+  const minWordsRaw = minWordsText ? Number(minWordsText) : NaN;
+  if (Number.isFinite(minWordsRaw) && minWordsRaw >= 0) {
+    const words = Math.ceil(minWordsRaw);
+    return { words, source: "contract.min_words", ratio: null, reason: `contract min_words ${words}` };
+  }
+  if (!Number.isFinite(targetWords) || targetWords <= 0) {
+    return { words: null, source: null, ratio: null, reason: "" };
+  }
+  const configured = Number(discovery.config?.gates?.section?.words_floor_ratio);
+  const configuredValid = Number.isFinite(configured) && configured > 0 && configured <= 1;
+  const ratio = configuredValid ? configured : DEFAULT_WORDS_FLOOR_RATIO;
+  return {
+    words: Math.ceil(targetWords * ratio),
+    source: configuredValid ? "config.gates.section.words_floor_ratio" : "default_ratio",
+    ratio,
+    reason: `${Math.round(ratio * 100)}% of target ${targetWords}`,
+  };
+}
+
+function wordsFloorSkipMessage({ contract, started, shortForm, floor }) {
+  if (!contract) return "Skipped because the section contract is missing.";
+  if (!started) return "Skipped for not-started section.";
+  if (shortForm) return "Skipped for short-form section.";
+  if (floor.words == null) return "Skipped because target_words is not a positive number.";
+  return null;
 }
 
 function wordCountInBand({ status, targetWords, proseWords, shortForm }) {
@@ -1423,40 +1494,6 @@ function outlineSectionsResolve(discovery) {
   return { references, missing };
 }
 
-function readClaims(discovery) {
-  const file = path.join(discovery.manuscriptRoot, stateRel(discovery, "claims.md"));
-  if (!fs.existsSync(file)) return { rows: [], error: "" };
-  try {
-    return { rows: parseMarkdownTable(fs.readFileSync(file, "utf8")), error: "" };
-  } catch (error) {
-    return { rows: [], error: `Could not read state/claims.md: ${error.message}` };
-  }
-}
-
-function readSources(discovery) {
-  const file = path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md");
-  if (!fs.existsSync(file)) return { rows: [], keys: new Set(), validationErrors: ["sources/index.md is missing."], error: "" };
-  try {
-    const rows = parseMarkdownTable(fs.readFileSync(file, "utf8"));
-    const keys = new Set();
-    const validationErrors = [];
-    for (const row of rows) {
-      const key = sourceKey(row);
-      if (!key) {
-        validationErrors.push("sources/index.md contains a source row without a key");
-        continue;
-      }
-      if (!/^[A-Za-z0-9_.:-]+$/.test(key)) validationErrors.push(`sources/index.md source key is not portable: ${key}`);
-      if (keys.has(key)) validationErrors.push(`sources/index.md contains duplicate source key: ${key}`);
-      keys.add(key);
-      if (!sourceLocation(row)) validationErrors.push(`sources/index.md source "${key}" is missing a location`);
-    }
-    return { rows, keys, validationErrors, error: "" };
-  } catch (error) {
-    return { rows: [], keys: new Set(), validationErrors: [], error: `Could not read sources/index.md: ${error.message}` };
-  }
-}
-
 function findSectionBlockerIssues(discovery, target) {
   const loaded = loadIssueLedger(discovery);
   if (loaded.error) return { error: loaded.error, issues: [] };
@@ -1502,26 +1539,6 @@ function scanProjectReviewErrors(discovery) {
   }
 }
 
-function scanDrafts(drafts, scanner) {
-  return drafts.flatMap(scanner);
-}
-
-function matchesInText(text, pattern) {
-  pattern.lastIndex = 0;
-  const matches = [...String(text).matchAll(pattern)].map((match) => match[0]);
-  pattern.lastIndex = 0;
-  return matches;
-}
-
-function claimEvidence(row) {
-  return {
-    claim: row.claim ?? "",
-    section: row.section ?? "",
-    status: row.status ?? "",
-    source: row.source ?? "",
-  };
-}
-
 function issueEvidence(issue) {
   return {
     id: issue.id ?? "",
@@ -1545,22 +1562,6 @@ function issueTargetsSection(issue, target) {
   const file = normalizeRel(issue.target?.file ?? "");
   const sectionId = String(issue.target?.section_id ?? issue.target?.section ?? "");
   return file === target.relPath || sectionId === target.sectionId;
-}
-
-function sourceKey(row) {
-  return stripCode(row.key ?? row.source ?? row.id ?? "");
-}
-
-function sourceLocation(row) {
-  return stripCode(row.location ?? row.path ?? row.url ?? "");
-}
-
-function isRemoteLocation(value) {
-  return /^(https?:|doi:|mailto:)/i.test(value);
-}
-
-function isIntentionalNonFile(value) {
-  return ["n/a", "none", "not-needed", "internal", "external"].includes(String(value).toLowerCase());
 }
 
 function stateDirFor(discovery) {
@@ -1661,7 +1662,7 @@ Usage:
   node scripts/gate.mjs citation [--json] [--write]
   node scripts/gate.mjs citations [--json] [--write]
   node scripts/gate.mjs manuscript [--json] [--write]
-  node scripts/gate.mjs export [--formats md,html,epub,pdf] [--json] [--write]
+  node scripts/gate.mjs export [--formats md,html] [--json] [--write]
 
 Options:
   --json              Print the full gate result JSON.
@@ -1669,7 +1670,7 @@ Options:
   --profile <name>    Record the selected profile name. The first slice uses deterministic defaults.
   --config <path>     Discover a config-first project from this config path.
   --workspace <path>  Discover a project from this workspace.
-  --formats <list>    Required export formats for export-ready. Default: md,html,epub,pdf.
+  --formats <list>    Required export formats for export-ready. Default: md,html (epub/pdf are opt-in).
   --static-only       Accepted for CI/profile compatibility; gates are deterministic by default.
   --ci                Shorthand for --json --static-only --profile ci --no-overrides.
   --help              Show this help.`;

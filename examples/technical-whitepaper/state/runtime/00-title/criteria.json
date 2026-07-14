@@ -1,0 +1,66 @@
+{
+  "version": 1,
+  "section": "draft/00-title.md",
+  "section_id": "00-title",
+  "operation": "draft",
+  "generated_at": "2026-07-14T17:25:26.397Z",
+  "source_contract_hash": "c4be662d44484dccf138397fbd5fac25890d2227fb4e686d176b3b04f7cae71b",
+  "criteria": [
+    {
+      "id": "contract_coverage",
+      "type": "core",
+      "weight": 0.3,
+      "question": "Does the section satisfy the explicit acceptance criteria in its contract?"
+    },
+    {
+      "id": "continuity",
+      "type": "core",
+      "weight": 0.2,
+      "question": "Does the section preserve established facts, terminology, and unresolved threads?"
+    },
+    {
+      "id": "evidence",
+      "type": "core",
+      "weight": 0.2,
+      "question": "Are non-obvious factual, technical, or argumentative claims supported or explicitly marked?"
+    },
+    {
+      "id": "style_control",
+      "type": "core",
+      "weight": 0.15,
+      "question": "Does the section follow the project style without overfitting to repeated patterns?"
+    },
+    {
+      "id": "taste_effect",
+      "type": "core",
+      "weight": 0.15,
+      "question": "Does the section create the intended reader effect while preserving project taste, subtext, and future story health?"
+    },
+    {
+      "id": "section_turn",
+      "type": "core",
+      "weight": 0.1,
+      "question": "Does the section end in a meaningfully changed state?"
+    },
+    {
+      "id": "acceptance_001",
+      "type": "contract_acceptance",
+      "weight": null,
+      "question": "Does the section satisfy this acceptance item: Provides a neutral public title.",
+      "source": "section_contract"
+    },
+    {
+      "id": "acceptance_002",
+      "type": "contract_acceptance",
+      "weight": null,
+      "question": "Does the section satisfy this acceptance item: Names the artifact as a tutorial fixture.",
+      "source": "section_contract"
+    }
+  ],
+  "required_checks": [
+    "claims.supported"
+  ],
+  "suggested_reviews": [
+    "contract.editor"
+  ]
+}

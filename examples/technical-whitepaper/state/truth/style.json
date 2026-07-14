@@ -1,0 +1,10 @@
+{
+  "schema_version": "manuscript-lab.truth-state.v1",
+  "style_profile": {
+    "summary": "",
+    "protected_strengths": [],
+    "watch_patterns": [],
+    "avoid": [],
+    "register_balance": {}
+  }
+}

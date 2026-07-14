@@ -117,3 +117,13 @@ jobs:
           else
             gh release create "v${VERSION}" --title "Manuscript Lab v${VERSION}" --notes-file release-notes.md
           fi
+
+      - name: Update moving major tag
+        if: ${{ !inputs.dry_run }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          MAJOR="v${VERSION%%.*}"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git tag -f "$MAJOR" "v${VERSION}"
+          git push -f origin "$MAJOR"

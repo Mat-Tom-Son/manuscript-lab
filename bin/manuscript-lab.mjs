@@ -12,9 +12,8 @@ const args = process.argv.slice(2);
 const pkg = readPackageJson();
 
 const commands = {
+  "adopt": ["scripts/adopt.mjs"],
   "check": ["scripts/doccheck.mjs"],
-  "artifacts": ["scripts/artifact-inspector.mjs"],
-  "chorus": ["scripts/chorus-runner.mjs"],
   "citations": ["scripts/evidence-spine.mjs", "citations"],
   "claims": ["scripts/evidence-spine.mjs", "claims"],
   "compare:candidates": ["scripts/compare-candidates.mjs"],
@@ -22,43 +21,62 @@ const commands = {
   "context:audit": ["scripts/context-audit.mjs"],
   "diff:audit": ["scripts/revision-diff-audit.mjs"],
   "doctor": ["scripts/doctor.mjs"],
-  "drive": ["scripts/model-driver.mjs"],
   "done": ["scripts/done-gate.mjs"],
   "done:no-export": ["scripts/done-gate.mjs", "--skip-exports"],
   "evidence": ["scripts/evidence-spine.mjs", "evidence"],
-  "eval": ["scripts/eval-runner.mjs"],
   "export": ["scripts/export-manuscript.mjs"],
   "gate": ["scripts/gate.mjs"],
-  "golden-path": ["scripts/golden-path.mjs"],
   "issues": ["scripts/issue-ledger.mjs"],
-  "model:calls": ["scripts/model-call-report.mjs"],
-  "model:capabilities": ["scripts/model-capabilities.mjs"],
-  "model:smoke": ["scripts/model-smoke.mjs"],
-  "practice": ["scripts/practice-runner.mjs"],
+  "mcp": ["scripts/mcp-server.mjs"],
   "project": ["scripts/story-workspace.mjs"],
   "report": ["scripts/report.mjs"],
   "revise:candidates": ["scripts/revision-candidates.mjs"],
   "review:report": ["scripts/review-report.mjs"],
   "review:run": ["scripts/review-runner.mjs"],
   "merge:winner": ["scripts/merge-winner.mjs"],
-  "room": ["scripts/room-runner.mjs"],
   "status": ["scripts/harness-status.mjs"],
   "story": ["scripts/story-workspace.mjs"],
-  "style:signals": ["scripts/style-calibration.mjs", "signals"],
   "sources": ["scripts/evidence-spine.mjs", "sources"],
-  "taste:arbiter": ["scripts/taste-arbiter.mjs"],
   "template:audit": ["scripts/template-audit.mjs"],
   "test": ["scripts/run-tests.mjs"],
   "validate": ["scripts/protocol-validate.mjs"],
+};
+
+// Lab commands route through `mlab lab <name>`; every name also stays a
+// hidden top-level compatibility alias below.
+const labCommands = {
+  "room": ["scripts/room-runner.mjs"],
+  "chorus": ["scripts/chorus-runner.mjs"],
+  "practice": ["scripts/practice-runner.mjs"],
+  "drive": ["scripts/model-driver.mjs"],
+  "eval": ["scripts/eval-runner.mjs"],
+  "artifacts": ["scripts/artifact-inspector.mjs"],
+  "golden-path": ["scripts/golden-path.mjs"],
+  "taste": ["scripts/taste-arbiter.mjs"],
+  "style": ["scripts/style-calibration.mjs", "signals"],
   "words": ["scripts/word-usage.mjs"],
 };
 
+const labModelCommands = {
+  "smoke": ["scripts/model-smoke.mjs"],
+  "capabilities": ["scripts/model-capabilities.mjs"],
+  "calls": ["scripts/model-call-report.mjs"],
+};
+
 const aliases = {
+  "artifacts": ["scripts/artifact-inspector.mjs"],
   "audit": ["scripts/revision-diff-audit.mjs"],
+  "chorus": ["scripts/chorus-runner.mjs"],
   "compare": ["scripts/compare-candidates.mjs"],
-  "init": ["scripts/story-workspace.mjs", "init"],
+  "drive": ["scripts/model-driver.mjs"],
+  "eval": ["scripts/eval-runner.mjs"],
+  "golden-path": ["scripts/golden-path.mjs"],
   "merge": ["scripts/merge-winner.mjs"],
+  "model:calls": ["scripts/model-call-report.mjs"],
+  "model:capabilities": ["scripts/model-capabilities.mjs"],
+  "model:smoke": ["scripts/model-smoke.mjs"],
   "new": ["scripts/story-workspace.mjs", "init"],
+  "practice": ["scripts/practice-runner.mjs"],
   "project:init": ["scripts/story-workspace.mjs", "init"],
   "project:list": ["scripts/story-workspace.mjs", "list-projects"],
   "project:sync": ["scripts/story-workspace.mjs", "sync-project"],
@@ -66,12 +84,21 @@ const aliases = {
   "revise": ["scripts/revision-candidates.mjs"],
   "review": ["scripts/review-runner.mjs"],
   "review-report": ["scripts/review-report.mjs"],
+  "room": ["scripts/room-runner.mjs"],
   "story:init": ["scripts/story-workspace.mjs", "init"],
   "story:restore": ["scripts/story-workspace.mjs", "restore"],
   "story:unload": ["scripts/story-workspace.mjs", "unload"],
+  "style:signals": ["scripts/style-calibration.mjs", "signals"],
+  "taste:arbiter": ["scripts/taste-arbiter.mjs"],
+  "words": ["scripts/word-usage.mjs"],
 };
 
-const invocation = resolveInvocation(args);
+if (args[0] === "help" && args[1] === "admin") {
+  printAdminHelp();
+  process.exit(0);
+}
+
+const invocation = resolveInvocation(forwardHelpTopic(args));
 const command = invocation.command;
 const rest = invocation.rest;
 
@@ -98,34 +125,104 @@ if (command === "version" || command === "--version" || command === "-v") {
   process.exit(0);
 }
 
-if (initHelpRequest(command, rest)) {
-  printInitHelp();
-  process.exit(0);
+if (command === "lab") {
+  runLab(rest);
 }
 
-if (templateOnlyRequest(command, rest)) {
+if (command === "init") {
+  await runInit(rest);
+}
+
+if (templateOnlyCommands.has(command)) {
   const discovery = discoverProtocol({ cwd: process.cwd(), packageRoot });
   if (!templateCommandAllowed(discovery)) {
     refuseTemplateOnlyCommand(command, discovery, rest);
   }
 }
 
-const target = installAnywhereInitRequest(command, rest)
-  ? ["scripts/install-init.mjs"]
-  : commands[command] || aliases[command];
+const target = commands[command] || aliases[command];
 if (!target) {
-  console.error(`Unknown command: ${command}\n`);
-  printHelp();
+  printUnknownCommand(command);
   process.exit(1);
 }
 
-const [script, ...scriptArgs] = target;
-const result = spawnSync(process.execPath, [path.join(packageRoot, script), ...scriptArgs, ...rest], {
-  cwd: process.cwd(),
-  stdio: "inherit",
-});
+runScript(target, rest);
 
-process.exit(result.status ?? 1);
+function runScript(scriptTarget, scriptArgs) {
+  const [script, ...presetArgs] = scriptTarget;
+  const result = spawnSync(process.execPath, [path.join(packageRoot, script), ...presetArgs, ...scriptArgs], {
+    cwd: process.cwd(),
+    stdio: "inherit",
+  });
+  process.exit(result.status ?? 1);
+}
+
+function runLab(labArgs) {
+  const sub = labArgs[0];
+  if (!sub || sub === "help" || sub === "--help" || sub === "-h") {
+    printLabHelp();
+    process.exit(0);
+  }
+  if (sub === "model") {
+    const modelSub = labArgs[1];
+    if (!modelSub || modelSub === "help" || modelSub === "--help" || modelSub === "-h") {
+      printLabModelHelp();
+      process.exit(0);
+    }
+    const modelTarget = labModelCommands[modelSub];
+    if (!modelTarget) {
+      console.error(`Unknown lab model command: ${modelSub}\nAvailable: smoke, capabilities, calls. Run \`mlab lab model --help\`.`);
+      process.exit(1);
+    }
+    runScript(modelTarget, labArgs.slice(2));
+  }
+  const labTarget = labCommands[sub];
+  if (!labTarget) {
+    console.error(`Unknown lab command: ${sub}\nAvailable: ${[...Object.keys(labCommands), "model"].join(", ")}. Run \`mlab lab --help\`.`);
+    process.exit(1);
+  }
+  runScript(labTarget, labArgs.slice(1));
+}
+
+async function runInit(commandArgs) {
+  if (commandArgs.some((arg) => arg === "--help" || arg === "-h")) {
+    printInitHelp();
+    process.exit(0);
+  }
+  if (installAnywhereInitRequest(commandArgs)) {
+    runScript(["scripts/install-init.mjs"], commandArgs);
+  }
+
+  const discovery = discoverProtocol({ cwd: process.cwd(), packageRoot });
+  if (discovery.mode === "template") {
+    if (!templateCommandAllowed(discovery)) {
+      refuseTemplateOnlyCommand("init", discovery, commandArgs);
+    }
+    runScript(["scripts/story-workspace.mjs", "init"], commandArgs);
+  }
+
+  const { deriveBareInitDefaults } = await import("../scripts/install-init.mjs");
+  const defaults = deriveBareInitDefaults(process.cwd());
+  const title = explicitOptionValue(commandArgs, "title") ?? defaults.title;
+  if (discovery.mode === "none" && !commandArgs.includes("--json")) {
+    console.log([
+      "No Manuscript Lab workspace found here. Creating one with defaults:",
+      `  profile: ${defaults.profile}`,
+      `  root:    ${defaults.root}`,
+      `  title:   ${title}`,
+      "Customize with --profile, --root, and --title (see `mlab init --help`).",
+      "",
+    ].join("\n"));
+  }
+  runScript(["scripts/install-init.mjs"], ["--profile", defaults.profile, "--root", defaults.root, "--title", title, ...commandArgs]);
+}
+
+function forwardHelpTopic(rawArgs) {
+  if (rawArgs[0] !== "help") return rawArgs;
+  const topic = rawArgs[1];
+  if (!topic || topic.startsWith("-")) return rawArgs;
+  return [...rawArgs.slice(1), "--help"];
+}
 
 function resolveInvocation(rawArgs) {
   const rawCommand = rawArgs[0] || "help";
@@ -178,21 +275,21 @@ function normalizeCandidateId(value) {
   return /^[a-z]$/i.test(value) ? `candidate-${value.toLowerCase()}` : value;
 }
 
-function installAnywhereInitRequest(commandName, commandArgs) {
-  return commandName === "init" && commandArgs.some((arg) => arg === "--profile" || arg === "--root" || arg.startsWith("--profile=") || arg.startsWith("--root="));
+function installAnywhereInitRequest(commandArgs) {
+  return commandArgs.some((arg) => arg === "--profile" || arg === "--root" || arg.startsWith("--profile=") || arg.startsWith("--root="));
 }
 
-function templateOnlyRequest(commandName, commandArgs) {
-  if (commandName === "init") return !installAnywhereInitRequest(commandName, commandArgs);
-  return templateOnlyCommands.has(commandName);
+function explicitOptionValue(commandArgs, name) {
+  for (let index = 0; index < commandArgs.length; index += 1) {
+    const arg = commandArgs[index];
+    if (arg === `--${name}`) return commandArgs[index + 1];
+    if (arg.startsWith(`--${name}=`)) return arg.slice(`--${name}=`.length);
+  }
+  return undefined;
 }
 
 function templateCommandAllowed(discovery) {
   return discovery.mode === "template" && path.resolve(process.cwd()) === path.resolve(discovery.workspaceRoot);
-}
-
-function initHelpRequest(commandName, commandArgs) {
-  return commandName === "init" && commandArgs.some((arg) => arg === "--help" || arg === "-h");
 }
 
 function refuseTemplateOnlyCommand(commandName, discovery, commandArgs) {
@@ -210,6 +307,74 @@ function refuseTemplateOnlyCommand(commandName, discovery, commandArgs) {
     console.error(`${message}\n${hint}`);
   }
   process.exit(2);
+}
+
+function printUnknownCommand(commandName) {
+  const suggestion = nearestCommand(commandName);
+  const lines = [`Unknown command: ${commandName}`];
+  if (suggestion) lines.push(`Did you mean \`mlab ${suggestion}\`?`);
+  lines.push(
+    "",
+    "Command groups: Start, Daily loop, Evidence, Ship, Agents, Lab.",
+    "Run `mlab help` for the command list, `mlab lab --help` for lab commands,",
+    "or see docs/COMMANDS.md for the full reference.",
+  );
+  console.error(lines.join("\n"));
+}
+
+function nearestCommand(input) {
+  const name = String(input ?? "").toLowerCase();
+  if (!name) return "";
+  const candidates = [...new Set([
+    ...Object.keys(commands),
+    ...Object.keys(aliases),
+    ...Object.keys(labCommands),
+    "init",
+    "adopt",
+    "lab",
+    "help",
+    "version",
+  ])].sort();
+
+  if (name.length >= 3) {
+    const prefixed = candidates
+      .filter((candidate) => candidate.startsWith(name))
+      .sort((a, b) => a.length - b.length || a.localeCompare(b));
+    if (prefixed.length) return prefixed[0];
+  }
+
+  let best = "";
+  let bestDistance = 3;
+  for (const candidate of candidates) {
+    const distance = editDistance(name, candidate);
+    if (distance < bestDistance) {
+      best = candidate;
+      bestDistance = distance;
+    }
+  }
+  return best;
+}
+
+function editDistance(a, b) {
+  const rows = a.length + 1;
+  const cols = b.length + 1;
+  const distances = Array.from({ length: rows }, (_, row) => {
+    const line = new Array(cols).fill(0);
+    line[0] = row;
+    return line;
+  });
+  for (let col = 0; col < cols; col += 1) distances[0][col] = col;
+  for (let row = 1; row < rows; row += 1) {
+    for (let col = 1; col < cols; col += 1) {
+      const cost = a[row - 1] === b[col - 1] ? 0 : 1;
+      distances[row][col] = Math.min(
+        distances[row - 1][col] + 1,
+        distances[row][col - 1] + 1,
+        distances[row - 1][col - 1] + cost,
+      );
+    }
+  }
+  return distances[rows - 1][cols - 1];
 }
 
 function readPackageJson() {
@@ -230,107 +395,125 @@ function printVersion(commandArgs) {
 }
 
 function printHelp() {
-  console.log(`manuscript-lab - file-based writing harness
+  console.log(`manuscript-lab (mlab) - file-based writing harness
 
 Usage:
-  manuscript-lab <command> [args]
   mlab <command> [args]
 
-Common commands:
-  version
-  doctor --no-network
-  init --profile whitepaper --root manuscript --title "My Whitepaper"
-  validate
-  status
-  drive --goal "find the next useful command" --dry-run
-  drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
-  artifacts list --json
-  golden-path --json
-  eval practice-strategies --from state/practice-strategies/<run-id> --json
-  practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
-  practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
-  practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
-  compose -- draft/<section>.md
-  chorus run draft/<section>.md --models openrouter:anthropic/claude-sonnet-4,openrouter:qwen/qwen3.7-plus
-  check --static-only
-  claims list --unsupported
-  citations check draft/<section>.md
-  evidence report
-  gate draft/<section>.md
-  report --write
-  room diagnose draft/<section>.md --json
-  room blue-sky draft/<section>.md --models lightning:lightning-ai/gpt-oss-120b,openrouter:qwen/qwen3.7-plus
-  room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
-  room break draft/<section>.md --run <room-run-id>
-  room table-read draft/<section>.md
-  export --formats md,html --slug my-project
-  done:no-export
-  done
+Start:
+  init         — create a workspace here (defaults: --profile whitepaper --root manuscript)
+  adopt        — import existing markdown files into a new workspace
+  doctor       — environment, package, and provider diagnostics
+  validate     — validate config, project files, and section contracts
 
-Review and revision:
-  review draft/<section>.md --dry-run --panel prose.clean
-  review report draft/<section>.md
-  issues list
-  revise draft/<section>.md --issue <issue-id> --candidates 3 --dry-run
-  compare draft/<section>.md --run <candidate-run-id> --dry-run
-  merge draft/<section>.md --run <candidate-run-id>
-  audit --before before.md --after draft/<section>.md --static-only
+Daily loop:
+  status       — drafts, runtime packets, issues, and run artifacts at a glance
+  compose      — compile the auditable runtime packet for a section
+  check        — static and model document checks (--fix creates missing scaffolding)
+  review       — run typed editorial review passes (review run, review report)
+  issues       — manage the durable issue ledger
+  revise       — generate competing revision candidates for accepted issues
+  compare      — blind pairwise comparison of revision candidates
+  merge        — materialize or apply the candidate arena winner
+  gate         — evaluate readiness gates (section, citation, manuscript, export)
+  report       — project readiness report with blockers and fix commands
 
-Writers' room:
-  room diagnose draft/<section>.md --json
-  room blue-sky draft/<section>.md --json
-  room decide draft/<section>.md --run <room-run-id> --select idea-001 --reason "..."
-  room break draft/<section>.md --run <room-run-id>
-  room table-read draft/<section>.md
-  room report draft/<section>.md
+Evidence:
+  claims       — list and audit tracked claims
+  citations    — check citation coverage for active sections
+  sources      — inspect the source index
+  evidence     — full evidence spine report
 
-Prose line lab:
-  chorus plan draft/<section>.md --beats 4
-  chorus run draft/<section>.md --json
-  chorus run draft/<section>.md --assemble
-  chorus sample draft/<section>.md --run <chorus-run-id>
-  chorus judge draft/<section>.md --run <chorus-run-id>
-  chorus assemble draft/<section>.md --run <chorus-run-id>
-  chorus report draft/<section>.md
+Ship:
+  export       — export reader files (default formats: md,html)
+  done         — end-of-run verification gate
 
-Compatibility command names:
-  review:run
-  review:report
-  revise:candidates
-  compare:candidates
-  merge:winner
-  diff:audit
-  drive
-  practice
-  words -- draft/<section>.md
+Agents:
+  mcp          — serve Manuscript Lab tools to agents over MCP stdio
 
-Project commands (template clone compatibility only):
-  project:init --title "My Project" --slug my-project --sections 4 --kind document.section
-  project:init
-  story:init
-  story:restore
-  story:unload
-  project:list
-  project:sync
-  project:verify
+Lab:
+  lab          — contained R&D: room, chorus, practice, drive, eval, and more
 
-The npm scripts remain the broadest template interface. This wrapper also
-supports the install-anywhere workflow for config-first workspaces.`);
+Run \`mlab help <command>\` or \`mlab <command> --help\` for details.
+\`mlab lab --help\` lists lab commands. Full reference: docs/COMMANDS.md.
+Template-clone admin commands: \`mlab help admin\`.`);
+}
+
+function printLabHelp() {
+  console.log(`mlab lab - contained R&D commands
+
+The lab holds generation features under evaluation. They write run artifacts
+under state/ and never gate readiness.
+
+Usage:
+  mlab lab <command> [args]
+
+Commands:
+  room         — writers' room protocol artifacts (diagnose, blue-sky, decide, break, table-read)
+  chorus       — prose line lab and contact-sheet artifacts (plan, run, sample, judge, assemble)
+  practice     — creative-writing practice exercises (propose, compare, bench, strategies)
+  drive        — bounded model-driver loop toward a stated goal
+  eval         — snapshot and compare workflow evidence
+  artifacts    — inspect generated run artifacts
+  golden-path  — first useful product path evidence
+  taste        — taste arbiter gate for candidate arena winners
+  style        — style calibration signals
+  words        — word usage report for a section
+  model        — provider utilities: mlab lab model <smoke|capabilities|calls>
+
+Every lab command also works as a top-level alias (for example \`mlab room ...\`).
+Run \`mlab lab <command> --help\` for details.`);
+}
+
+function printLabModelHelp() {
+  console.log(`mlab lab model - provider utilities
+
+Usage:
+  mlab lab model smoke         — test the configured model provider with one tiny call
+  mlab lab model capabilities  — probe provider capabilities and structured output support
+  mlab lab model calls         — inspect the project-local model call ledger
+
+Compatibility aliases: model:smoke, model:capabilities, model:calls.`);
+}
+
+function printAdminHelp() {
+  console.log(`manuscript-lab template-clone admin commands
+
+These commands manage the template-clone workflow and must run from the
+template clone root. Install-anywhere workspaces use \`mlab init\` or
+\`mlab adopt\` instead.
+
+  project:init    — scaffold a template project workspace (aliases: new, story:init)
+  project:list    — list registered template projects
+  project:sync    — sync the active project filesystem
+  project:verify  — verify registered project filesystems
+  story:restore   — restore an archived story workspace
+  story:unload    — unload the active story workspace
+  template:audit  — audit template placeholder hygiene
+  context:audit   — audit context budgets
+  test            — run the package test suite`);
 }
 
 function printInitHelp() {
   console.log(`manuscript-lab init
 
-Install-anywhere workflow:
-  mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
+Create a Manuscript Lab workspace in the current directory.
 
-Template clone compatibility:
-  mlab init --title "My Project" --slug my-project --sections 4 --kind document.section
-  mlab project:init --title "My Project" --slug my-project --sections 4 --kind document.section
-  mlab story:init --title "My Project" --slug my-project --sections 4 --kind document.section
+Bare init (outside a template clone):
+  mlab init
+  Uses defaults: --profile whitepaper --root manuscript --title "<Directory Name>".
 
-Notes:
-  Passing --profile or --root selects config-first install-anywhere init.
-  Bare init, project:init, and story:init preserve the template workspace flow
-  only inside a template clone.`);
+Customize:
+  mlab init --profile whitepaper --root manuscript --title "My Whitepaper" [--sections 3] [--kind document.section]
+  Passing --profile or --root always selects config-first install-anywhere init.
+
+Then:
+  mlab status
+  mlab check --static-only
+  mlab report --write
+
+Template clone note:
+  Inside a template clone root, bare init keeps the legacy template workspace
+  flow (also available as project:init and story:init):
+  mlab init --title "My Project" --slug my-project --sections 4 --kind document.section`);
 }

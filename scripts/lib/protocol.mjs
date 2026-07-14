@@ -26,6 +26,7 @@ const OPTIONAL_CONFIG_FIELDS = new Set([
   "checks",
   "reviews",
   "model",
+  "gates",
 ]);
 const BUILT_IN_PROFILE_OPTIONS = new Map([
   ["generic", new Set()],
@@ -169,7 +170,7 @@ export function validateProtocolProject(discovery) {
     const proseWords = wordCount(stripContract(text));
     const targetWords = Number(contract.get("target_words"));
     if (!isShortFormDraftContract(contract) && status !== "todo" && proseWords < minimumWordsForStartedSection(targetWords)) {
-      errors.push(`${draft.path}: section is marked ${status} but has only ${proseWords} prose words`);
+      warnings.push(`${draft.path}: section is marked ${status} but has only ${proseWords} prose words (readiness is enforced by the words.floor gate)`);
     }
 
     drafts[drafts.indexOf(draft)] = {
@@ -250,7 +251,7 @@ export function validateProtocolConfig(config, { configDir }) {
     }
   }
 
-  for (const field of ["checks", "reviews", "model"]) {
+  for (const field of ["checks", "reviews", "model", "gates"]) {
     if (field in config && !isPlainObject(config[field])) {
       errors.push(`Config ${field} must be an object when present.`);
     }
@@ -385,7 +386,8 @@ export function validatePortableRelativePath(value, { allowGlob = false, allowDo
 
 function projectFreeHints() {
   return [
-    "Run `mlab init --profile whitepaper --root manuscript --title \"My Project\"` to create a config-first project.",
+    "Run `mlab init` to create a config-first project here (defaults: --profile whitepaper --root manuscript).",
+    "Customize the scaffold with `mlab init --profile whitepaper --root manuscript --title \"My Project\"`.",
     "Run `mlab doctor --no-project` for package diagnostics without a project.",
   ];
 }

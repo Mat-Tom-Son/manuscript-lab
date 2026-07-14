@@ -1,5 +1,7 @@
 # Codex Skills
 
+> Status: written for the pre-2.0 surface; command names may differ. Current surface: docs/COMMANDS.md. Old names still work as aliases.
+
 Manuscript Lab ships a Codex skill at:
 
 ```text

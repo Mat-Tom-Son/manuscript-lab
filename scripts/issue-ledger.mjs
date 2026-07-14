@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { lockPathFor, withFileLock, writeJsonAtomic } from "./lib/files.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { ISSUE_CLOSED_SCHEMA_VERSION, ISSUE_DECISIONS_SCHEMA_VERSION } from "./lib/required-scaffolding.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
@@ -85,8 +86,8 @@ function ensureLedgers() {
   fs.mkdirSync(abs("state/issues"), { recursive: true });
   withFileLock(issueLedgerLockPath(), () => {
     ensureJson("state/issues/issue-ledger.json", { version: 1, next_id: 1, issues: [] });
-    ensureJson("state/issues/decisions.json", { version: 1, decisions: [] });
-    ensureJson("state/issues/closed.json", { version: 1, closed: [] });
+    ensureJson("state/issues/decisions.json", { schema_version: ISSUE_DECISIONS_SCHEMA_VERSION, version: 1, decisions: [] });
+    ensureJson("state/issues/closed.json", { schema_version: ISSUE_CLOSED_SCHEMA_VERSION, version: 1, closed: [] });
   });
 }
 
@@ -124,6 +125,7 @@ function updateDecision(id, decisionRecord) {
     saveLedger(ledger);
 
     const decisions = loadJson(abs("state/issues/decisions.json"));
+    decisions.schema_version = decisions.schema_version ?? ISSUE_DECISIONS_SCHEMA_VERSION;
     decisions.decisions = Array.isArray(decisions.decisions) ? decisions.decisions : [];
     decisions.decisions.push(decision);
     saveJson("state/issues/decisions.json", decisions);
@@ -146,6 +148,7 @@ function closeIssue(id, reason) {
     saveLedger(ledger);
 
     const closed = loadJson(abs("state/issues/closed.json"));
+    closed.schema_version = closed.schema_version ?? ISSUE_CLOSED_SCHEMA_VERSION;
     closed.closed = Array.isArray(closed.closed) ? closed.closed : [];
     closed.closed.push({ issue_id: id, closed_at: now, reason });
     saveJson("state/issues/closed.json", closed);

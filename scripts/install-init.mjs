@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { CONFIG_FILE, discoverProtocol, validatePortableRelativePath } from "./lib/protocol.mjs";
+import { REQUIRED_STATE_READMES, issueStateFileContents, truthStateFileContents } from "./lib/required-scaffolding.mjs";
 import { normalizeRel, safeId } from "./lib/section-contract.mjs";
 
 const here = path.dirname(fileURLToPath(import.meta.url));
@@ -111,7 +112,7 @@ export function buildInstalledConfig({ profile, root, title, sections, targetWor
 
 export function assertSafeInitTarget({ workspaceRoot, manuscriptRoot, configPath, force = false }) {
   if (isPackageRoot(workspaceRoot) && !force) {
-    throw new Error("Install-anywhere init should run in your document workspace. In this repository, use project:init or story:init.");
+    throw new Error("Install-anywhere init should run in your document workspace. In this repository, use project:init.");
   }
 
   const discovered = discoverProtocol({ cwd: workspaceRoot });
@@ -153,7 +154,7 @@ export function writeInstalledScaffold({ manuscriptRoot, root, profile, title, p
   writeTruthStateFiles(manuscriptRoot, { written });
 
   for (const section of plan) {
-    write(path.join(manuscriptRoot, section.file), draftScaffold({ section }), { written });
+    write(path.join(manuscriptRoot, section.file), draftScaffold({ section, title }), { written });
   }
 
   write(path.join(manuscriptRoot, "README.md"), workspaceReadme({ title, root, sectionFiles }), { written });
@@ -196,6 +197,17 @@ export function whitepaperSectionPlan({ sections, kind, targetWords }) {
   return [title, ...body];
 }
 
+export function deriveBareInitDefaults(cwd) {
+  return { profile: DEFAULT_PROFILE, root: DEFAULT_ROOT, title: titleFromDirectory(cwd) };
+}
+
+function titleFromDirectory(cwd) {
+  const base = path.basename(path.resolve(cwd ?? process.cwd()));
+  const words = base.replace(/[-_.]+/g, " ").trim().split(/\s+/).filter(Boolean);
+  if (!words.length) return DEFAULT_TITLE;
+  return normalizeTitle(words.map((word) => word.charAt(0).toUpperCase() + word.slice(1)).join(" "));
+}
+
 function ensureScaffoldDirs(root, { written }) {
   for (const dir of [
     "draft",
@@ -234,6 +246,7 @@ function ensureScaffoldDirs(root, { written }) {
   }
 
   const readmes = {
+    ...REQUIRED_STATE_READMES,
     "state/chorus/README.md": "Chorus line-lab artifacts live here.\n",
     "state/driver/README.md": "Model-driver run artifacts live here.\n",
     "state/evals/README.md": "Evaluation snapshots and regression comparisons live here.\n",
@@ -241,24 +254,15 @@ function ensureScaffoldDirs(root, { written }) {
     "style/README.md": "Project-local style artifacts live here.\n",
     "taste/accepted_patches/README.md": "Accepted taste examples live here.\n",
     "taste/rejected_patches/README.md": "Rejected taste examples live here.\n",
-    "state/issues/README.md": "Issue ledger artifacts live here.\n",
     "state/practice/README.md": "Creative practice generation artifacts live here.\n",
     "state/practice-bench/README.md": "Practice benchmark artifacts live here.\n",
     "state/practice-evals/README.md": "Practice pairwise evaluation artifacts live here.\n",
     "state/practice-strategies/README.md": "Practice strategy comparison artifacts live here.\n",
-    "state/runtime/README.md": "Composed runtime packets live here.\n",
-    "state/reviews/README.md": "Review run artifacts live here.\n",
     "state/room/README.md": "Writers' room protocol artifacts live here.\n",
-    "state/revision-audits/README.md": "Revision diff audit artifacts live here.\n",
-    "state/revision-plans/README.md": "Revision plan artifacts live here.\n",
-    "state/candidates/README.md": "Revision candidate arena artifacts live here.\n",
     "state/style/README.md": "Style calibration artifacts live here.\n",
     "state/taste/README.md": "Generated taste arbiter artifacts live here.\n",
-    "state/truth/README.md": "Structured truth state lives here.\n",
     "state/model-calls/README.md": "Model-call artifacts live here when captured for local debugging.\n",
     "state/logs/README.md": "Project work logs live here.\n",
-    "state/projections/README.md": "Human-readable truth projections live here.\n",
-    "state/observations/README.md": "Observation artifacts live here.\n",
   };
   for (const [rel, content] of Object.entries(readmes)) write(path.join(root, rel), content, { written, ifMissing: true });
 }
@@ -481,33 +485,25 @@ Track recurring examples, terms, images, or structural moves worth preserving.
 }
 
 function writeIssueStateFiles(root, { written }) {
-  writeJson(path.join(root, "state/issues/issue-ledger.json"), { version: 1, next_id: 1, issues: [] }, { written });
-  writeJson(path.join(root, "state/issues/decisions.json"), { version: 1, decisions: [] }, { written });
-  writeJson(path.join(root, "state/issues/closed.json"), { version: 1, closed: [] }, { written });
+  for (const [rel, value] of Object.entries(issueStateFileContents())) {
+    writeJson(path.join(root, rel), value, { written });
+  }
 }
 
 function writeTruthStateFiles(root, { written }) {
-  writeJson(path.join(root, "state/truth/entities.json"), { entities: [] }, { written });
-  writeJson(path.join(root, "state/truth/threads.json"), { threads: [] }, { written });
-  writeJson(path.join(root, "state/truth/claims.json"), { claims: [] }, { written });
-  writeJson(path.join(root, "state/truth/sources.json"), { sources: [] }, { written });
-  writeJson(path.join(root, "state/truth/terms.json"), { terms: [] }, { written });
-  writeJson(path.join(root, "state/truth/artifacts.json"), { artifacts: [] }, { written });
-  writeJson(path.join(root, "state/truth/style.json"), {
-    style_profile: {
-      summary: "",
-      protected_strengths: [],
-      watch_patterns: [],
-      avoid: [],
-      register_balance: {},
-    },
-  }, { written });
+  for (const [rel, value] of Object.entries(truthStateFileContents())) {
+    writeJson(path.join(root, rel), value, { written });
+  }
 }
 
-function draftScaffold({ section }) {
+function draftScaffold({ section, title }) {
   const titleSection = section.id === "00-title";
   const checks = titleSection ? ["style.violations"] : ["claims.supported", "style.violations"];
   const reviews = titleSection ? ["contract.editor"] : ["cold.reader", "contract.editor"];
+  // The 00-title heading is where status/report/export read the visible
+  // project title, so the resolved workspace title must land there instead of
+  // the literal "Title" placeholder.
+  const heading = titleSection && title ? title : section.label;
   return `<!--
 id: ${section.id}
 kind: ${section.kind}
@@ -519,7 +515,7 @@ acceptance:
   - Claims are source-backed or visibly marked for support.
   - The ending gives the next section a clean handoff.
 ${contractList("checks", checks)}${contractList("reviews", reviews)}-->
-# ${section.label}
+# ${heading}
 
 Use this section for the first owned draft once the brief, outline, style guide,
 and source index are ready.
@@ -670,3 +666,12 @@ function isPathInsideOrEqual(child, parent) {
   const rel = path.relative(parent, child);
   return rel === "" || (!rel.startsWith("..") && !path.isAbsolute(rel));
 }
+
+// Shared with scripts/adopt.mjs, which reuses the install-anywhere scaffolding
+// instead of forking it. Renamed exports only; behavior is unchanged.
+export {
+  RESERVED_ROOTS as RESERVED_WORKSPACE_ROOTS,
+  normalizeProfile as normalizeWorkspaceProfile,
+  normalizeTitle as normalizeWorkspaceTitle,
+  writeJson as writeScaffoldJson,
+};

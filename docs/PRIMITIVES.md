@@ -201,8 +201,8 @@ one-off-style CLI diagnostics.
 ```bash
 npm run status
 npm run check -- --static-only
-npm run story:init -- --title "New Story" --slug new-story --sections 4 --archive-current
-npm run story:unload -- --slug current-story
+npm run project:init -- --title "New Story" --slug new-story --sections 4 --archive-current
+npm run story -- unload --slug current-story
 npm run story:verify
 npm run story -- transition-status
 npm run story -- transition-clear --force
@@ -222,7 +222,7 @@ npm run project:sync
 npm run project:mount
 npm run project:verify
 npm run project:list
-npm run story:unload -- --slug current-story
+npm run story -- unload --slug current-story
 npm run story -- transition-status
 npm run project:log -- --message "..."
 ```

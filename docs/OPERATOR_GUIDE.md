@@ -1,5 +1,7 @@
 # Operator Guide
 
+> Status: written for the pre-2.0 surface; command names may differ. Current surface: docs/COMMANDS.md. Old names still work as aliases.
+
 This repository is a cockpit for long-form writing. The manuscript lives in files, the state lives in files, and model output becomes durable evidence before it becomes revision work.
 
 The harness is not a judge. It is a lab bench for writing experiments.
@@ -25,7 +27,7 @@ Then use the npm scripts directly:
 
 ```bash
 npm run project:init -- --title "New Project" --slug new-project --sections 4 --kind document.section
-npm run story:unload -- --slug current-project
+npm run story -- unload --slug current-project
 npm run story:verify
 npm run compose -- draft/<section>.md
 npm run check -- --static-only
@@ -157,9 +159,9 @@ Use `docs/STORY_WORKSPACE_SWITCHING.md` before archiving, restoring, or starting
 
 ```bash
 npm run story:archive -- --slug <story-slug>
-npm run story:unload -- --slug <story-slug>
-npm run story:init -- --title "New Story" --slug <story-slug> --sections 4 --archive-current
-npm run story:restore -- --from archive/<story-archive> --archive-current
+npm run story -- unload --slug <story-slug>
+npm run project:init -- --title "New Story" --slug <story-slug> --sections 4 --archive-current
+npm run project:restore -- --from archive/<story-archive> --archive-current
 npm run story:clear-generated -- --force
 npm run story:verify
 npm run story -- transition-status
@@ -168,9 +170,9 @@ npm run project:mount
 npm run project:sync
 ```
 
-The short rule is: use `story:unload` to put a story away, use `story:init --archive-current` to swap directly into a new story, keep harness infrastructure current, clear stale generated artifacts, update project handoff, then verify with checks and status.
+The short rule is: use `npm run story -- unload` to put a story away, use `project:init --archive-current` to swap directly into a new story, keep harness infrastructure current, clear stale generated artifacts, update project handoff, then verify with checks and status.
 
-Important distinction: `story:archive` snapshots a story but leaves it active in root. `story:unload` snapshots, deactivates, and clears root story files so a future chat sees `No Active Story Loaded`.
+Important distinction: `story:archive` snapshots a story but leaves it active in root. `npm run story -- unload` snapshots, deactivates, and clears root story files so a future chat sees `No Active Story Loaded`.
 
 Workspace-changing commands write `state/.transition.json` while they run. If a command is interrupted and normal project commands refuse to continue, inspect the marker with `npm run story -- transition-status --json`, verify with `npm run project:verify -- --json`, and clear the marker with `npm run story -- transition-clear --force` only after the workspace state is understood.
 

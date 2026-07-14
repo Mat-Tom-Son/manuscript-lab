@@ -33,15 +33,178 @@ jobs:
 
       - name: Run fresh project smoke test
         run: |
-          node bin/manuscript-lab.mjs init --title "CI Smoke" --slug ci-smoke --sections 1 --kind document.section
+          node bin/manuscript-lab.mjs init --title "CI Smoke" --slug ci-smoke --sections 1 --kind document.section --target-words 150
           node bin/manuscript-lab.mjs validate
           node bin/manuscript-lab.mjs status
           node bin/manuscript-lab.mjs claims list --json
           node bin/manuscript-lab.mjs citations check --json
-          node bin/manuscript-lab.mjs gate draft/01-opening.md --json
-          node bin/manuscript-lab.mjs report --json
+
+          # A pristine project (every section still todo) must not report
+          # ready: the manuscript gate blocks on sections.any_started.
+          node bin/manuscript-lab.mjs report --json > report-fresh.json || true
+          node -e "
+            const report = JSON.parse(require('fs').readFileSync('report-fresh.json', 'utf8'));
+            if (report.summary.state !== 'not_ready') throw new Error('Expected fresh report state not_ready, got ' + report.summary.state);
+            if (!report.blockers.some((blocker) => blocker.type === 'sections.any_started')) {
+              throw new Error('Expected a sections.any_started blocker, found: ' + report.blockers.map((blocker) => blocker.type).join(', '));
+            }
+          "
+
+          # Fresh sections start as status: todo, which blocks the section gate.
+          if node bin/manuscript-lab.mjs gate draft/01-opening.md --json > gate-todo.json; then
+            echo "Expected the section gate to fail while draft/01-opening.md is still todo." >&2
+            exit 1
+          fi
+          node -e "
+            const gate = JSON.parse(require('fs').readFileSync('gate-todo.json', 'utf8'));
+            if (gate.ready !== false) throw new Error('Expected gate.ready false for a todo section.');
+            const started = gate.requirements.find((item) => item.id === 'contract.status_started');
+            if (!started || started.status !== 'fail') throw new Error('Expected contract.status_started to fail for a todo section.');
+          "
+
+          # Start writing: set status draft in the contract, status table, and
+          # outline (a compose dependency), add prose, compose, then sync the
+          # template project manifest after the workspace writes.
+          node -e "
+            const fs = require('fs');
+            const file = 'draft/01-opening.md';
+            fs.writeFileSync(file, fs.readFileSync(file, 'utf8').replace('status: todo', 'status: draft'));
+          "
+          node -e "
+            const fs = require('fs');
+            const file = 'state/status.md';
+            const lines = fs.readFileSync(file, 'utf8').split('\n').map((line) =>
+              line.includes('01-opening') ? line.replace('| todo |', '| draft |') : line);
+            fs.writeFileSync(file, lines.join('\n'));
+          "
+          node -e "
+            const fs = require('fs');
+            const file = 'outline.md';
+            const text = fs.readFileSync(file, 'utf8');
+            const index = text.indexOf('### 01 Opening');
+            if (index === -1) throw new Error('Expected outline section marker ### 01 Opening.');
+            fs.writeFileSync(file, text.slice(0, index) + text.slice(index).replace('Status: todo', 'Status: draft'));
+          "
+          for i in $(seq 1 15); do
+            printf "Smoke sentence %s keeps this tutorial section moving toward its measured word target for the gate.\n\n" "$i" >> draft/01-opening.md
+          done
+          node bin/manuscript-lab.mjs compose draft/01-opening.md
+          node bin/manuscript-lab.mjs project:sync
+
+          node bin/manuscript-lab.mjs gate draft/01-opening.md --json > gate-draft.json
+          node -e "
+            const gate = JSON.parse(require('fs').readFileSync('gate-draft.json', 'utf8'));
+            if (gate.ready !== true) throw new Error('Expected the section gate to pass after drafting: ' + JSON.stringify(gate.summary));
+            for (const id of ['contract.status_started', 'words.floor', 'runtime.fresh']) {
+              const requirement = gate.requirements.find((item) => item.id === id);
+              if (!requirement || requirement.status !== 'pass') throw new Error('Expected ' + id + ' to pass.');
+            }
+          "
           node bin/manuscript-lab.mjs check --static-only
-          node bin/manuscript-lab.mjs done:no-export
+
+          # The manuscript scope gates active (non-todo) sections, so the still-todo
+          # title section leaves report ready with 2 total / 1 active sections.
+          node bin/manuscript-lab.mjs report --json > report.json
+          node -e "
+            const report = JSON.parse(require('fs').readFileSync('report.json', 'utf8'));
+            if (report.summary.state !== 'ready') throw new Error('Expected report state ready, got ' + report.summary.state + ': ' + report.blockers.map((blocker) => blocker.type).join(', '));
+            if (report.summary.sections.total !== 2 || report.summary.sections.active !== 1) {
+              throw new Error('Expected 2 total / 1 active sections, got ' + JSON.stringify(report.summary.sections));
+            }
+          "
+
+          # done:no-export inherits the manuscript gate; with the drafted section
+          # composed and synced it passes. Assert that verdict explicitly.
+          node bin/manuscript-lab.mjs done:no-export --json > done.json
+          node -e "
+            const done = JSON.parse(require('fs').readFileSync('done.json', 'utf8'));
+            if (done.pass !== true) throw new Error('Expected done:no-export to pass: ' + JSON.stringify(done.errors));
+          "
 
       - name: Verify package contents
         run: npm pack --dry-run
+
+  fixtures:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Green fixture stays ready
+        working-directory: examples/technical-whitepaper
+        run: |
+          node ../../bin/manuscript-lab.mjs validate
+          node ../../bin/manuscript-lab.mjs check --static-only
+          node ../../bin/manuscript-lab.mjs gate manuscript --json > gate.json || {
+            cat gate.json
+            echo "Expected the manuscript gate to pass on the green fixture." >&2
+            exit 1
+          }
+          node ../../bin/manuscript-lab.mjs report --json > report.json
+          node -e "
+            const fs = require('fs');
+            const gate = JSON.parse(fs.readFileSync('gate.json', 'utf8'));
+            if (gate.ready !== true) throw new Error('Expected gate.ready true: ' + JSON.stringify(gate.summary));
+            const report = JSON.parse(fs.readFileSync('report.json', 'utf8'));
+            if (report.summary.state !== 'ready') throw new Error('Expected report state ready, got ' + report.summary.state);
+            if (report.blockers.length !== 0) {
+              throw new Error('Expected zero blockers, found: ' + report.blockers.map((blocker) => blocker.type).join(', '));
+            }
+          "
+
+      - name: Broken fixture stays red
+        working-directory: examples/broken-whitepaper
+        run: |
+          node ../../bin/manuscript-lab.mjs validate
+          if node ../../bin/manuscript-lab.mjs check --static-only; then
+            echo "Expected static checks to fail on the broken fixture." >&2
+            exit 1
+          fi
+          node ../../bin/manuscript-lab.mjs report --json > report.json
+          node -e "
+            const report = JSON.parse(require('fs').readFileSync('report.json', 'utf8'));
+            if (report.summary.state !== 'not_ready') throw new Error('Expected report state not_ready, got ' + report.summary.state);
+            const found = new Set(report.blockers.map((blocker) => blocker.type));
+            const expected = [
+              'open_issues',
+              'citation_needed',
+              'unresolved_cite',
+              'claim_blocker',
+              'claim_source_unregistered',
+              'claim_unresolved',
+              'sections.ready',
+              'citations.ready',
+              'runtime.all_fresh',
+              'issues.none_open_or_deferred',
+              'doccheck.static_all_pass',
+            ];
+            const missing = expected.filter((type) => !found.has(type));
+            if (missing.length) throw new Error('Expected blocker types missing: ' + missing.join(', '));
+            const missingFix = report.blockers.filter((blocker) => typeof blocker.fix !== 'string' || !blocker.fix.length);
+            if (missingFix.length) throw new Error('Blockers without fix commands: ' + missingFix.map((blocker) => blocker.type).join(', '));
+          "
+
+  action-smoke:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v6
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+
+      - name: Run the bundled action against the green fixture
+        uses: ./
+        with:
+          working-directory: examples/technical-whitepaper
+          command: report --json --gate
+          use-local: "true"

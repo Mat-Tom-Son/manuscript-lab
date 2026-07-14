@@ -20,10 +20,10 @@ Reusable harness files usually include scripts, generic docs, checks, reviews, p
 ## Workflow
 
 1. Run `npm run status` and `npm run check -- --static-only` when a story is active.
-2. Use `npm run story:unload -- --slug <story-slug>` when the user wants to put away, close, unload, or deactivate the current story without loading the next one yet.
+2. Use `npm run story -- unload --slug <story-slug>` when the user wants to put away, close, unload, or deactivate the current story without loading the next one yet.
 3. Use `npm run story:archive -- --slug <story-slug>` only when the user wants a snapshot while keeping the story active.
-4. For a blank new story while another story is active, use `npm run story:init -- --title "Title" --slug <slug> --sections <n> --archive-current`.
-5. For an archived story while another story is active, use `npm run story:restore -- --from archive/<story-archive> --archive-current`.
+4. For a blank new story while another story is active, use `npm run project:init -- --title "Title" --slug <slug> --sections <n> --archive-current`.
+5. For an archived story while another story is active, use `npm run project:restore -- --from archive/<story-archive> --archive-current`.
 6. If `npm run status` says `No Active Story Loaded`, omit `--archive-current` from init/restore.
 7. Load the user's new context into `PROJECT.md`, `brief.md`, `outline.md`, `style.md`, `taste/`, `state/continuity.md`, `state/truth/*.json`, and `docs/PROJECT_HANDOFF.md`.
 8. Compose runtime packets for active sections.

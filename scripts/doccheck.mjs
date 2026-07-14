@@ -6,6 +6,11 @@ import crypto from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import {
+  REQUIRED_PROJECT_DIRS,
+  REQUIRED_PROJECT_FILES,
+  createMissingRequiredScaffolding,
+} from "./lib/required-scaffolding.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
@@ -21,35 +26,7 @@ const allowedSeverities = new Set(["blocking", "warning", "advisory"]);
 const allowedSchemaTypes = new Set(["array", "boolean", "number", "object", "string"]);
 const supportedAssertionTypes = new Set(["empty_array", "no_issues", "pass_true", "max_array_length", "score_at_least"]);
 
-const requiredProjectFiles = [
-  "brief.md",
-  "outline.md",
-  "style.md",
-  "state/status.md",
-  "state/continuity.md",
-  "state/claims.md",
-  "state/open-questions.md",
-  "sources/index.md",
-  "state/issues/README.md",
-  "state/issues/issue-ledger.json",
-  "state/issues/decisions.json",
-  "state/issues/closed.json",
-  "state/revision-plans/README.md",
-  "state/revision-audits/README.md",
-  "state/reviews/README.md",
-  "state/candidates/README.md",
-  "state/runtime/README.md",
-  "state/truth/README.md",
-  "state/truth/entities.json",
-  "state/truth/threads.json",
-  "state/truth/claims.json",
-  "state/truth/sources.json",
-  "state/truth/terms.json",
-  "state/truth/style.json",
-  "state/truth/artifacts.json",
-  "state/projections/README.md",
-  "state/observations/README.md",
-];
+const requiredProjectFiles = REQUIRED_PROJECT_FILES;
 
 const requiredPackageFiles = [
   "AGENTS.md",
@@ -78,20 +55,7 @@ const requiredPackageFiles = [
   ".pi/skills/chapter-production/SKILL.md",
 ];
 
-const requiredProjectDirs = [
-  "draft",
-  "sources",
-  "state",
-  "state/revision-audits",
-  "state/reviews",
-  "state/issues",
-  "state/candidates",
-  "state/revision-plans",
-  "state/runtime",
-  "state/truth",
-  "state/projections",
-  "state/observations",
-];
+const requiredProjectDirs = REQUIRED_PROJECT_DIRS;
 
 const requiredPackageDirs = [
   "templates",
@@ -115,6 +79,33 @@ const warnings = [];
 
 for (const flag of options.unknownFlags) {
   errors.push(`Unknown option: ${flag}`);
+}
+
+let fixedScaffolding = [];
+if (options.fix) {
+  if (discovery.mode === "none" || !discovery.config) {
+    console.error("No Manuscript Lab project found; --fix needs a project. Run mlab init first.");
+    process.exit(2);
+  }
+  const scaffoldFix = createMissingRequiredScaffolding(abs(""));
+  fixedScaffolding = scaffoldFix.created;
+  if (scaffoldFix.conflicts.length) {
+    console.error("Cannot create required scaffolding:\n");
+    for (const rel of scaffoldFix.conflicts) {
+      const shadow = shadowingScaffoldFile(rel) ?? rel;
+      console.error(`- Cannot create ${rel}: ${shadow} exists as a file — move or delete it, then re-run mlab check --fix.`);
+    }
+    process.exit(1);
+  }
+  if (!options.json) {
+    if (fixedScaffolding.length) {
+      console.log("Created missing scaffolding:");
+      for (const rel of fixedScaffolding) console.log(`- ${rel}`);
+      console.log("");
+    } else {
+      console.log("No missing scaffolding to create.\n");
+    }
+  }
 }
 
 for (const file of requiredProjectFiles) {
@@ -208,6 +199,8 @@ const result = {
   mode: modelChecksRan ? "static+model" : "static",
   model_checks_requested: modelChecksRequested,
   model_override: modelOverride() || null,
+  fix: options.fix,
+  fixed: fixedScaffolding,
   strict: options.strict,
   static: {
     pass: staticErrorCount === 0,
@@ -245,6 +238,9 @@ if (warnings.length) {
 if (errors.length) {
   console.error("Document checks failed:\n");
   for (const error of errors) console.error(`- ${error}`);
+  if (hasMissingScaffoldingErrors(errors)) {
+    console.error("\nRun mlab check --fix to create missing scaffolding.");
+  }
   process.exit(1);
 }
 
@@ -1559,11 +1555,28 @@ function hashJson(value) {
   return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
 }
 
+function hasMissingScaffoldingErrors(errorList) {
+  return errorList.some((error) =>
+    /^Missing required project (?:file|directory): /.test(error) ||
+    /^Expected project directory but found file: /.test(error));
+}
+
+function shadowingScaffoldFile(rel) {
+  let current = rel;
+  while (current && current !== ".") {
+    const full = abs(current);
+    if (fs.existsSync(full)) return fs.statSync(full).isDirectory() ? null : current;
+    current = path.dirname(current);
+  }
+  return null;
+}
+
 function parseArgs(rawArgs) {
   const parsed = {
     paths: [],
     help: false,
     json: false,
+    fix: false,
     modelChecks: false,
     staticOnly: false,
     strict: false,
@@ -1581,6 +1594,8 @@ function parseArgs(rawArgs) {
       parsed.help = true;
     } else if (arg === "--json") {
       parsed.json = true;
+    } else if (arg === "--fix") {
+      parsed.fix = true;
     } else if (arg === "--model-checks") {
       parsed.modelChecks = true;
     } else if (arg === "--static-only") {
@@ -1625,6 +1640,8 @@ Paths:
 
 Options:
   --static-only          Run static checks only.
+  --fix                  Create missing required scaffolding (state dirs, README
+                         stubs, state/truth/*.json) before running checks.
   --model-checks         Run model-backed checks referenced by section contracts.
   --model <id>           Override configured model IDs for this run.
   --list-model-checks    Print configured model-backed checks and exit.

@@ -17,6 +17,9 @@ gate:
         - id: outline.sections_resolve
           severity: block
           sensor: outline
+        - id: sections.any_started
+          severity: block
+          sensor: section_contract
         - id: sections.ready
           severity: block
           sensor: section_ready

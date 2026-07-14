@@ -2,6 +2,104 @@
 
 ## Unreleased
 
+## 2.0.0 - 2026-07-14
+
+- Added `mlab adopt <file-or-dir>` as the front door for existing manuscripts:
+  it bootstraps a config-first workspace and imports markdown into contracted
+  `draft/NN-slug.md` sections (`--split file|h1|h2`, `--dry-run`, `--json`)
+  without modifying or moving source files.
+- Added `mlab mcp`, a zero-dependency MCP server over stdio that exposes the
+  command surface as typed tools with safety annotations and `--read-only` /
+  `--all-tools` / `--root` exposure flags, documented in `docs/MCP.md`.
+- Added the `mlab lab` namespace grouping R&D commands (`room`, `chorus`,
+  `practice`, `drive`, `eval`, `artifacts`, `golden-path`, `taste`, `style`,
+  `words`, `model`) behind one entry point with `mlab lab --help`.
+- Added `mlab check --fix` to create every missing required scaffolding path
+  (state directories, README stubs, `state/truth/*.json`) idempotently before
+  re-running static checks; plain `check` failures now hint at `--fix` when
+  missing scaffolding is the cause.
+- Added a `fix` command to every report blocker: JSON blockers gain a `fix`
+  field, terminal blockers print a `fix:` line, and the HTML report gains a
+  FIX column, with failing sections listed individually with their reasons.
+- Added a composite GitHub Action (`action.yml`) for running Manuscript Lab
+  reports in CI, documented in `docs/CI.md`.
+- Added a green end state to the `examples/technical-whitepaper` fixture and a
+  fixtures CI job that guards both the green fixture and the deliberately red
+  `examples/broken-whitepaper` blocker demo.
+- Added grouped `mlab` help (one line per command across six groups), `mlab
+  help <command>` forwarding, `mlab help admin` for template-clone commands,
+  and `docs/COMMANDS.md` as the full command reference.
+- Added bare `mlab init` defaults outside template clones: profile
+  `whitepaper`, root `manuscript`, and a title cased from the directory name,
+  printed with customization hints instead of erroring.
+- Changed `mlab validate` to treat low prose counts on started sections as a
+  warning instead of an error: structural validation stays in `validate`, and
+  writing progress is enforced by the `words.floor` gate requirement, so
+  `adopt` and early drafting no longer fail protocol validation.
+- Changed section-ready gate semantics to be stricter: sections whose contract
+  status is `todo` or `planned` now fail the blocking `contract.status_started`
+  requirement, prose below 33% of `target_words` fails the blocking
+  `words.floor` requirement (contract `min_words` or the config
+  `gates.section.words_floor_ratio` override the floor), and prose below 80%
+  of target warns via `words.near_target`.
+- Changed citation requirement ids to the `evidence.*` namespace (ten
+  requirements across `evidence.claims.*`, `evidence.citations.*`, and
+  `evidence.sources.*`) shared by `claims`, `citations check`, `evidence
+  report`, and the citation gate. Migration: consumers parsing gate or
+  evidence JSON must switch from the old `claims.*`/`sources.*` requirement
+  ids to the `evidence.*` ids.
+- Changed unsupported-claim severity to be risk-aware: claims with explicit
+  `low` or `medium` risk now warn instead of block in citation checks and
+  gates, while `high`, `critical`, and unspecified risk still block.
+- Changed missing local source files to block `mlab citations check` and
+  `mlab evidence report` as well as the citation gate (at 1.5.x only the gate
+  blocked): a path-like `sources/index.md` location that does not resolve to a
+  local file fails `evidence.sources.manifest_valid`. Prose-y descriptive
+  locations (containing whitespace) and URL/`n/a`-style locations still only
+  warn.
+- Changed `mlab report` to compute section and citation readiness through the
+  same in-process gate engine as `mlab gate`, eliminating pass-vs-fail
+  contradictions between the two surfaces.
+- Changed the default export formats from `md,html,epub,pdf` to `md,html`
+  across every surface that takes them: `mlab export` / `npm run export`,
+  `mlab done --export-formats` / `npm run done`, and the standalone
+  `mlab gate export`. EPUB and PDF are now explicit opt-ins via
+  `--formats` / `--export-formats` (breaking for workflows that relied on
+  default EPUB/PDF outputs).
+- Changed unknown-command handling to print the six command groups and a
+  nearest-match suggestion instead of the full help text.
+- Rewrote `README.md` and `docs/PRODUCT_STRATEGY.md` around the 2.0 decision
+  of record: the protocol is the product, generation features are contained
+  lab R&D with an explicit promotion criterion, and agents are the primary
+  distribution surface.
+- Deprecated the old top-level lab command names (`room`, `chorus`,
+  `practice`, `drive`, `eval`, `artifacts`, `golden-path`, `taste:arbiter`,
+  `style:signals`, `words`, `model:*`) in favor of `mlab lab <command>`; the
+  old names keep working as compatibility aliases.
+- Removed unused template npm scripts:
+  `done:json` (use `npm run done -- --json`),
+  `check:list` (use `npm run check -- --list-model-checks`),
+  `check:static` (use `npm run check -- --static-only`),
+  `story:init` / `story:restore` (use `project:init` / `project:restore`),
+  `story:unload` (use `npm run story -- unload`), and the per-domain test
+  scripts `model:json-test`, `model:response-test`, `project:test`,
+  `style:test`, `taste:test`, and `words:test` (use `npm test`).
+- Fixed the false green on fresh projects: a workspace where every draft
+  section is still `todo` no longer passes the manuscript gate vacuously.
+  The new blocking `sections.any_started` requirement fails until at least
+  one section is started, so `mlab report` and `mlab done` on a pristine
+  `mlab init` workspace now say `not_ready` with a fix command instead of
+  `ready`. Projects with at least one active (non-`todo`) section are
+  unaffected.
+- Fixed the contradiction where `citations check` could pass while the report
+  and manuscript gate citation requirement failed: both now call one shared
+  evidence-spine implementation with the same default scope (all active
+  sections).
+- Fixed technical-whitepaper fixture drift so the committed fixture passes the
+  current harness end to end, with its revision-trail artifacts kept as
+  completed history.
+- Fixed `.gitignore` to exclude generated `examples/**/.doccheck/` artifacts.
+
 ## 1.5.3 - 2026-06-25
 
 - Fixed the manual release workflow so GitHub Actions configures a bot git

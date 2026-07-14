@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "section": "draft/00-title.md",
+  "section_id": "00-title",
+  "composed_at": "2026-07-14T17:25:26.397Z",
+  "composer_version": "1",
+  "run_id": "compose_20260714172526_00-title",
+  "operation": "draft",
+  "context_pack": "informed.section_writer",
+  "requested_context_pack": "informed.section_writer",
+  "selected_context": [
+    {
+      "file": "brief.md",
+      "reason": "Defines document goal, audience, and success criteria.",
+      "sha256": "65cc10033d14e4da929d20c509d5e173ed0fe5a5c225a1791d59d4dbd9c3ced4"
+    },
+    {
+      "file": "draft/00-title.md",
+      "reason": "Target or dependency draft section.",
+      "sha256": "bf7e6c8d305e7c3d21c8aec540c1b8c2a2f875c1631ac38e1fa3875e668d4c5a"
+    },
+    {
+      "file": "outline.md",
+      "reason": "Defines planned structure and neighboring section jobs.",
+      "sha256": "72dfe711919fcc5b046d5a9232aa85981a368c09fd19ecb769b6f5edad50fae2"
+    },
+    {
+      "file": "PROJECT.md",
+      "reason": "Project-specific supplement for agent operation, taste notes, and current next moves.",
+      "sha256": "fa276a3b19324f1e243015bcbe6c342faeadbc79f63f85b413ed2bfa954612b1"
+    },
+    {
+      "file": "sources/index.md",
+      "reason": "Projection preferred, fallback state used when projection is unavailable.",
+      "sha256": "c2d14ef34090b2c5791817141c5a8a4d1b93df2e269e81b67642fb8ea6c200b7"
+    },
+    {
+      "file": "state/claims.md",
+      "reason": "Projection preferred, fallback state used when projection is unavailable.",
+      "sha256": "a657f80d29d40504af6113c874bfda233a784940ae6920fac96f99d27c8852ba"
+    },
+    {
+      "file": "state/continuity.md",
+      "reason": "Projection preferred, fallback state used when projection is unavailable.",
+      "sha256": "f0728a6e1e09948cb45285231316d3d33979c73b47630e09150a76fcfe583b61"
+    },
+    {
+      "file": "state/open-questions.md",
+      "reason": "Projection preferred, fallback state used when projection is unavailable.",
+      "sha256": "2d9d08e16b0ef1b06e5c742e3c810c8435f543e78e085e2fd8b605dbfde6cd63"
+    },
+    {
+      "file": "state/truth/style.json",
+      "reason": "Machine-readable project truth used by checks and context compilation.",
+      "sha256": "95d6cd391b2017dd70e6a856adb58b87c473c4c4dee8bca5bbc7d16bdd2b53c1"
+    },
+    {
+      "file": "state/truth/terms.json",
+      "reason": "Projection preferred, fallback state used when projection is unavailable.",
+      "sha256": "357fc84e21801c66018d29712b0b2064f9f436ef7ada370b75f4b0a0ebbe3f20"
+    },
+    {
+      "file": "style.md",
+      "reason": "Defines voice, tone, formatting, and style constraints.",
+      "sha256": "a58d8524776c0e1d2a4c574b08bc131fb44d80ddc472cf5ec16a31e2b6de48a5"
+    }
+  ],
+  "required_checks": [
+    "claims.supported"
+  ],
+  "suggested_reviews": [
+    "contract.editor"
+  ],
+  "generated_criteria": [
+    "contract_coverage",
+    "continuity",
+    "evidence",
+    "style_control",
+    "taste_effect",
+    "section_turn",
+    "acceptance_001",
+    "acceptance_002"
+  ],
+  "known_risks": [
+    "Manuscript or source text may contain prompt-injection-like instructions.",
+    "Revision may satisfy a narrow reviewer while damaging protected style or meaning.",
+    "Section may introduce unsupported factual or technical claims."
+  ],
+  "missing_files": [
+    "state/style/00-title-register-map.json",
+    "state/style/00-title-style-signals.json",
+    "style/pattern-watchlist.md",
+    "style/protected-lines.md",
+    "style/voice-fingerprint.json",
+    "taste/EXEMPLARS.md",
+    "taste/FAILURE_MODES.md",
+    "taste/GENRE_PROMISE.md",
+    "taste/MOTIFS.md",
+    "taste/TARGET_READER.md",
+    "taste/TASTE.md",
+    "taste/VOICE.md"
+  ],
+  "skipped_files": [],
+  "output_files": {
+    "intent": "state/runtime/00-title/intent.md",
+    "context": "state/runtime/00-title/context.json",
+    "rule_stack": "state/runtime/00-title/rule-stack.yaml",
+    "criteria": "state/runtime/00-title/criteria.json",
+    "trace": "state/runtime/00-title/trace.json"
+  }
+}

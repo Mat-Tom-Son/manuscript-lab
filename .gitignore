@@ -38,5 +38,6 @@ state
 !examples/
 !examples/technical-whitepaper/
 !examples/technical-whitepaper/**
-# Demo reports are generated locally.
+# Demo reports and check scratch state are generated locally.
 examples/**/reports/
+examples/**/.doccheck/

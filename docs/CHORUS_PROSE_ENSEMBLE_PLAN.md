@@ -1,5 +1,7 @@
 # Chorus Prose Line Lab Plan
 
+> Status: design record. Chorus ships as lab R&D via `mlab lab chorus`. Current surface: docs/COMMANDS.md.
+
 Chorus is an experimental prose line-lab layer for Manuscript Lab. It uses a
 decorrelated pool of model voices to generate short candidate continuations one
 beat at a time, then presents them as contact sheets for human selection,

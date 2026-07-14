@@ -2,7 +2,7 @@
 
 A compact public fixture for Manuscript Lab.
 
-Exported 2026-06-16 from technical-whitepaper.
+Exported 2026-07-14 from technical-whitepaper.
 
 ## Contents
 
@@ -26,7 +26,9 @@ inside the repository.
 A context packet is the local bundle under `state/runtime/`. It records the
 target section, visible files, skipped or excluded files, and criteria generated
 from the section contract. The packet does not replace judgment; it creates a
-small place to write down what judgment should protect.
+small place to write down what judgment should protect. Before export, the
+document owner reviews that packet against the accepted issue and the section
+contract.
 
 An issue is a durable review finding. A review dry-run can show which sensors
 would run without calling a model provider. When a real review creates findings,
@@ -45,8 +47,29 @@ enough to show the habit: preserve what works, name what changed, and verify
 that the accepted issue was actually addressed.
 
 An export is the reader-facing copy. This fixture includes Markdown and HTML
-examples under `exports/`. A live run can regenerate them with `npm run export
--- --formats md,html --slug technical-whitepaper --author ""`.
+examples under `exports/`. A live run can regenerate them with `mlab export
+--formats md,html --slug technical-whitepaper --author ""`, and the export
+manifest records input and output hashes so a reader can confirm that the
+published files match the committed draft.
+
+The artifacts connect in a small daily loop. Compose the context packet, write
+or revise prose against the section contract, and run the static checks. Review
+findings become issues, an issue decision becomes a revision instruction,
+candidates explore that instruction as complete alternatives, and an audit
+records what the chosen revision changed. Every step leaves a durable file
+behind, so the next working session starts from recorded decisions instead of
+memory. None of the steps require a model provider; the fixture demonstrates
+the file protocol, and a team can add model-backed reviews later without
+changing any of the artifact shapes.
+
+Readiness is a file decision too. The `mlab gate manuscript` command reads the
+same contracts, status table, claims, sources, runtime packets, and issue
+ledger that the workflow writes, then records a pass or fail verdict for each
+requirement. The `mlab report` command collects those verdicts into one blocker
+list, and every blocker names the exact command that clears it. This fixture is
+kept in the ready state on purpose: validation, static checks, the manuscript
+gate, and the report all pass on the committed files, so a reader can verify
+the end of the tutorial instead of taking it on faith.
 
 The operating promise is modest: every visible claim in this sample document can
 be found in `state/claims.md`, every sample source key appears in

@@ -3,6 +3,8 @@
 import { spawnSync } from "node:child_process";
 import fs from "node:fs";
 import path from "node:path";
+import { evaluateGate } from "./gate.mjs";
+import { writeFileAtomic, writeJsonAtomic } from "./lib/files.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
 const REPORT_SCHEMA = "manuscript-lab.report.v1";
@@ -42,7 +44,7 @@ process.exit(options.gate && !report.ok ? 1 : 0);
 function buildReport() {
   const statusRun = runJsonCommand("scripts/harness-status.mjs", ["--json"], { required: true });
   const evidenceRun = runJsonCommand("scripts/evidence-spine.mjs", ["evidence", "report", "--json"]);
-  const gateRun = runJsonCommand("scripts/gate.mjs", ["manuscript", "--json"], { required: true });
+  const gateRun = runManuscriptGate();
   const reviewRun = runJsonCommand("scripts/review-report.mjs", ["--json"]);
   const modelCalls = readModelCalls();
   const revisionTrail = buildRevisionTrail(statusRun.data?.candidate_runs ?? []);
@@ -152,25 +154,125 @@ function buildReport() {
 function collectBlockers({ status, evidence, gate, commandRuns }) {
   const blockers = [];
   for (const run of commandRuns) {
-    if (run.required && !run.ok) blockers.push(blocker("command_error", "report", run.error || `${run.command} failed`, { command: run.command }));
+    if (run.required && !run.ok) blockers.push(blocker("command_error", "report", run.error || `${run.command} failed`, { command: run.command }, run.command));
   }
-  if (status.issues?.open > 0) blockers.push(blocker("open_issues", "issues", `${status.issues.open} open issue(s) remain.`, status.issues));
-  if (status.issues?.deferred > 0) blockers.push(blocker("deferred_issues", "issues", `${status.issues.deferred} deferred issue(s) remain.`, status.issues));
+  if (status.issues?.open > 0) blockers.push(blocker("open_issues", "issues", `${status.issues.open} open issue(s) remain.`, status.issues, "mlab issues list --status open"));
+  if (status.issues?.deferred > 0) blockers.push(blocker("deferred_issues", "issues", `${status.issues.deferred} deferred issue(s) remain.`, status.issues, "mlab issues list --status deferred"));
   if (evidence && !evidence.ok) {
     for (const issue of (evidence.issues ?? []).filter((item) => item.severity === "blocking").slice(0, 20)) {
-      blockers.push(blocker(issue.kind || "evidence", issue.file || "evidence", issue.message || "Evidence blocker remains.", issue));
+      blockers.push(blocker(issue.kind || "evidence", issue.file || "evidence", issue.message || "Evidence blocker remains.", issue, fixForEvidenceIssue(issue)));
     }
   }
   if (gate && !gate.ready) {
     for (const req of (gate.requirements ?? []).filter((item) => ["fail", "error"].includes(item.status)).slice(0, 20)) {
-      blockers.push(blocker(req.id, "gate", req.message, { gate: gate.gate_id, requirement: req.id, evidence: req.evidence }));
+      if (req.id === "sections.ready") {
+        const failedSections = Array.isArray(req.evidence?.failed_sections) ? req.evidence.failed_sections : [];
+        if (failedSections.length) {
+          for (const section of failedSections.slice(0, 20)) {
+            const failures = sectionFailures(section);
+            blockers.push(blocker(
+              "sections.ready",
+              section.file || section.id || "section",
+              sectionBlockerMessage(section, failures),
+              { gate: gate.gate_id, requirement: req.id, section },
+              fixForSection(section, failures),
+            ));
+          }
+          continue;
+        }
+      }
+      blockers.push(blocker(req.id, "gate", req.message, { gate: gate.gate_id, requirement: req.id, evidence: req.evidence }, fixForGateRequirement(req)));
     }
   }
   return blockers;
 }
 
-function blocker(type, target, message, evidence = {}) {
-  return { type, target, message, evidence };
+function blocker(type, target, message, evidence = {}, fix = "") {
+  return { type, target, message, fix, evidence };
+}
+
+function runManuscriptGate() {
+  // Reuse the gate engine directly so report and `mlab gate manuscript`
+  // can never disagree about readiness.
+  const command = "node scripts/gate.mjs manuscript --json";
+  try {
+    const data = evaluateGate({
+      gateId: "manuscript-ready",
+      targetArg: "manuscript",
+      discovery,
+      options: { cwd: process.cwd() },
+      command: "manuscript-ready manuscript",
+    });
+    return { command, status: data.exit_code, ok: true, required: true, data, error: "" };
+  } catch (error) {
+    return { command, status: 2, ok: false, required: true, data: null, error: `Manuscript gate engine failed: ${error.message}` };
+  }
+}
+
+function sectionFailures(section) {
+  return (Array.isArray(section.failures) ? section.failures : []).map((failure) =>
+    typeof failure === "string" ? { id: failure, message: "" } : { id: failure.id ?? "", message: failure.message ?? "" });
+}
+
+function sectionBlockerMessage(section, failures) {
+  const detail = failures.map((failure) => failure.message || failure.id).filter(Boolean).join("; ");
+  return `${section.file || section.id} is not ready: ${detail || "section gate failed"}`;
+}
+
+function fixForSection(section, failures) {
+  const file = section.file || "draft/<section>.md";
+  const ids = failures.map((failure) => failure.id);
+  if (ids.includes("contract.status_started")) return `set status: draft in the ${file} section contract (manual edit)`;
+  if (ids.includes("contract.present") || ids.includes("contract.valid")) return `add a valid section contract to ${file} (manual edit)`;
+  if (ids.includes("runtime.fresh")) return `mlab compose ${file}`;
+  if (ids.includes("words.floor") || ids.includes("content.nonempty_when_active") || ids.includes("word_count.in_band")) {
+    return `write more prose in ${file} toward target_words (manual edit)`;
+  }
+  if (ids.includes("doccheck.static_pass")) return `mlab check ${file}`;
+  if (ids.includes("status.synced")) return `align state/status.md with the ${file} contract status (manual edit)`;
+  if (ids.includes("issues.no_blockers")) return `mlab issues list --target ${file}`;
+  return `mlab gate ${file}`;
+}
+
+function fixForEvidenceIssue(issue) {
+  const kind = String(issue.kind ?? "");
+  if (kind.startsWith("claim")) return "mlab claims list --unsupported";
+  return "mlab citations check";
+}
+
+function fixForGateRequirement(req) {
+  const id = String(req.id ?? "");
+  if (id === "sections.any_started") {
+    return "Set status: draft in the section contract you are writing, then run mlab compose <file>.";
+  }
+  if (id === "doccheck.static_all_pass") {
+    return hasMissingScaffoldingOutput(req) ? "mlab check --fix" : "mlab check --static-only";
+  }
+  if (id === "runtime.all_fresh") {
+    const stale = (Array.isArray(req.evidence?.stale) ? req.evidence.stale : []).map((entry) => entry.file).filter(Boolean);
+    if (!stale.length) return "mlab compose draft/<section>.md";
+    return stale.slice(0, 3).map((file) => `mlab compose ${file}`).join(" && ");
+  }
+  if (id === "citations.ready" || id.startsWith("evidence.citations") || id.startsWith("evidence.sources")) return "mlab citations check";
+  if (id.startsWith("evidence.claims")) return "mlab claims list --unsupported";
+  if (id === "issues.none_open_or_deferred") return "mlab issues list --status open";
+  if (id === "reviews.no_latest_errors") return "mlab review draft/<section>.md";
+  if (id === "project.required_files_present") return "mlab check --fix";
+  if (id === "outline.sections_resolve") return "update File: references in outline.md (manual edit)";
+  if (id === "harness.templates_clean") return "mlab template:audit --strict";
+  if (id === "harness.context_clean") return "mlab context:audit --strict";
+  if (id === "project.filesystem_verified") return "mlab project:verify";
+  if (id === "manuscript.ready") return "mlab gate manuscript";
+  if (id.startsWith("export.")) return "mlab export";
+  return "mlab gate manuscript --json";
+}
+
+function hasMissingScaffoldingOutput(req) {
+  const lines = [
+    ...(Array.isArray(req.evidence?.stdout) ? req.evidence.stdout : []),
+    ...(Array.isArray(req.evidence?.stderr) ? req.evidence.stderr : []),
+  ];
+  return lines.some((line) => /Missing required project (?:file|directory): |Expected project directory but found file: /.test(String(line)));
 }
 
 function runJsonCommand(script, args = [], { required = false } = {}) {
@@ -429,8 +531,8 @@ function writeReport(report) {
       html: displayPath(htmlFile),
     },
   };
-  fs.writeFileSync(jsonFile, `${JSON.stringify(withArtifacts, null, 2)}\n`, "utf8");
-  fs.writeFileSync(htmlFile, renderHtml(withArtifacts), "utf8");
+  writeJsonAtomic(jsonFile, withArtifacts);
+  writeFileAtomic(htmlFile, renderHtml(withArtifacts), "utf8");
   report.artifacts = withArtifacts.artifacts;
   if (options.open) openFile(htmlFile);
 }
@@ -474,7 +576,10 @@ function printText(report) {
   console.log("");
   console.log("Blockers:");
   if (report.blockers.length) {
-    for (const item of report.blockers.slice(0, 12)) console.log(`- ${item.type}: ${item.message}`);
+    for (const item of report.blockers.slice(0, 12)) {
+      console.log(`- ${item.type}: ${item.message}`);
+      if (item.fix) console.log(`  fix: ${item.fix}`);
+    }
     if (report.blockers.length > 12) console.log(`- ... ${report.blockers.length - 12} more`);
   } else {
     console.log("- none");
@@ -520,8 +625,13 @@ function printText(report) {
 function renderHtml(report) {
   const title = `${escapeHtml(report.project.title)} Manuscript Lab Report`;
   const blockerRows = report.blockers.length
-    ? report.blockers.map((item) => `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.target)}</td><td>${escapeHtml(item.message)}</td></tr>`).join("\n")
-    : `<tr><td colspan="3">None</td></tr>`;
+    ? report.blockers
+        .map(
+          (item) =>
+            `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.target)}</td><td>${escapeHtml(item.message)}</td><td>${item.fix ? `<code>${escapeHtml(item.fix)}</code>` : ""}</td></tr>`,
+        )
+        .join("\n")
+    : `<tr><td colspan="4">None</td></tr>`;
   const sectionRows = report.sections.length
     ? report.sections
         .map(
@@ -628,7 +738,7 @@ function renderHtml(report) {
 
     <h2>Blockers</h2>
     <table>
-      <thead><tr><th>Type</th><th>Target</th><th>Message</th></tr></thead>
+      <thead><tr><th>Type</th><th>Target</th><th>Message</th><th>Fix</th></tr></thead>
       <tbody>${blockerRows}</tbody>
     </table>
 

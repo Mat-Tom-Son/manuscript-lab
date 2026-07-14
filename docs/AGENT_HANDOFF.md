@@ -164,21 +164,21 @@ cat docs/STORY_WORKSPACE_SWITCHING.md
 Use the scripted workflow:
 
 ```bash
-npm run story:init -- --title "New Story" --slug new-story --sections 4 --archive-current
-npm run story:restore -- --from archive/<story-archive> --archive-current
-npm run story:unload -- --slug current-story
+npm run project:init -- --title "New Story" --slug new-story --sections 4 --archive-current
+npm run project:restore -- --from archive/<story-archive> --archive-current
+npm run story -- unload --slug current-story
 npm run story:verify
 npm run project:mount
 npm run project:sync
 ```
 
-Use `story:unload` when the user says to put away, close, unload, or deactivate the current story without naming the next story yet. `story:archive` alone is only a snapshot and leaves the manuscript active in root.
+Use `npm run story -- unload` when the user says to put away, close, unload, or deactivate the current story without naming the next story yet. `story:archive` alone is only a snapshot and leaves the manuscript active in root.
 
 If `npm run status` says `No Active Story Loaded`, start or restore without `--archive-current`:
 
 ```bash
-npm run story:init -- --title "New Story" --slug new-story --sections 4
-npm run story:restore -- --from archive/<story-archive>
+npm run project:init -- --title "New Story" --slug new-story --sections 4
+npm run project:restore -- --from archive/<story-archive>
 ```
 
 Archive or unload the current story first, preserve reusable harness infrastructure, clear stale generated story artifacts, update `docs/PROJECT_HANDOFF.md`, then run checks and status.

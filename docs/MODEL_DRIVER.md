@@ -1,5 +1,7 @@
 # Model Driver
 
+> Status: design record. Ships as lab R&D via `mlab lab drive`. Current surface: docs/COMMANDS.md.
+
 Status: V1 bounded loop shipped with resume-safe persisted runs, read-only
 artifact inspection, and approval-gated practice prose proposals, comparisons,
 benchmarks, strategy comparisons, and eval snapshots.

@@ -291,6 +291,25 @@ export function loadSources(context) {
         message: `Source "${key}" is missing a location, path, URL, or file field.`,
         source: key,
       }));
+    } else if (isLocalFileLocation(row.location)) {
+      const full = path.resolve(context.root, row.location);
+      const escapesRoot = isOutsideRoot(full, context.root);
+      if (escapesRoot || !fs.existsSync(full)) {
+        // Path-like locations (a single token) promised a local file, so a
+        // missing one blocks; prose-y descriptions only warn because they were
+        // never resolvable in the first place.
+        const pathLike = !/\s/.test(row.location.trim());
+        row.issues.push(sourceIssue({
+          kind: "source_file_missing",
+          severity: pathLike ? "blocking" : "warning",
+          requirement_id: "evidence.sources.manifest_valid",
+          message: escapesRoot
+            ? `Source "${key}" location escapes the project root: ${row.location}`
+            : `Source "${key}" location does not resolve to a local file: ${row.location}`,
+          source: key,
+          remediation: "Point the location at an existing file inside the project, use a URL, or mark it n/a.",
+        }));
+      }
     }
     issues.push(...row.issues);
   }
@@ -353,6 +372,20 @@ export function scanCitationMarkers(files, { sources, claims }) {
 
   for (const file of files) {
     const text = fs.readFileSync(file.fullPath, "utf8");
+    for (const match of text.matchAll(/\[(?:citation-needed|cite):\s*\]/g)) {
+      const position = lineColumn(text, match.index ?? 0);
+      issues.push(evidenceIssue({
+        kind: "empty_citation_marker",
+        severity: "blocking",
+        requirement_id: "evidence.citations.resolve_markers",
+        message: `Empty citation marker "${match[0]}" has no source key or claim ID.`,
+        file: file.rel,
+        line: position.line,
+        column: position.column,
+        remediation: "Fill in [cite:<claim-or-source>], or use [citation-needed] until support exists.",
+      }));
+    }
+
     for (const match of text.matchAll(/\[citation-needed(?::([^\]\s]+))?\]/g)) {
       const position = lineColumn(text, match.index ?? 0);
       const claimId = match[1] ?? "";
@@ -385,7 +418,7 @@ export function scanCitationMarkers(files, { sources, claims }) {
       }));
     }
 
-    for (const match of text.matchAll(/\[cite:([A-Za-z0-9_.:-]+)\]/g)) {
+    for (const match of text.matchAll(/\[cite:\s*([A-Za-z0-9_.:-]+)\s*\]/g)) {
       const id = match[1];
       const position = lineColumn(text, match.index ?? 0);
       const marker = {
@@ -454,8 +487,13 @@ export function scanCitationMarkers(files, { sources, claims }) {
 }
 
 export function resolveTargetInfo(context, target) {
-  const files = target ? resolveTargetFiles(context, target) : listDrafts(context.discovery).map((draft) => describeDraftFile(context, draft.fullPath));
-  const label = target ? normalizeRel(String(target)) : "all drafts";
+  // Default scope: all ACTIVE (non-todo) sections, matching the readiness gates.
+  const files = target
+    ? resolveTargetFiles(context, target)
+    : listDrafts(context.discovery)
+      .map((draft) => describeDraftFile(context, draft.fullPath))
+      .filter((file) => file.status !== "todo");
+  const label = target ? normalizeRel(String(target)) : "active drafts";
   const sectionKeys = new Set();
   for (const file of files) {
     for (const key of sectionKeysForValue(file.rel)) sectionKeys.add(key);
@@ -1439,6 +1477,17 @@ function uniqueKey(base, existingKeys) {
 
 function sha256File(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function isLocalFileLocation(location) {
+  if (/^(https?:|doi:|mailto:)/i.test(location)) return false;
+  if (["n/a", "none", "not-needed", "internal", "external"].includes(String(location).toLowerCase())) return false;
+  return true;
+}
+
+function isOutsideRoot(child, parent) {
+  const rel = path.relative(parent, child);
+  return rel === ".." || rel.startsWith(`..${path.sep}`) || path.isAbsolute(rel);
 }
 
 function inferSourceType(file) {

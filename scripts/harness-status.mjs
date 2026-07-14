@@ -386,8 +386,8 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
   if (unloaded) {
     return [
       "No active story is loaded.",
-      "Start a new story: npm run story:init -- --title \"New Story\" --slug new-story --sections 4",
-      "Restore an archived story: npm run story:restore -- --from archive/<story-archive>",
+      "Start a new story: npm run project:init -- --title \"New Story\" --slug new-story --sections 4",
+      "Restore an archived story: npm run project:restore -- --from archive/<story-archive>",
     ];
   }
 

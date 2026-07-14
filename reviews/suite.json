@@ -119,7 +119,9 @@
       "applies_to": [
         "fiction.chapter",
         "essay.introduction",
-        "technical.guide.introduction"
+        "technical.guide.introduction",
+        "document.section",
+        "document.chapter"
       ],
       "context_pack": "blind.section_only",
       "models": [
@@ -141,7 +143,9 @@
         "fiction.chapter",
         "essay",
         "research.paper.section",
-        "technical.guide.section"
+        "technical.guide.section",
+        "document.section",
+        "document.chapter"
       ],
       "context_pack": "informed.editor",
       "models": [

@@ -1,9 +1,10 @@
 # Getting Started
 
-This walkthrough creates a blank project and runs the first checks without any
-model API key.
+This walkthrough creates a project and runs the first checks without any model
+API key. Requirements: Node.js 18 or newer. The full command reference is
+`docs/COMMANDS.md`.
 
-For the fastest public demo, run the technical-whitepaper fixture first:
+For the fastest public demo, run the fixtures from a repo clone first:
 
 ```bash
 cd examples/technical-whitepaper
@@ -11,116 +12,48 @@ cd examples/technical-whitepaper
 ../../bin/manuscript-lab.mjs report --write
 ```
 
-Open `reports/latest.html` to see section readiness, evidence state, accepted
-issues, the sample candidate winner, diff audit presence, and exports in one
-place. The fixture is config-first, so those commands inspect the fixture
-itself instead of the active template project.
+That fixture ends green. Open `reports/latest.html` to see section readiness,
+evidence state, the accepted issue, candidate winner, diff audit, and exports
+in one place. Then run the same commands in `examples/broken-whitepaper` to
+see the failure path: a deliberately red project whose report lists every
+blocker with the `fix:` command that addresses it. Neither fixture calls
+models or the network.
 
-To see the failure path, run the deliberately broken whitepaper fixture:
+## 1. Create A Workspace
 
-```bash
-cd examples/broken-whitepaper
-../../bin/manuscript-lab.mjs validate
-../../bin/manuscript-lab.mjs check --static-only
-../../bin/manuscript-lab.mjs claims list --unsupported
-../../bin/manuscript-lab.mjs citations check draft/01-market.md
-../../bin/manuscript-lab.mjs issues list --status open
-../../bin/manuscript-lab.mjs gate manuscript --write
-../../bin/manuscript-lab.mjs report --write
-```
-
-Expected shape: protocol validation passes, then local checks report
-unsupported claims, citation placeholders, a missing citation target, an open
-blocker issue, missing runtime packets, and not-ready gate/report output. This
-fixture does not call models or the network.
-
-## 1. Choose A Project Shape
-
-The template workflow is the broadest path today. Use it when you are working
-inside a Manuscript Lab clone and want all commands available:
+There is one init path. In any repo (new or existing):
 
 ```bash
-npm run project:init -- --title "My Project" --slug my-project --sections 4 --kind document.section
-```
-
-This creates a canonical workspace at:
-
-```text
-projects/active/my-project/workspace/
-```
-
-The root gets symlinks to the active project:
-
-```text
-PROJECT.md
-brief.md
-outline.md
-style.md
-draft/
-state/
-taste/
-exports/
-```
-
-The default scaffold is still fiction-oriented when `--kind` is omitted. Use
-`--kind document.section` for essays, technical docs, research notes,
-whitepapers, or other non-fiction projects.
-
-The install-anywhere workflow is for a separate writing repo with Manuscript Lab
-as a dev dependency. From the registry package:
-
-```bash
-npm init -y
 npm install -D manuscript-lab
-npx mlab init --profile whitepaper --root manuscript --title "My Whitepaper"
-npx mlab validate
-npx mlab status
-npx mlab compose draft/01-opening.md
-npx mlab room diagnose draft/01-opening.md
-npx mlab room blue-sky draft/01-opening.md
-npx mlab room decide draft/01-opening.md --run <room-run-id> --select idea-001 --reason "..."
-npx mlab room break draft/01-opening.md --run <room-run-id>
-npx mlab room table-read draft/01-opening.md
-npx mlab room report draft/01-opening.md
-npx mlab chorus plan draft/01-opening.md --from-room <room-run-id>
-npx mlab chorus run draft/01-opening.md --from-room <room-run-id>
-npx mlab chorus report draft/01-opening.md
-npx mlab drive --goal "prepare draft/01-opening.md for review" --target draft/01-opening.md --dry-run --json
-npx mlab practice propose --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
-npx mlab practice compare --exercise want-in-room --model openrouter:z-ai/glm-5.2 --json
-npx mlab practice bench --exercises core --models openrouter:z-ai/glm-5.2 --seeds 3 --json
-npx mlab practice strategies --exercises core --models openrouter:z-ai/glm-5.2 --strategies default --json
-npx mlab artifacts list --json
-npx mlab eval practice-strategies --from state/practice-strategies/<run-id> --json
-npx mlab golden-path --write --json
-npx mlab check --static-only draft/01-opening.md
-npx mlab claims list --json
-npx mlab citations check --json
-npx mlab gate draft/01-opening.md --json
-npx mlab report --write
-npx mlab export --formats md,html --include-todo --slug my-whitepaper
-npx mlab done --export-formats md,html --include-todo-exports --json
+npx mlab init
 ```
 
-That creates `manuscript-lab.config.json` plus a user-owned scaffold under
-`manuscript/`. Deterministic local commands such as
-`validate`, `status`, `compose`, static `check`, claims/citations/evidence,
-gates, `report`, `review:report`, Markdown/HTML export, and configurable `done`
-export gates are config-root aware. Typed review execution and the
-candidate-loop commands also work in install-anywhere projects. Room and Chorus
-commands are deterministic without API keys; pass provider-prefixed `--models`
-when you want Lightning/OpenRouter-backed generation. The model driver and
-practice lab write their generated evidence under the configured manuscript
-`state/` directory, including `state/driver/`, `state/practice/`,
-`state/practice-evals/`, `state/practice-bench/`, and
-`state/practice-strategies/`. `artifacts` lists and inspects generated runs,
-`eval practice-strategies` snapshots strategy evidence under `state/evals/`,
-and `golden-path` writes onboarding evidence under `state/golden-path/`.
-Chorus writes contact sheets by default and only
-assembles prose when `--assemble` or `chorus assemble` is used. Template project
-switching commands are
-template-clone compatibility commands and refuse outside the template clone root
-while the installed CLI matures.
+Bare `init` defaults to `--profile whitepaper --root manuscript` and titles
+the project from the directory name; pass `--profile`, `--root`, or `--title`
+to customize. It writes `manuscript-lab.config.json` plus a user-owned
+scaffold under `manuscript/`: section contracts in `draft/`, state
+directories, taste/style docs, and source/claim registers.
+
+If the manuscript already exists, adopt it instead:
+
+```bash
+npx mlab adopt existing-draft.md
+npx mlab adopt notes/ --split file
+npx mlab adopt book.md --split h2
+```
+
+`adopt` copies every markdown file into contracted `draft/NN-slug.md` sections
+(one per file by default; `h1`/`h2` split a single file at headings) and never
+modifies or moves your originals. Each imported contract starts at
+`status: draft` with a sized `target_words` and TODO purpose/acceptance
+markers. Expect the first report to show blockers — short imports sit below
+the word floor and purposes are still TODO. That is intended protocol
+pressure: the report is your work list, and every blocker names its fix
+command.
+
+Working inside a clone of this repo instead? The template-clone workflow
+(`project:init`, root symlinks, `projects/active/`) still works and is listed
+by `mlab help admin`.
 
 ## 2. Fill In The Core Files
 
@@ -133,130 +66,106 @@ Edit these before drafting:
 - `state/continuity.md`: canon, definitions, claims, timeline, invariants
 - `state/open-questions.md`: decisions still missing
 
-For fiction, also fill in the taste files:
-
-- `taste/TASTE.md`
-- `taste/VOICE.md`
-- `taste/TARGET_READER.md`
-- `taste/GENRE_PROMISE.md`
-- `taste/FAILURE_MODES.md`
-- `taste/MOTIFS.md`
-- `taste/EXEMPLARS.md`
+For fiction, also fill in the `taste/` files (voice, reader contract, genre
+promise, failure modes, motifs, exemplars).
 
 ## 3. Compose Section Context
 
 Before drafting or reviewing one section:
 
 ```bash
-npm run compose -- draft/01-opening.md
+npx mlab compose draft/01-opening.md
 ```
 
-Inspect:
+Inspect the generated packet under `state/runtime/01-opening/`. It is the
+local operating contract for the section, and the gates check that it is
+fresh.
 
-```text
-state/runtime/01-opening/intent.md
-state/runtime/01-opening/context.json
-state/runtime/01-opening/rule-stack.yaml
-state/runtime/01-opening/criteria.json
-state/runtime/01-opening/trace.json
-```
-
-This packet is the local operating contract for the section.
-
-## 4. Draft In Files
+## 4. Draft In Files, And Flip The Status
 
 Write prose in `draft/<section>.md`, not only in chat.
 
-If you add factual or canon-sensitive claims, update:
+Section status now gates readiness directly:
 
-- `sources/index.md`
-- `state/claims.md`
-- `state/continuity.md`
+- A section whose contract says `status: todo` (or `planned`) fails
+  `section-ready` with a blocking `contract.status_started` requirement. Set
+  `status: draft` in the contract when writing begins.
+- Prose below 33% of the contract's `target_words` fails the blocking
+  `words.floor` requirement (a contract `min_words` value or the config's
+  `gates.section.words_floor_ratio` can override the floor). Below 80% of
+  target, `words.near_target` warns.
 
-Use `[citation-needed]` instead of inventing support.
+If you add factual or canon-sensitive claims, update `sources/index.md` and
+`state/claims.md`, and use `[citation-needed]` instead of inventing support.
 
 ## 5. Validate And Check
 
 ```bash
-npm run validate
-npm run doctor
-npm run claims -- list --unsupported
-npm run citations -- check draft/01-opening.md
-npm run gate -- draft/01-opening.md
-npm run report -- --write
-npm run check -- draft/01-opening.md
-npm run done:no-export
+npx mlab validate
+npx mlab check --static-only
 ```
 
-Use `npm run done` when you need reader exports.
-
-## Optional: Install The Codex Skill
-
-If you use Codex, install the Manuscript Lab skill so future sessions can enter
-the repo with the right workflow:
+If `check` reports missing required scaffolding (state directories, truth
+files, README stubs), let it repair itself:
 
 ```bash
-npm run codex:install-skill -- --dry-run
-npm run codex:install-skill
+npx mlab check --fix
 ```
 
-Then start a new Codex session and ask:
+`--fix` creates every missing required path with minimal valid content, prints
+what it created, then re-runs the static checks so only real content failures
+remain.
 
-```text
-Use $manuscript-lab to work on this project.
-```
-
-## 6. Add Model Reviews Later
-
-Model review is optional. Without keys, you can still use static checks,
-runtime packets, exports, word-usage reports, and dry-run review queues.
-
-When ready:
+## 6. Gate And Report
 
 ```bash
-cp .env.example .env
+npx mlab gate draft/01-opening.md
+npx mlab gate manuscript
+npx mlab report --write
 ```
 
-Add provider keys in `.env`, then run:
+The report (terminal, `reports/latest.json`, `reports/latest.html`) lists each
+failing section individually with its reasons, and every blocker carries a
+`fix:` line with the exact command to run next. `report` and `gate` share one
+gate engine, so they cannot disagree.
+
+## 7. Add Model Reviews Later
+
+Everything above is deterministic. When you want model-backed reviews, copy
+`.env.example` to `.env`, add provider keys (see `docs/MODEL_PROVIDERS.md`),
+then:
 
 ```bash
-npm run review:run -- --dry-run --panel prose.clean draft/01-opening.md
-npm run review:run -- --panel prose.clean draft/01-opening.md
-npm run review:run -- --passes scene.turn draft/01-opening.md
-npm run review:report -- draft/01-opening.md
-npm run issues -- list --status open
+npx mlab review draft/01-opening.md --dry-run --panel prose.clean
+npx mlab review draft/01-opening.md --panel prose.clean
+npx mlab review report draft/01-opening.md
+npx mlab issues list --status open
 ```
 
-Reviews create issues. Triage those issues before revising.
+Reviews create typed issues. Triage them before revising; for high-stakes
+revisions use the candidate loop (`revise`, `compare`, `merge`) described in
+`docs/COMMANDS.md`.
 
-The public wrapper aliases keep the same behavior with friendlier names:
+## 8. Export
 
 ```bash
-mlab review draft/01-opening.md --dry-run --panel prose.clean
-mlab review report draft/01-opening.md
-mlab issues list --status open
-mlab revise draft/01-opening.md --issue <issue-id> --candidates 3 --dry-run
-mlab compare draft/01-opening.md --run <candidate-run-id> --dry-run
-mlab merge draft/01-opening.md --run <candidate-run-id>
+npx mlab export --slug my-project
 ```
 
-## 7. Export
-
-Markdown and HTML exports require only Node:
+The default export writes Markdown and HTML plus `exports/manifest.json` with
+input/output hashes. EPUB and PDF are explicit opt-ins:
 
 ```bash
-npm run export -- --formats md,html --slug my-project --author ""
+npx mlab export --formats md,html,epub,pdf --slug my-project
 ```
 
-Each successful export also writes `exports/manifest.json` with input hashes,
-output hashes, file sizes, formats, source commit when available, and git dirty
-state. The default export creates Markdown, HTML, EPUB, and PDF. EPUB needs
-`zip`; PDF needs `python3` and the Python `reportlab` package.
+EPUB needs `zip`; PDF needs `python3` with the `reportlab` package. Add
+`--no-contents` to skip the generated Contents page. Run `npx mlab done` as
+the final release gate when you expect reader exports, or
+`npx mlab done --skip-exports` for maintenance work.
 
-```bash
-npm run export -- --slug my-project --author ""
-```
+## For Agents
 
-Add `--no-contents` when the reader copy should start the chapters after the
-title page without an inserted generated Contents page. Exports and their
-manifest land in `exports/`.
+Connect an MCP client (`claude mcp add manuscript-lab -- npx mlab mcp`, see
+`docs/MCP.md`), point agents at `AGENTS.md`, or install the Codex skill from a
+repo clone with `npm run codex:install-skill` (`docs/CODEX_SKILLS.md`).

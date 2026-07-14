@@ -60,6 +60,16 @@ for (const file of files) {
 assert.deepEqual(violations, [], `npm pack includes forbidden private/generated paths:\n${violations.join("\n")}`);
 
 const required = [
+  "scripts/adopt.mjs",
+  "scripts/adopt.test.mjs",
+  "scripts/mcp-server.mjs",
+  "scripts/mcp-server.test.mjs",
+  "scripts/report.test.mjs",
+  "scripts/doccheck.test.mjs",
+  "scripts/lib/driver-exec.mjs",
+  "scripts/lib/required-scaffolding.mjs",
+  "docs/MCP.md",
+  "docs/COMMANDS.md",
   ".pi/prompts/doc-chorus-plan.md",
   ".pi/prompts/doc-chorus-run.md",
   ".pi/prompts/doc-chorus-report.md",

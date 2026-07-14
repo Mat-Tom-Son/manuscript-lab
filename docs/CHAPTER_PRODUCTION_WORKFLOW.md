@@ -1,5 +1,7 @@
 # Chapter Production Workflow
 
+> Status: written for the pre-2.0 surface; command names may differ. Current surface: docs/COMMANDS.md. Old names still work as aliases.
+
 Use this when planning, drafting, revising, or verifying one chapter or document section.
 
 ## 1. Read The Operating Context

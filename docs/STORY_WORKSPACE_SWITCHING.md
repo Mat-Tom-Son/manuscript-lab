@@ -18,9 +18,9 @@ Use `scripts/story-workspace.mjs` through npm:
 npm run story -- --help
 npm run story:list-archives
 npm run story:archive -- --slug <story-slug>
-npm run story:unload -- --slug <story-slug>
-npm run story:init -- --title "New Story" --slug <story-slug> --sections 4 --archive-current
-npm run story:restore -- --from archive/<story-archive> --archive-current
+npm run story -- unload --slug <story-slug>
+npm run project:init -- --title "New Story" --slug <story-slug> --sections 4 --archive-current
+npm run project:restore -- --from archive/<story-archive> --archive-current
 npm run story:clear-generated -- --force
 npm run story:verify
 npm run project:mount
@@ -47,21 +47,21 @@ It also writes a structured snapshot under `projects/inactive/<slug>/snapshots/`
 When the user wants to put the current story away without loading a replacement yet:
 
 ```bash
-npm run story:unload -- --slug <story-slug>
+npm run story -- unload --slug <story-slug>
 ```
 
 This is the no-ambiguity "close the active project" command. It archives the active story, writes/updates `projects/inactive/<slug>/`, removes `projects/active/<slug>/`, clears root project mounts, and writes `state/workspace.json` with `status: "unloaded"`.
 
-Use `story:unload` instead of plain `story:archive` when the user's intent is "put this story away." Plain archive is only a snapshot; it intentionally leaves the story active in the root workspace.
+Use `npm run story -- unload` instead of plain `story:archive` when the user's intent is "put this story away." Plain archive is only a snapshot; it intentionally leaves the story active in the root workspace.
 
-After unload, `npm run status` should say `No Active Story Loaded` and suggest either `story:init` or `story:restore`.
+After unload, `npm run status` should say `No Active Story Loaded` and suggest either `project:init` or `project:restore`.
 
 ## Start A New Story
 
 Create a blank active workspace and snapshot the current story first:
 
 ```bash
-npm run story:init -- --title "New Story" --slug new-story --sections 4 --archive-current
+npm run project:init -- --title "New Story" --slug new-story --sections 4 --archive-current
 ```
 
 This creates or resets:
@@ -90,7 +90,7 @@ The command also creates `projects/active/<slug>/workspace/` and mounts it into 
 If `npm run status` says `No Active Story Loaded`, omit `--archive-current`:
 
 ```bash
-npm run story:init -- --title "New Story" --slug new-story --sections 4
+npm run project:init -- --title "New Story" --slug new-story --sections 4
 ```
 
 ## Restore A Story
@@ -98,7 +98,7 @@ npm run story:init -- --title "New Story" --slug new-story --sections 4
 Restore from an archive and snapshot the current active state first:
 
 ```bash
-npm run story:restore -- --from archive/<story-archive> --archive-current
+npm run project:restore -- --from archive/<story-archive> --archive-current
 ```
 
 Use `--core-only` if you want the archived story files without old generated reviews, runtime packets, candidate runs, and issue history.
@@ -108,7 +108,7 @@ After restore, confirm `docs/PROJECT_HANDOFF.md` and `docs/PROJECT_REVIEW_APPROA
 If `npm run status` says `No Active Story Loaded`, omit `--archive-current`:
 
 ```bash
-npm run story:restore -- --from archive/<story-archive>
+npm run project:restore -- --from archive/<story-archive>
 ```
 
 ## Clear Generated Artifacts

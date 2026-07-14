@@ -4,12 +4,12 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 import readline from "node:readline/promises";
-import { spawnSync } from "node:child_process";
 import { stdin as input, stdout as output } from "node:process";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { writeFileAtomic, writeJsonAtomic } from "./lib/files.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { runDriverCommand } from "./lib/driver-exec.mjs";
 import { driverPolicyByName, listDriverPolicies, policyAllowsTool } from "./lib/driver-policies.mjs";
 import {
   approvalRequired,
@@ -656,11 +656,11 @@ async function handleDecision({ run, decision, tool, options, step }) {
     }
   }
 
-  const result = spawnSync(command.executable, command.args, {
+  const result = runDriverCommand({
+    executable: command.executable,
+    args: command.args,
     cwd: run.discovery.manuscript_root,
     env: childEnv(run),
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
   });
   const parsed = parseMaybeJson(result.stdout);
   const parsedSummary = summarizeParsedJson(parsed);
@@ -708,11 +708,11 @@ async function askForApproval({ run, decision, tool, command, step }) {
 
 function runWrapperJson(run, argv) {
   const wrapper = path.join(run.discovery.package_root, "bin", "manuscript-lab.mjs");
-  const result = spawnSync(process.execPath, [wrapper, ...argv], {
+  const result = runDriverCommand({
+    executable: process.execPath,
+    args: [wrapper, ...argv],
     cwd: run.discovery.manuscript_root,
     env: childEnv(run),
-    encoding: "utf8",
-    stdio: ["ignore", "pipe", "pipe"],
   });
   return {
     command: ["mlab", ...argv].join(" "),

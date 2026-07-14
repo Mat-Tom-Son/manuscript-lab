@@ -3,6 +3,7 @@
 import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
+import { writeFileAtomic } from "./lib/files.mjs";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
@@ -1287,8 +1288,7 @@ function readFile(file) {
 }
 
 function writeFile(file, content) {
-  fs.mkdirSync(path.dirname(file), { recursive: true });
-  fs.writeFileSync(file, content, "utf8");
+  writeFileAtomic(file, content, "utf8");
 }
 
 function sha256(value) {

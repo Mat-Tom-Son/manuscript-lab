@@ -17,7 +17,7 @@ if (options.help) {
   process.exit(0);
 }
 
-const formats = new Set(splitList(options.formats ?? "md,html,epub,pdf"));
+const formats = new Set(splitList(options.formats ?? "md,html"));
 const allowedFormats = new Set(["md", "html", "epub", "pdf"]);
 const includeContents = !options.noContents;
 if (!formats.size) fail("At least one export format is required.");
@@ -708,7 +708,8 @@ Usage:
   node scripts/export-manuscript.mjs [options]
 
 Options:
-  --formats md,html,epub,pdf  Formats to export. Default: all.
+  --formats md,html,epub,pdf  Formats to export. Default: md,html.
+                              epub needs zip; pdf needs python3 + reportlab.
   --out exports               Output directory. Default: exports.
   --slug manuscript-name      Output filename stem. Default: title slug.
   --title "Title"             Override exported title.

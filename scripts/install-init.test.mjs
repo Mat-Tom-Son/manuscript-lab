@@ -36,10 +36,21 @@ function testLocalWrapperInstallInit() {
 
   assertProjectScaffold(workspace);
   assertNoPackageScaffoldCopied(workspace);
+
+  // The resolved title must reach the 00-title heading, which is what
+  // status/report/export display as the visible project title.
+  const titleDraft = fs.readFileSync(path.join(workspace, "manuscript/draft/00-title.md"), "utf8");
+  assert.match(titleDraft, /^# Config First$/m, "init --title must land in the 00-title heading");
+  assert.doesNotMatch(titleDraft, /^# Title$/m, "the placeholder heading must be replaced");
+  const status = runMlab(["status"], { cwd: workspace });
+  assert.equal(status.status, 0, status.stderr || status.stdout);
+  assert.match(status.stdout, /Config First/, "status should display the resolved project title");
+
   assertValidateWorksFrom(workspace);
   assertValidateWorksFrom(path.join(workspace, "manuscript"));
   assertValidateWorksFrom(path.join(workspace, "manuscript", "draft"));
   assertEvidenceAndGate(workspace);
+  assertSectionGatePassesAfterDraftProgress(workspace);
 
   const duplicate = runMlab(["init", "--profile", "whitepaper", "--root", "manuscript"], { cwd: workspace });
   assert.notEqual(duplicate.status, 0, "duplicate init should fail");
@@ -85,7 +96,7 @@ function testReviewRunRejectsInvalidConfig() {
 }
 
 function testTemplateOnlyWrapperRoutesRefuseOutsideTemplate() {
-  for (const command of ["init", "new", "project:init", "project:sync", "story:init", "story:restore"]) {
+  for (const command of ["new", "project:init", "project:sync", "story:init", "story:restore"]) {
     const workspace = path.join(tmp, `template-only-${command.replace(":", "-")}`);
     mkdir(workspace);
     const result = runMlab([command, "--title", `Legacy ${command}`, "--slug", `legacy-${command.replace(":", "-")}`, "--sections", "1", "--kind", "document.section"], { cwd: workspace });
@@ -106,8 +117,8 @@ function testTemplateOnlyWrapperRoutesRefuseOutsideTemplate() {
 
   const help = runMlab(["init", "--help"], { cwd: path.join(tmp, "local-wrapper") });
   assert.equal(help.status, 0, help.stderr || help.stdout);
-  assert.match(help.stdout, /Install-anywhere workflow/);
-  assert.match(help.stdout, /Template clone compatibility/);
+  assert.match(help.stdout, /Bare init \(outside a template clone\)/);
+  assert.match(help.stdout, /Template clone note/);
 }
 
 function testInstalledTarball() {
@@ -176,9 +187,12 @@ function assertProjectLocalNpxSmoke(workspace) {
   const check = assertJsonCommand(runner, ["check", "--static-only", "--json", "draft/01-opening.md"], { cwd: manuscriptRoot });
   assert.equal(check.pass, true);
 
-  const gate = assertJsonCommand(runner, ["gate", "01-opening.md", "--json"], { cwd: draftRoot });
-  assert.equal(gate.ready, true);
-  assert.equal(gate.gate_id, "section-ready");
+  const gate = runner(["gate", "01-opening.md", "--json"], { cwd: draftRoot });
+  assert.notEqual(gate.status, 0, "fresh todo section must not pass section-ready");
+  const parsedGate = JSON.parse(gate.stdout);
+  assert.equal(parsedGate.ready, false);
+  assert.equal(parsedGate.gate_id, "section-ready");
+  assert(parsedGate.requirements.some((req) => req.id === "contract.status_started" && req.status === "fail"));
 }
 
 function assertOneOffNpxLikeSmoke(tarball) {
@@ -188,7 +202,8 @@ function assertOneOffNpxLikeSmoke(tarball) {
 
   const help = runner(["help"], { cwd: workspace });
   assert.equal(help.status, 0, help.stderr || help.stdout);
-  assert.match(help.stdout, /install-anywhere workflow/i);
+  assert.match(help.stdout, /Daily loop:/);
+  assert.match(help.stdout, /mlab help <command>/);
 
   const version = assertJsonCommand(runner, ["version", "--json"], { cwd: workspace });
   assert.equal(version.name, "manuscript-lab");
@@ -202,6 +217,7 @@ function assertOneOffNpxLikeSmoke(tarball) {
   assert.equal(noProject.status, 1, noProject.stderr || noProject.stdout);
   const missing = JSON.parse(noProject.stdout);
   assert.equal(missing.mode, "none");
+  assert.match(missing.hints[0], /Run `mlab init` /, "bare `mlab init` should be the first project-free hint");
   assert(missing.hints.some((hint) => /mlab init --profile/.test(hint)));
   assert(missing.hints.some((hint) => /mlab doctor --no-project/.test(hint)));
 
@@ -238,7 +254,8 @@ function assertGlobalPrefixInstall(tarball) {
 
   const help = runner(["help"], { cwd: tmp });
   assert.equal(help.status, 0, help.stderr || help.stdout);
-  assert.match(help.stdout, /install-anywhere workflow/i);
+  assert.match(help.stdout, /Daily loop:/);
+  assert.match(help.stdout, /mlab help <command>/);
 
   const version = assertJsonCommand(runner, ["version", "--json"], { cwd: tmp });
   assert.equal(version.name, "manuscript-lab");
@@ -321,10 +338,50 @@ function assertEvidenceAndGate(workspace, runner = runMlab) {
   assert.equal(JSON.parse(citations.stdout).ok, true);
 
   const gate = runner(["gate", "draft/01-opening.md", "--json"], { cwd: workspace });
-  assert.equal(gate.status, 0, gate.stderr || gate.stdout);
+  assert.notEqual(gate.status, 0, "fresh todo section must not pass section-ready");
   const parsedGate = JSON.parse(gate.stdout);
-  assert.equal(parsedGate.ready, true);
+  assert.equal(parsedGate.ready, false);
   assert.equal(parsedGate.gate_id, "section-ready");
+  const started = parsedGate.requirements.find((req) => req.id === "contract.status_started");
+  assert.equal(started?.status, "fail", JSON.stringify(started, null, 2));
+  assert.match(started.message, /Set status: draft/);
+}
+
+function assertSectionGatePassesAfterDraftProgress(workspace, runner = runMlab) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftFile = path.join(manuscriptRoot, "draft", "01-opening.md");
+  const statusFile = path.join(manuscriptRoot, "state", "status.md");
+
+  const sentence = "The opening frames the reader problem, names the promise, and sets the evidence standard plainly.";
+  const body = Array.from({ length: 22 }, () => sentence).join(" ");
+  const raw = fs.readFileSync(draftFile, "utf8");
+  assert.match(raw, /status: todo/);
+  const updated = raw
+    .replace("status: todo", "status: draft")
+    .replace(/# Opening[\s\S]*$/, `# Opening\n\n${body}\n`);
+  fs.writeFileSync(draftFile, updated, "utf8");
+
+  const statusRaw = fs.readFileSync(statusFile, "utf8");
+  const updatedStatus = statusRaw
+    .split("\n")
+    .map((line) => (line.includes("draft/01-opening.md") ? line.replace("| todo |", "| draft |") : line))
+    .join("\n");
+  fs.writeFileSync(statusFile, updatedStatus, "utf8");
+
+  const compose = runner(["compose", "draft/01-opening.md", "--json"], { cwd: workspace });
+  assert.equal(compose.status, 0, compose.stderr || compose.stdout);
+
+  const gate = assertJsonCommand(runner, ["gate", "draft/01-opening.md", "--json"], { cwd: workspace });
+  assert.equal(gate.ready, true, JSON.stringify(gate.requirements?.filter((req) => req.status === "fail"), null, 2));
+  assert.equal(gate.gate_id, "section-ready");
+  const started = gate.requirements.find((req) => req.id === "contract.status_started");
+  assert.equal(started?.status, "pass");
+  const floor = gate.requirements.find((req) => req.id === "words.floor");
+  assert.equal(floor?.status, "pass", JSON.stringify(floor, null, 2));
+  const nearTarget = gate.requirements.find((req) => req.id === "words.near_target");
+  assert.equal(nearTarget?.status, "warn", "330 words should warn below 80% of target without blocking");
+
+  assertValidateWorksFrom(workspace, runner);
 }
 
 function assertInstalledCommandSurface(workspace, runner) {
@@ -572,6 +629,14 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.equal(projectReport.schema_version, "manuscript-lab.report.v1");
     assert.equal(fs.realpathSync(projectReport.project.manuscript_root), fs.realpathSync(manuscriptRoot));
     assert.equal(projectReport.summary.sections.total, 2);
+    // Every scaffolded section is still todo, so the pristine workspace must
+    // not report ready: the manuscript gate blocks on sections.any_started.
+    assert.equal(projectReport.ok, false, "pristine all-todo workspace must not report ready");
+    assert.equal(projectReport.summary.state, "not_ready");
+    assert(
+      projectReport.blockers.some((item) => item.type === "sections.any_started"),
+      `expected a sections.any_started blocker, found: ${projectReport.blockers.map((item) => item.type).join(", ")}`,
+    );
     assert(projectReport.summary.room_runs >= 2, "report should count room runs");
     assert(projectReport.summary.chorus_runs >= 1, "report should count chorus runs");
     assert(projectReport.summary.room_runs_by_operation.blue_sky >= 1, "report should group room operations");
@@ -590,20 +655,33 @@ function assertInstalledCommandSurface(workspace, runner) {
     assert.match(projectReportHtml.stdout, /blue_sky/);
     assert.match(projectReportHtml.stdout, /state\/chorus\/01-opening\/packed-chorus-/);
 
-    const done = assertJsonCommand(runner, ["done:no-export", "--json"], { cwd });
-    assert.equal(done.pass, true, JSON.stringify(done, null, 2));
+    // done inherits the manuscript gate, so the pristine all-todo workspace
+    // fails with the sections.any_started blocker instead of a false green.
+    const doneResult = runner(["done:no-export", "--json"], { cwd });
+    assert.equal(doneResult.status, 1, doneResult.stderr || doneResult.stdout);
+    const done = JSON.parse(doneResult.stdout);
+    assert.equal(done.pass, false, JSON.stringify(done, null, 2));
+    assert(
+      done.errors.some((error) => error.includes("manuscript-ready/sections.any_started")),
+      JSON.stringify(done.errors, null, 2),
+    );
     assert.equal(done.checks.project_sync, "skipped");
     assert.equal(done.checks.project_filesystem, "skipped");
 
     const doneSlug = `packed-done-${index + 1}`;
-    const doneWithExports = assertJsonCommand(
-      runner,
+    const doneWithExportsResult = runner(
       ["done", "--export-formats=md,html", "--include-todo-exports", "--no-contents", `--export-slug=${doneSlug}`, "--json"],
       { cwd },
     );
-    assert.equal(doneWithExports.pass, true, JSON.stringify(doneWithExports, null, 2));
+    assert.equal(doneWithExportsResult.status, 1, doneWithExportsResult.stderr || doneWithExportsResult.stdout);
+    const doneWithExports = JSON.parse(doneWithExportsResult.stdout);
+    assert.equal(doneWithExports.pass, false, JSON.stringify(doneWithExports, null, 2));
+    assert(
+      doneWithExports.errors.some((error) => error.includes("manuscript-ready/sections.any_started")),
+      JSON.stringify(doneWithExports.errors, null, 2),
+    );
     assert.deepEqual(doneWithExports.export_formats, ["md", "html"]);
-    assert.equal(doneWithExports.checks.exports, true);
+    assert.equal(doneWithExports.checks.exports, false, "export gate must not pass while no section is started");
     assert.equal(doneWithExports.checks.project_sync, "skipped");
     assert.equal(doneWithExports.checks.project_filesystem, "skipped");
     assert(fs.existsSync(path.join(manuscriptRoot, "exports", `${doneSlug}.md`)));
@@ -682,7 +760,7 @@ function assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, runner) {
   const manuscriptRoot = path.join(workspace, "manuscript");
   const draftRoot = path.join(manuscriptRoot, "draft");
   const cwdCases = [workspace, manuscriptRoot, draftRoot];
-  const commands = ["init", "new", "project", "project:init", "project:list", "project:sync", "story", "story:init", "story:restore", "story:unload"];
+  const commands = ["new", "project", "project:init", "project:list", "project:sync", "story", "story:init", "story:restore", "story:unload"];
 
   for (const cwd of cwdCases) {
     for (const command of commands) {
@@ -694,6 +772,15 @@ function assertTemplateOnlyCommandsRefuseInInstalledMode(workspace, runner) {
       assert.match(parsed.error, /template-clone only/i);
       assert.match(parsed.hint, /mlab init --profile/i);
     }
+
+    const init = runner(["init", "--json"], { cwd });
+    assert.equal(init.status, 2, `bare init should refuse inside an existing workspace from ${cwd}: ${init.stderr || init.stdout}`);
+    const initParsed = JSON.parse(init.stdout);
+    assert.equal(initParsed.ok, false);
+    assert(
+      initParsed.errors.some((error) => /already exists|Already inside a Manuscript Lab workspace/i.test(error)),
+      JSON.stringify(initParsed, null, 2),
+    );
   }
 
   assert.equal(fs.existsSync(path.join(workspace, "projects")), false, "template commands should not create projects/ in installed workspace");

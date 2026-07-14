@@ -206,7 +206,7 @@ function publicGateResult(gate) {
 }
 
 function requiredExportFormats(rawOptions) {
-  const formats = splitList(rawOptions["export-formats"] ?? "md,html,epub,pdf");
+  const formats = splitList(rawOptions["export-formats"] ?? "md,html");
   const allowed = new Set(["md", "html", "epub", "pdf"]);
   if (!formats.length) {
     console.error("At least one export format is required.");
@@ -336,7 +336,7 @@ Options:
   --skip-exports     Do not require readable exports
   --no-export        Alias for --skip-exports
   --export-formats md,html,epub,pdf
-                     Export formats required by this run. Default: md,html,epub,pdf
+                     Export formats required by this run. Default: md,html
   --export-slug name Override export filename stem for the regenerated exports
   --export-out dir   Override export output directory
   --include-todo-exports

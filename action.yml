@@ -1,0 +1,32 @@
+name: "Manuscript Lab Report"
+description: "Run a Manuscript Lab command against a prose workspace. Defaults to printing the readiness report as JSON."
+branding:
+  icon: "check-circle"
+  color: "green"
+
+inputs:
+  working-directory:
+    description: "Directory containing manuscript-lab.config.json (or a workspace ancestor)."
+    required: false
+    default: "."
+  command:
+    description: "Manuscript Lab command line to run. Use `report --json --gate` or `gate manuscript --json` to fail the step on blockers."
+    required: false
+    default: "report --json"
+  use-local:
+    description: "Run the harness from this action's own checkout instead of npx manuscript-lab@^2. Only useful inside the manuscript-lab repository's CI."
+    required: false
+    default: "false"
+
+runs:
+  using: "composite"
+  steps:
+    - name: Run Manuscript Lab
+      shell: bash
+      working-directory: ${{ inputs.working-directory }}
+      run: |
+        if [ "${{ inputs.use-local }}" = "true" ]; then
+          node "${{ github.action_path }}/bin/manuscript-lab.mjs" ${{ inputs.command }}
+        else
+          npx --yes manuscript-lab@^2 ${{ inputs.command }}
+        fi

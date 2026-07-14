@@ -1,5 +1,7 @@
 # Golden Path
 
+> Status: written for the pre-2.0 surface; command names may differ. Current surface: docs/COMMANDS.md. Old names still work as aliases.
+
 The golden path is the smallest product tour that proves Manuscript Lab is more
 than a command list. It shows protocol, cockpit, model-driver evidence,
 practice strategy evidence, eval snapshots, and report output in one sequence.

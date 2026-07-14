@@ -1,5 +1,7 @@
 # Evaluation Lab Roadmap
 
+> Status: design record. Evaluation work ships as lab R&D under `mlab lab`. Current surface: docs/COMMANDS.md.
+
 The next phase should move the harness from "review the draft" to "run controlled experiments on revisions."
 
 Do not make the harness a final judge. Make it an evaluation lab.

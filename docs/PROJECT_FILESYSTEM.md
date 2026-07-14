@@ -82,9 +82,9 @@ npm run project:sync
 npm run project:verify
 npm run project:log -- --message "..."
 npm run story:archive -- --slug <slug>
-npm run story:unload -- --slug <slug>
-npm run story:init -- --title "New Story" --slug <slug> --sections 4 --archive-current
-npm run story:restore -- --from archive/<archive> --archive-current
+npm run story -- unload --slug <slug>
+npm run project:init -- --title "New Story" --slug <slug> --sections 4 --archive-current
+npm run project:restore -- --from archive/<archive> --archive-current
 ```
 
 `project:mount` recreates root symlinks to the registered active workspace. Use it if an external tool or manual operation disturbed the mount points.
@@ -134,7 +134,7 @@ Current log folders:
 
 ## Inactive Projects
 
-`story:unload` is the intentional empty-root state. It archives the current project, writes/updates `projects/inactive/<slug>/`, removes `projects/active/<slug>/`, clears mounted root project files, and writes `state/workspace.json` with `status: "unloaded"`.
+`npm run story -- unload` is the intentional empty-root state. It archives the current project, writes/updates `projects/inactive/<slug>/`, removes `projects/active/<slug>/`, clears mounted root project files, and writes `state/workspace.json` with `status: "unloaded"`.
 
 Archiving, initializing, or restoring still writes legacy snapshots under `archive/` for compatibility. Use `archive/` as the old snapshot drawer. Use `projects/` as the formal project index for agents and future frontend work.
 

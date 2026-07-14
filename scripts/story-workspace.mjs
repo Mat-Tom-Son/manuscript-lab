@@ -5,6 +5,7 @@ import path from "node:path";
 import { spawnSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { lockPathFor, withFileLock, writeJsonAtomic } from "./lib/files.mjs";
+import { ISSUE_CLOSED_SCHEMA_VERSION, ISSUE_DECISIONS_SCHEMA_VERSION } from "./lib/required-scaffolding.mjs";
 
 const root = process.cwd();
 const argv = process.argv.slice(2);
@@ -418,14 +419,14 @@ function resetIssuesState() {
   ensureDir("state/issues");
   ensureReadme("state/issues/README.md", "Issue ledger artifacts live here.\n");
   writeJson(abs("state/issues/issue-ledger.json"), { issues: [], version: 1, next_id: 1 });
-  writeJson(abs("state/issues/decisions.json"), { decisions: [] });
-  writeJson(abs("state/issues/closed.json"), { closed: [] });
+  writeJson(abs("state/issues/decisions.json"), { schema_version: ISSUE_DECISIONS_SCHEMA_VERSION, decisions: [] });
+  writeJson(abs("state/issues/closed.json"), { schema_version: ISSUE_CLOSED_SCHEMA_VERSION, closed: [] });
 }
 
 function ensureIssueStateFiles() {
   writeJsonIfMissing("state/issues/issue-ledger.json", { issues: [], version: 1, next_id: 1 });
-  writeJsonIfMissing("state/issues/decisions.json", { decisions: [] });
-  writeJsonIfMissing("state/issues/closed.json", { closed: [] });
+  writeJsonIfMissing("state/issues/decisions.json", { schema_version: ISSUE_DECISIONS_SCHEMA_VERSION, decisions: [] });
+  writeJsonIfMissing("state/issues/closed.json", { schema_version: ISSUE_CLOSED_SCHEMA_VERSION, closed: [] });
 }
 
 function resetTruthState() {
@@ -507,7 +508,7 @@ function listArchives() {
 }
 
 function syncActiveProjectCommand() {
-  if (isWorkspaceUnloaded()) fail("No active story is loaded. Use npm run story:init or npm run story:restore first.");
+  if (isWorkspaceUnloaded()) fail("No active story is loaded. Use npm run project:init or npm run project:restore first.");
   const title = inferStoryTitle();
   const slug = slugify(options.slug || title);
   return { command: "sync-project", ...syncActiveProject({ slug, title, reason: "manual" }) };
@@ -516,7 +517,7 @@ function syncActiveProjectCommand() {
 function mountActiveProjectCommand() {
   const registry = readProjectRegistry();
   const active = registry.active;
-  if (!active?.workspace_path) fail("No active project workspace is registered. Use npm run story:init or npm run story:restore first.");
+  if (!active?.workspace_path) fail("No active project workspace is registered. Use npm run project:init or npm run project:restore first.");
   const workspaceDir = abs(active.workspace_path);
   if (!fs.existsSync(workspaceDir)) fail(`Registered active project workspace is missing: ${active.workspace_path}`);
   installProjectMount({
@@ -643,7 +644,7 @@ function writeActiveWorkspaceState({ slug, title, projectPath, workspacePath, en
     next_commands: [
       "npm run status",
       "npm run compose -- draft/<section>.md",
-      "npm run story:unload -- --slug current-story",
+      "npm run story -- unload --slug current-story",
     ],
   });
 }
@@ -866,8 +867,8 @@ function writeUnloadedWorkspace({ archivedPath, title, slug }) {
       archive_path: archivedPath,
     },
     next_commands: [
-      "npm run story:init -- --title \"New Story\" --slug new-story --sections 4",
-      "npm run story:restore -- --from archive/<story-archive>",
+      "npm run project:init -- --title \"New Story\" --slug new-story --sections 4",
+      "npm run project:restore -- --from archive/<story-archive>",
       "npm run project:list",
     ],
   });
@@ -2092,9 +2093,9 @@ Options:
 
 Examples:
   npm run story:archive -- --slug current-story
-  npm run story:unload -- --slug current-story
-  npm run story:init -- --title "New Story" --slug new-story --sections 4 --archive-current
-  npm run story:restore -- --from archive/current-story-active-YYYY-MM-DD-HHMMSS --archive-current
+  npm run story -- unload --slug current-story
+  npm run project:init -- --title "New Story" --slug new-story --sections 4 --archive-current
+  npm run project:restore -- --from archive/current-story-active-YYYY-MM-DD-HHMMSS --archive-current
   npm run project:sync
   npm run project:mount
   npm run project:list

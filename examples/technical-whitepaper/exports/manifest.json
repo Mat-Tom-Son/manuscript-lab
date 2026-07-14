@@ -1,14 +1,14 @@
 {
   "schema_version": "manuscript-lab.export-manifest.v1",
-  "export_id": "export-2026-06-16T23-05-04-362Z-technical-whitepaper",
-  "created_at": "2026-06-16T23:05:04.362Z",
+  "export_id": "export-2026-07-14T17-25-34-482Z-technical-whitepaper",
+  "created_at": "2026-07-14T17:25:34.482Z",
   "title": "Technical Whitepaper Tutorial",
   "subtitle": "A compact public fixture for Manuscript Lab.",
   "author": "",
   "slug": "technical-whitepaper",
   "profile": "whitepaper",
   "mode": "installed",
-  "source_commit": "ef1684bfaa256ec0ae7d1a440761636be118655c",
+  "source_commit": "717a5aafb137842cb524c4726e32dffba492dd21",
   "source_dirty": true,
   "gate_enforced": false,
   "options": {
@@ -17,6 +17,7 @@
       "md"
     ],
     "include_todo": false,
+    "include_contents": true,
     "output_dir": "exports"
   },
   "chapters": [
@@ -25,7 +26,7 @@
       "file": "draft/01-opening.md",
       "title": "Executive Summary",
       "status": "draft",
-      "sha256": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868"
+      "sha256": "b7a962d89356449aa2c4a4a29c5aa660113cf0131038dec21b95fc1f7b622775"
     }
   ],
   "input_hashes": {
@@ -35,21 +36,21 @@
     "style.md": "a58d8524776c0e1d2a4c574b08bc131fb44d80ddc472cf5ec16a31e2b6de48a5",
     "state/status.md": "50d584fa8170e0dad6b4700a98e03e261ddbce379611dc5e127eb49e8806f891",
     "state/claims.md": "a657f80d29d40504af6113c874bfda233a784940ae6920fac96f99d27c8852ba",
-    "sources/index.md": "fd0404f4b43856bf211aec83aa4079e26ec5d03e07b967c4146c72083639585b",
-    "draft/01-opening.md": "1614f78a4e3451bb9ade9aab896840c7fadeb6d74a01206afac822b7be914868"
+    "sources/index.md": "c2d14ef34090b2c5791817141c5a8a4d1b93df2e269e81b67642fb8ea6c200b7",
+    "draft/01-opening.md": "b7a962d89356449aa2c4a4a29c5aa660113cf0131038dec21b95fc1f7b622775"
   },
   "outputs": [
     {
       "format": "md",
       "file": "exports/technical-whitepaper.md",
-      "size": 2540,
-      "sha256": "e33bc7fe147f1c39211e352429b4256d30049310d155f4a58958af7e144a3164"
+      "size": 4024,
+      "sha256": "267679c59905571e19ebc93273a3a54061eb062816062a110582f52a770e4820"
     },
     {
       "format": "html",
       "file": "exports/technical-whitepaper.html",
-      "size": 4501,
-      "sha256": "02cf6945230efc88ff47b6dea496354ad965a60eda654434e6d296327d571a3f"
+      "size": 6024,
+      "sha256": "e491847aca1f4e692c95d7f13f2bd7e78be66b3bb483241b91ffae3237e14ca9"
     }
   ],
   "output_summary": {
@@ -58,6 +59,6 @@
       "md",
       "html"
     ],
-    "bytes": 7041
+    "bytes": 10048
   }
 }

@@ -68,7 +68,9 @@ Config loading order should be:
 
 Stable requirement IDs are part of the public contract. Rename them only with a
 compatibility path, because result artifacts, CI annotations, and overrides
-refer to them.
+refer to them. The 2.0 release made one such rename: citation requirements
+moved from `claims.*`/`sources.*` to the shared `evidence.*` namespace (see
+`citation-ready` below and the 2.0.0 changelog migration note).
 
 Minimal shape:
 
@@ -242,15 +244,26 @@ or network access.
 Use this gate when deciding whether one section can move forward in the workflow
 or be included in manuscript readiness.
 
-Initial deterministic requirements:
+Deterministic requirements (as of 2.0):
 
 - `contract.present`: the section has a parseable contract.
 - `contract.valid`: required contract fields are present and valid.
+- `contract.status_started` (block): the contract status indicates writing has
+  started. Sections marked `todo` or `planned` fail with
+  `Section status is "todo". Set status: draft in the section contract when
+  writing begins.` There is no fix command; flipping the status is a
+  deliberate manual edit.
 - `contract.check_ids_exist`: every listed check ID exists in `checks/suite.json`.
 - `contract.review_ids_exist`: every listed review ID exists in `reviews/suite.json`.
 - `status.synced`: section contract status matches `state/status.md` when that
   file is present.
 - `content.nonempty_when_active`: non-`todo` sections contain real prose.
+- `words.floor` (block): started long-form sections have at least 33% of the
+  contract `target_words`. A contract `min_words` value overrides the computed
+  floor; the config key `gates.section.words_floor_ratio` overrides the
+  default ratio.
+- `words.near_target` (warn): started long-form sections are at or above 80%
+  of `target_words`.
 - `word_count.in_band`: `done` sections satisfy the contract word-count band.
 - `runtime.fresh`: non-`todo` sections have a fresh runtime packet.
 - `doccheck.static_pass`: static document checks pass for the target.
@@ -268,18 +281,44 @@ Optional profile requirements:
 Use this gate for nonfiction or research-heavy projects, either for a section or
 for the whole manuscript.
 
-Initial deterministic requirements:
+Since 2.0 the citation gate is an adapter over the shared evidence-spine
+implementation in `scripts/lib/evidence-spine.mjs` — the same code that powers
+`mlab claims`, `mlab citations check`, and `mlab evidence report`. The gate
+maps spine issues onto requirements, so the command and the gate can never
+disagree. The default scope is all active sections.
 
-- `claims.no_empty_placeholders`: no empty citation placeholders remain.
-- `claims.no_unsupported_markers`: unsupported factual claims are absent or
-  explicitly tracked.
-- `claims.source_keys_exist`: claim source keys match entries in
-  `sources/index.md`.
-- `sources.index_valid`: source records have stable keys and usable locations.
-- `sources.no_missing_files`: local source paths referenced by the index exist.
+Deterministic requirements (the ten stable `evidence.*` ids):
 
-Model-backed claim extraction can become a sensor later, but the first version
-should gate only structured state and explicit markers unless a profile opts in.
+- `evidence.claims.no_blocking_claims`: no claim blocks release. Unresolved
+  claims (`discovered`, `needs-review`, `unsupported`) block when their risk
+  is `high`, `critical`, or unspecified; explicit `low` or `medium` risk
+  downgrades an unresolved claim to a warning. Disputed claims, supported
+  claims without usable registered sources, and unregistered source keys
+  always block.
+- `evidence.claims.risk_classified`: claim risk values are recognized
+  (`low`, `medium`, `high`, `critical`).
+- `evidence.claims.support_precise`: claim support references resolve to
+  precise, registered source keys.
+- `evidence.claims.not_needed_explained`: `not-needed` claims carry an
+  explanation.
+- `evidence.claims.compatible_markdown_status`: claim rows use a status the
+  compatible markdown register understands.
+- `evidence.citations.no_placeholders`: no `[citation-needed]` markers or
+  recorded missing-citation claims remain.
+- `evidence.citations.resolve_markers`: every citation marker resolves to a
+  registered source key or claim ID.
+- `evidence.sources.cited_usable`: cited sources exist and are not in a
+  blocking status (`rejected`, `unavailable`).
+- `evidence.sources.bibliography_present`: the source index provides usable
+  bibliography records for cited sources.
+- `evidence.sources.manifest_valid`: `sources/index.md` parses with stable
+  keys and usable locations.
+
+Before 2.0 these were reported under `claims.*` and `sources.*` ids; anything
+parsing gate or evidence JSON must migrate to the `evidence.*` ids.
+
+Model-backed claim extraction can become a sensor later, but the current
+version gates only structured state and explicit markers.
 
 ### `manuscript-ready`
 
@@ -291,6 +330,9 @@ Initial deterministic requirements:
   exist.
 - `outline.sections_resolve`: active outline entries map to section files or
   intentional non-draft entries.
+- `sections.any_started`: at least one draft section has been started. Fails
+  when draft sections exist but every one is still `todo`; skipped when the
+  project has no draft sections at all.
 - `sections.ready`: every active non-`todo` section passes `section-ready`.
 - `citations.ready`: citation requirements pass when the profile enables them.
 - `runtime.all_fresh`: active sections have fresh runtime packets.
@@ -305,9 +347,10 @@ Initial deterministic requirements:
 In config-first installed mode, `project.filesystem_verified` is skipped because
 there is no template `projects/active/` registry to verify.
 
-Fresh-start projects with no active non-`todo` sections are allowed to pass this
-gate with a warning. Export generation still fails unless it can produce at
-least one reader-facing chapter.
+Fresh-start projects where every section is still `todo` fail this gate on
+`sections.any_started`: readiness is never vacuous. Once at least one section
+is started, remaining `todo` sections stay out of manuscript scope and the
+gate reports on the active sections only.
 
 ### `export-ready`
 
@@ -397,6 +440,7 @@ mlab gate section draft/04-market.md --profile release
 mlab gate citation draft/04-market.md
 mlab gate citation manuscript
 mlab gate manuscript --profile ci --static-only
+mlab gate export --write
 mlab gate export --formats md,html,epub,pdf --write
 ```
 
@@ -411,7 +455,7 @@ Recommended flags:
 | `--static-only` | Disable live model-backed sensors. |
 | `--allow-overrides` | Apply matching override artifacts. |
 | `--no-overrides` | Refuse overrides even if config allows them. |
-| `--formats <list>` | Limit export formats for export gates. `--format` and `--export-formats` are accepted aliases. |
+| `--formats <list>` | Required export formats for export gates. Default: `md,html`; `epub`/`pdf` are explicit opt-ins. `--format` and `--export-formats` are accepted aliases. |
 | `--ci` | Shorthand for JSON output, deterministic sensors, no interactive prompts, and no overrides. |
 
 The command should infer `section-ready` when passed `draft/*.md`, infer

@@ -12,7 +12,7 @@ const command = args[0] ?? "help";
 const rest = args.slice(1);
 const BOOLEAN_OPTIONS = new Set(["json"]);
 
-if (command === "help" || command === "--help" || command === "-h") {
+if (command === "help" || args.includes("--help") || args.includes("-h")) {
   printHelp();
   process.exit(0);
 }

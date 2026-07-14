@@ -5,69 +5,116 @@
   "operation": "draft",
   "context_pack": "informed.section_writer",
   "requested_context_pack": "informed.section_writer",
-  "context_pack_description": "Sample public context packet for the tutorial fixture.",
-  "generated_at": "2026-06-16T00:00:00.000Z",
-  "run_id": "compose_tutorial_001_01-opening",
+  "context_pack_description": "Writer sees project intent, outline, style, projections or fallback state, source index, dependency files, and the target section.",
+  "generated_at": "2026-07-14T17:25:26.510Z",
+  "run_id": "compose_20260714172526_01-opening",
   "visible_files": [
     {
-      "path": "PROJECT.md",
-      "sha256": "sample",
-      "bytes": 498,
-      "reason": "project supplement"
-    },
-    {
       "path": "brief.md",
-      "sha256": "sample",
-      "bytes": 980,
-      "reason": "project brief"
-    },
-    {
-      "path": "outline.md",
-      "sha256": "sample",
-      "bytes": 1110,
-      "reason": "document structure"
-    },
-    {
-      "path": "style.md",
-      "sha256": "sample",
-      "bytes": 960,
-      "reason": "voice and citation rules"
-    },
-    {
-      "path": "sources/index.md",
-      "sha256": "sample",
-      "bytes": 600,
-      "reason": "source registry"
-    },
-    {
-      "path": "state/claims.md",
-      "sha256": "sample",
-      "bytes": 610,
-      "reason": "claim support"
-    },
-    {
-      "path": "state/continuity.md",
-      "sha256": "sample",
-      "bytes": 565,
-      "reason": "definitions and invariants"
+      "sha256": "65cc10033d14e4da929d20c509d5e173ed0fe5a5c225a1791d59d4dbd9c3ced4",
+      "bytes": 1071,
+      "reason": "Defines document goal, audience, and success criteria."
     },
     {
       "path": "draft/01-opening.md",
-      "sha256": "sample",
-      "bytes": 3100,
-      "reason": "target section"
+      "sha256": "b7a962d89356449aa2c4a4a29c5aa660113cf0131038dec21b95fc1f7b622775",
+      "bytes": 4510,
+      "reason": "Target or dependency draft section."
+    },
+    {
+      "path": "outline.md",
+      "sha256": "72dfe711919fcc5b046d5a9232aa85981a368c09fd19ecb769b6f5edad50fae2",
+      "bytes": 987,
+      "reason": "Defines planned structure and neighboring section jobs."
+    },
+    {
+      "path": "PROJECT.md",
+      "sha256": "fa276a3b19324f1e243015bcbe6c342faeadbc79f63f85b413ed2bfa954612b1",
+      "bytes": 631,
+      "reason": "Project-specific supplement for agent operation, taste notes, and current next moves."
+    },
+    {
+      "path": "sources/index.md",
+      "sha256": "c2d14ef34090b2c5791817141c5a8a4d1b93df2e269e81b67642fb8ea6c200b7",
+      "bytes": 566,
+      "reason": "Projection preferred, fallback state used when projection is unavailable.; Source registry for factual or technical claims."
+    },
+    {
+      "path": "state/claims.md",
+      "sha256": "a657f80d29d40504af6113c874bfda233a784940ae6920fac96f99d27c8852ba",
+      "bytes": 624,
+      "reason": "Projection preferred, fallback state used when projection is unavailable.; Established project state relevant to continuity, claims, or open questions."
+    },
+    {
+      "path": "state/continuity.md",
+      "sha256": "f0728a6e1e09948cb45285231316d3d33979c73b47630e09150a76fcfe583b61",
+      "bytes": 618,
+      "reason": "Projection preferred, fallback state used when projection is unavailable.; Established project state relevant to continuity, claims, or open questions."
+    },
+    {
+      "path": "state/open-questions.md",
+      "sha256": "2d9d08e16b0ef1b06e5c742e3c810c8435f543e78e085e2fd8b605dbfde6cd63",
+      "bytes": 241,
+      "reason": "Projection preferred, fallback state used when projection is unavailable."
+    },
+    {
+      "path": "state/truth/style.json",
+      "sha256": "95d6cd391b2017dd70e6a856adb58b87c473c4c4dee8bca5bbc7d16bdd2b53c1",
+      "bytes": 202,
+      "reason": "Machine-readable project truth used by checks and context compilation."
+    },
+    {
+      "path": "state/truth/terms.json",
+      "sha256": "357fc84e21801c66018d29712b0b2064f9f436ef7ada370b75f4b0a0ebbe3f20",
+      "bytes": 71,
+      "reason": "Projection preferred, fallback state used when projection is unavailable."
+    },
+    {
+      "path": "style.md",
+      "sha256": "a58d8524776c0e1d2a4c574b08bc131fb44d80ddc472cf5ec16a31e2b6de48a5",
+      "bytes": 977,
+      "reason": "Defines voice, tone, formatting, and style constraints."
     }
   ],
   "excluded_files": [
     "state/reviews/",
     "state/candidates/",
+    "state/private/",
     "state/runtime/",
+    "archive/",
     "exports/",
-    ".env"
+    ".doccheck/",
+    ".env",
+    "docs/PROJECT_HANDOFF.md"
   ],
-  "missing_files": [],
+  "missing_files": [
+    "state/style/01-opening-register-map.json",
+    "state/style/01-opening-style-signals.json",
+    "style/pattern-watchlist.md",
+    "style/protected-lines.md",
+    "style/voice-fingerprint.json",
+    "taste/EXEMPLARS.md",
+    "taste/FAILURE_MODES.md",
+    "taste/GENRE_PROMISE.md",
+    "taste/MOTIFS.md",
+    "taste/TARGET_READER.md",
+    "taste/TASTE.md",
+    "taste/VOICE.md"
+  ],
   "skipped_files": [],
-  "input_hashes": {},
+  "input_hashes": {
+    "brief.md": "65cc10033d14e4da929d20c509d5e173ed0fe5a5c225a1791d59d4dbd9c3ced4",
+    "draft/01-opening.md": "b7a962d89356449aa2c4a4a29c5aa660113cf0131038dec21b95fc1f7b622775",
+    "outline.md": "72dfe711919fcc5b046d5a9232aa85981a368c09fd19ecb769b6f5edad50fae2",
+    "PROJECT.md": "fa276a3b19324f1e243015bcbe6c342faeadbc79f63f85b413ed2bfa954612b1",
+    "sources/index.md": "c2d14ef34090b2c5791817141c5a8a4d1b93df2e269e81b67642fb8ea6c200b7",
+    "state/claims.md": "a657f80d29d40504af6113c874bfda233a784940ae6920fac96f99d27c8852ba",
+    "state/continuity.md": "f0728a6e1e09948cb45285231316d3d33979c73b47630e09150a76fcfe583b61",
+    "state/open-questions.md": "2d9d08e16b0ef1b06e5c742e3c810c8435f543e78e085e2fd8b605dbfde6cd63",
+    "state/truth/style.json": "95d6cd391b2017dd70e6a856adb58b87c473c4c4dee8bca5bbc7d16bdd2b53c1",
+    "state/truth/terms.json": "357fc84e21801c66018d29712b0b2064f9f436ef7ada370b75f4b0a0ebbe3f20",
+    "style.md": "a58d8524776c0e1d2a4c574b08bc131fb44d80ddc472cf5ec16a31e2b6de48a5"
+  },
   "contract": {
     "fields": {
       "id": "01-opening",
@@ -75,9 +122,27 @@
       "stage": "draft",
       "status": "draft",
       "target_words": "650",
-      "purpose": "Introduce the sample packet workflow and show how durable review artifacts fit together."
+      "purpose": "Introduce the sample packet workflow and show how durable review artifacts fit together.",
+      "depends_on": "",
+      "acceptance": "",
+      "checks": "",
+      "reviews": ""
     },
     "lists": {
+      "depends_on": [
+        "PROJECT.md",
+        "brief.md",
+        "outline.md",
+        "style.md",
+        "sources/index.md",
+        "state/continuity.md",
+        "state/claims.md"
+      ],
+      "acceptance": [
+        "Defines context packet, issue, candidate, audit, and export in plain language.",
+        "Uses only local fixture claims listed in state/claims.md.",
+        "Ends with a concrete operating promise a tutorial reader can verify."
+      ],
       "checks": [
         "claims.supported",
         "style.violations"

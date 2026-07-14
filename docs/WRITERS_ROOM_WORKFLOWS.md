@@ -1,5 +1,7 @@
 # Writers' Room Workflow Research
 
+> Status: research memo / design record. The room ships as lab R&D via `mlab lab room`. Current surface: docs/COMMANDS.md.
+
 Manuscript Lab is already close to a writers' room operating system: it has
 contracts, runtime packets, typed notes, issue triage, candidate rewrites,
 blind comparison, taste gates, diff audits, and done gates. The strongest next

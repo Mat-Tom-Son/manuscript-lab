@@ -14,6 +14,12 @@ gate:
         - id: contract.valid
           severity: block
           sensor: section_contract
+        - id: contract.status_started
+          severity: block
+          sensor: section_contract
+        - id: words.floor
+          severity: block
+          sensor: section_content
         - id: runtime.fresh
           severity: block
           sensor: runtime_packet
@@ -24,6 +30,9 @@ gate:
           severity: block
           sensor: issue_ledger
       warns:
+        - id: words.near_target
+          severity: warn
+          sensor: section_content
         - id: reviews.latest_clean
           severity: warn
           sensor: review_errors

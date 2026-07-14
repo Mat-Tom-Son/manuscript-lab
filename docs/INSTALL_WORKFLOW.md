@@ -1,5 +1,7 @@
 # Install Workflow
 
+> Status: design record. Current surface: README.md and docs/COMMANDS.md.
+
 This document records the package/install workflow. v1 is the installed-package
 checkpoint:
 config-first `mlab init`; deterministic validation, evidence, citation, gate,

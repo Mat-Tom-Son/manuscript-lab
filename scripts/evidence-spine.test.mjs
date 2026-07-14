@@ -13,6 +13,9 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-evidence-spine
 try {
   testClaimsListFiltersAndGate();
   testCitationsCheckAndReport();
+  testEmptyCitationMarkersBlock();
+  testDefaultScopeSkipsTodoSections();
+  testMissingLocalSourceFileSeverity();
   testRiskAwareUnsupportedClaims();
   testSourceManifestValidationAndResolution();
   testSourcesAddIsIdempotent();
@@ -71,6 +74,138 @@ function testCitationsCheckAndReport() {
   assert.equal(reportParsed.claims.by_source.alpha, 1);
   assert(reportParsed.citations.by_state["resolved-source"] >= 1);
   assert(reportParsed.issue_counts.by_requirement["evidence.claims.no_blocking_claims"] >= 1);
+}
+
+function testEmptyCitationMarkersBlock() {
+  const workspace = path.join(tmp, "empty-markers");
+  const project = writeProject(workspace);
+  write(
+    path.join(project, "state/claims.md"),
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Notes |\n|---|---|---|---|---|---|---|---|\n| supported-claim | Supported intro fact | draft/02-next.md | `alpha` | supported | medium | factual | p. 1 |\n",
+  );
+  write(
+    path.join(project, "draft/01-intro.md"),
+    `<!--
+id: 01-intro
+kind: document.section
+status: draft
+target_words: 20
+purpose: Exercise empty citation markers.
+acceptance:
+  - Uses citation markers.
+-->
+# Intro
+
+An empty cite marker [cite: ] waits for a key.
+Another empty marker [cite:] sits on its own line.
+A spaced but valid cite [cite: alpha] must still resolve.
+`,
+  );
+
+  const check = runEvidence(["citations", "check", "draft/01-intro.md", "--json", "--gate"], { cwd: workspace });
+  assert.equal(check.status, 1);
+  const parsed = JSON.parse(check.stdout);
+  assert.equal(parsed.ok, false);
+  const empties = parsed.issues.filter((issue) => issue.kind === "empty_citation_marker");
+  assert.equal(empties.length, 2, JSON.stringify(parsed.issues, null, 2));
+  assert(empties.every((issue) => issue.severity === "blocking" && issue.requirement_id === "evidence.citations.resolve_markers"));
+  assert(parsed.markers.some((marker) => marker.id === "alpha" && marker.state === "resolved-source"), "spaced [cite: alpha] should resolve");
+  assert(parsed.requirements.some((requirement) => requirement.id === "evidence.citations.resolve_markers" && requirement.status === "fail"));
+
+  const gate = runGate(["citations", "--json"], { cwd: workspace });
+  assert.equal(gate.status, 1, gate.stderr || gate.stdout);
+  const gateParsed = JSON.parse(gate.stdout);
+  assert.equal(gateParsed.ready, false);
+  assert.equal(gateParsed.status, "fail");
+  const resolveMarkers = gateParsed.requirements.find((requirement) => requirement.id === "evidence.citations.resolve_markers");
+  assert(resolveMarkers, "gate should report evidence.citations.resolve_markers");
+  assert.equal(resolveMarkers.status, "fail");
+}
+
+function testDefaultScopeSkipsTodoSections() {
+  const workspace = path.join(tmp, "default-scope");
+  const project = writeProject(workspace);
+  // Move the marker-heavy intro section back to todo; the default scope is
+  // active (non-todo) sections, matching the readiness gates.
+  write(
+    path.join(project, "draft/01-intro.md"),
+    `<!--
+id: 01-intro
+kind: document.section
+status: todo
+target_words: 20
+purpose: Exercise evidence spine.
+acceptance:
+  - Uses citation markers.
+-->
+# Intro
+
+This still needs support [citation-needed] once drafting starts.
+`,
+  );
+
+  const check = runEvidence(["citations", "check", "--json"], { cwd: workspace });
+  const parsed = JSON.parse(check.stdout);
+  assert.equal(parsed.target, "active drafts");
+  assert.deepEqual(parsed.files, ["draft/02-next.md"]);
+  assert.equal(parsed.counts.citation_needed, 0);
+  assert(!parsed.issues.some((issue) => issue.kind === "citation_needed"));
+}
+
+function testMissingLocalSourceFileSeverity() {
+  const workspace = path.join(tmp, "source-file-missing");
+  const project = writeProject(workspace);
+  write(
+    path.join(project, "sources/index.md"),
+    "# Source Index\n\n| Key | Type | Path | Status | Notes |\n|---|---|---|---|---|\n| `alpha` | notes | `sources/alpha.md` | usable | Fixture source. |\n| `ghost` | notes | `sources/missing-note.md` | usable | File was never added. |\n",
+  );
+  write(
+    path.join(project, "state/claims.md"),
+    "# Claims\n\n| ID | Claim | Section | Source | Status | Risk | Kind | Notes |\n|---|---|---|---|---|---|---|---|\n| supported-claim | Supported intro fact | draft/02-next.md | `alpha` | supported | medium | factual | p. 1 |\n",
+  );
+  write(
+    path.join(project, "draft/01-intro.md"),
+    `<!--
+id: 01-intro
+kind: document.section
+status: draft
+target_words: 20
+purpose: Exercise evidence spine.
+acceptance:
+  - Uses citation markers.
+-->
+# Intro
+
+Clean prose citing a registered source [cite:alpha].
+`,
+  );
+
+  // A path-like location that does not resolve to a local file blocks, matching
+  // the 1.x citation-gate guarantee.
+  const check = runEvidence(["citations", "check", "--json", "--gate"], { cwd: workspace });
+  assert.equal(check.status, 1, check.stderr || check.stdout);
+  const parsed = JSON.parse(check.stdout);
+  assert.equal(parsed.ok, false);
+  const blocker = parsed.issues.find((issue) => issue.kind === "source_file_missing");
+  assert(blocker, "expected a source_file_missing issue");
+  assert.equal(blocker.severity, "blocking");
+  assert.equal(blocker.source, "ghost");
+  assert(parsed.requirements.some((requirement) => requirement.id === "evidence.sources.manifest_valid" && requirement.status === "fail"));
+
+  // Prose-y descriptive locations were never resolvable paths; they still warn.
+  write(
+    path.join(project, "sources/index.md"),
+    "# Source Index\n\n| Key | Type | Path | Status | Notes |\n|---|---|---|---|---|\n| `alpha` | notes | `sources/alpha.md` | usable | Fixture source. |\n| `shelf` | book | `office shelf, second edition` | usable | Physical copy. |\n",
+  );
+  const proseCheck = runEvidence(["citations", "check", "--json", "--gate"], { cwd: workspace });
+  assert.equal(proseCheck.status, 0, proseCheck.stderr || proseCheck.stdout);
+  const proseParsed = JSON.parse(proseCheck.stdout);
+  assert.equal(proseParsed.ok, true);
+  const warning = proseParsed.issues.find((issue) => issue.kind === "source_file_missing");
+  assert(warning, "expected a source_file_missing warning");
+  assert.equal(warning.severity, "warning");
+  assert.equal(warning.source, "shelf");
+  assert(proseParsed.requirements.some((requirement) => requirement.id === "evidence.sources.manifest_valid" && requirement.status === "warn"));
 }
 
 function testRiskAwareUnsupportedClaims() {
@@ -248,6 +383,14 @@ This section cites another registered source [cite:alpha].
 
 function runEvidence(args, { cwd }) {
   return spawnSync(process.execPath, [path.join(repoRoot, "scripts/evidence-spine.mjs"), ...args], {
+    cwd,
+    encoding: "utf8",
+    stdio: ["ignore", "pipe", "pipe"],
+  });
+}
+
+function runGate(args, { cwd }) {
+  return spawnSync(process.execPath, [path.join(repoRoot, "scripts/gate.mjs"), ...args], {
     cwd,
     encoding: "utf8",
     stdio: ["ignore", "pipe", "pipe"],
