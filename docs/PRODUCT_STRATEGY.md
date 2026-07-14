@@ -238,6 +238,13 @@ artifacts, and golden-path stay under `mlab lab` with three standing rules:
 Until a feature clears that bar, it is allowed to be interesting and required
 to be contained.
 
+The first inward baseline exists: `docs/CASE_STUDY_HARNESS_VS_DIRECT.md`
+(2026-07) tested the CORE loop against a direct pass and a self-revision
+control on a real four-section document. Result: readiness discipline
+demonstrated objectively (4/4 gate-ready sections versus 1/4 direct), blind
+prose preference directional but inside judge noise, self-revision control
+null. That is the bar and the template lab features must now clear.
+
 ## Distribution: Agents First
 
 The people most likely to run a file-protocol writing harness daily are agents

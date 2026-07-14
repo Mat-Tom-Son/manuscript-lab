@@ -2,6 +2,15 @@
 
 ## Unreleased
 
+- Added the first inward case study (`docs/CASE_STUDY_HARNESS_VS_DIRECT.md`)
+  with full evidence under `evals/case-studies/2026-07-harness-vs-direct/`:
+  same-model comparison of the mlab loop against a direct pass and a
+  self-revision control on a real four-section document. The mlab loop was
+  the only arm to produce four gate-ready sections (direct: one of four);
+  blind preference leaned to the harness inside judge noise; a "Does It Work"
+  section in `README.md` and a promotion-criterion note in
+  `docs/PRODUCT_STRATEGY.md` reference the study.
+
 ## 2.0.0 - 2026-07-14
 
 - Added `mlab adopt <file-or-dir>` as the front door for existing manuscripts:

@@ -1,0 +1,13 @@
+# The Problem
+
+A writer asks an AI assistant to revise chapter four of a manuscript. The assistant returns polished prose and overwrites the file. The writer has no record of what changed, no diff to inspect, and no way to compare the revision against alternatives. The previous draft is gone. This is the silent rewrite: high-stakes text changes with no trail and no accountability [cite:product-strategy].
+
+In a different session, the same writer asks for a review of chapter seven. The assistant offers thoughtful critique in chat — the pacing lags, a transition is unclear, a statistic seems off. The writer nods, makes a few edits, and closes the window. The critique is gone. Next week a different agent reviews the same chapter and produces different feedback with no awareness of what was already flagged. This is the advice-blob problem: model review that disappears instead of becoming durable, typed work items [cite:product-strategy].
+
+A third failure runs deeper. The assistant drafts a section citing a 2024 industry benchmark showing forty percent time savings. The number sounds specific. No source is registered. No citation marker links the claim to evidence. The writer ships the section, and weeks later a reader asks where the benchmark came from. Nobody can answer. This is the unverifiable-claim problem: prose that reads as authoritative but carries no source support and no provenance [cite:readme].
+
+These failures share a root cause. AI-assisted writing tools treat prose as text to be generated, not as an artifact to be managed. There is no contract defining what a section should contain. No check verifying that it does. No issue ledger tracking what is broken. No gate deciding what is ready. No evidence spine connecting claims to sources [cite:product-strategy]. The output is fast, but the process is opaque. A writer cannot tell what exists, what is missing, what changed, what is unsupported, what is blocked, or what is ready to ship [cite:product-strategy].
+
+Software engineering solved this decades ago. Source control tracks changes. CI runs checks. Code review produces typed issues. Release gates block merges until tests pass. A developer reads a failing build and knows exactly what is wrong and what command fixes it.
+
+Manuscript Lab is local CI for prose: section contracts, typed issues, candidate trails, an evidence spine, and readiness gates that turn a folder of draft files into a reviewable writing project with verifiable readiness [cite:readme].

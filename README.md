@@ -110,6 +110,19 @@ real case study beats a solo frontier-model baseline on a real project. Until
 then, the protocol is the product and the lab is where we try to earn the next
 piece of it.
 
+## Does It Work
+
+We test the core claim on ourselves. The first inward case study
+(`docs/CASE_STUDY_HARNESS_VS_DIRECT.md`) ran the same model over four
+contracted sections three ways: a direct pass, direct plus self-revision, and
+the mlab loop. The mlab loop was the only arm to produce four gate-ready
+sections; the direct pass shipped one of four, leaving `TODO` placeholders and
+a literal `[citation-needed]` in finished prose that the harness sensors
+caught. Blind judges leaned toward the harness drafts (9–6 and 10–6) but
+within judge noise — the honest headline is 4/4 versus 1/4, at roughly 5x the
+generation tokens. Raw drafts, every judge vote, and the runner are in
+`evals/case-studies/2026-07-harness-vs-direct/`.
+
 ## Fixtures
 
 Two public fixtures demonstrate both ends of the workflow:

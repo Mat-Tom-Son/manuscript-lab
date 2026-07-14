@@ -1,0 +1,921 @@
+{
+  "sections": [
+    {
+      "id": "01-the-problem",
+      "deterministic": {
+        "A": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 6,
+          "invalid_source_keys": [],
+          "words": 446
+        },
+        "B": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 7,
+          "invalid_source_keys": [],
+          "words": 447
+        },
+        "C": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 6,
+          "invalid_source_keys": [],
+          "words": 395
+        }
+      },
+      "matchups": [
+        {
+          "matchup": "C-vs-A",
+          "left_wins": 1,
+          "right_wins": 3,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Text 2 better satisfies the contract. It names three distinct failure modes as concrete scenarios (silent rewrites, lost context, unverifiable claims) and states the CI-for-prose thesis in exactly one quotable sentence. It cites [cite:product-strategy] and [cite:readme] at the claims they support. Text 1 fails the thesis constraint by embedding the thesis in a longer sentence and includes a halluc"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 better satisfies the section contract. It names three distinct failure modes as concrete scenarios (silent rewrite, advice-blob, unverifiable claim) and states the CI-for-prose thesis in exactly one quotable sentence at the end. Text 1 violates the one-sentence thesis constraint by adding a second sentence ('The tool is not a book generator...') after the thesis. Text 2 also adheres more st"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Text 2 names three concrete failure modes (silent rewrites, lost context, unverifiable claims) as required, states the CI-for-prose thesis in exactly one quotable sentence, and cites [cite:product-strategy] and [cite:readme] at supporting claims. Text 1 names three failure modes but buries the thesis inside a paragraph rather than stating it as one standalone sentence, violating the acceptance cri"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 names three concrete failure modes (silent rewrites, lost context, unverifiable claims) as required, cites [cite:product-strategy] and [cite:readme] at supporting claims, and states the CI-for-prose thesis in exactly one quotable sentence. Text 2 also meets most criteria but its thesis sentence is not isolated as exactly one sentence in the contracted form and it introduces 'advice-blob pro"
+            }
+          ]
+        },
+        {
+          "matchup": "C-vs-B",
+          "left_wins": 0,
+          "right_wins": 4,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Text 2 better satisfies the section contract. It names three distinct failure modes as concrete scenarios (silent rewrites, lost context, unverifiable claims) and states the CI-for-prose thesis in exactly one quotable sentence. It cites [cite:product-strategy] and [cite:readme] at the claims they support. Text 1 fails the thesis constraint: its final sentence is not a single quotable thesis but a "
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 better satisfies the contract. It names three distinct failure modes as concrete scenarios (silent rewrites, lost context, unverifiable claims) and states the CI-for-prose thesis in exactly one quotable sentence. It cites [cite:product-strategy] and [cite:readme] at the claims they support. Text 2 fails the thesis constraint: it presents the thesis as a colon-led list rather than a single s"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Text 2 meets all acceptance criteria: it names three concrete failure modes (silent rewrites, lost context, unverifiable claims) as scenarios, states the CI-for-prose thesis in exactly one quotable sentence, and cites both [cite:product-strategy] and [cite:readme] at supporting claims. Text 1 fails the contract: it does not state the thesis in exactly one sentence (it embeds a definition in a clos"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 names three concrete failure modes (silent rewrites, lost context, unverifiable claims) as specific scenarios and cites both [cite:product-strategy] and [cite:readme] at the supporting claims. It states the CI-for-prose thesis in exactly one quotable sentence. Text 2 also meets most criteria but its thesis sentence is not isolated as exactly one sentence in the contract sense (it appends a "
+            }
+          ]
+        },
+        {
+          "matchup": "A-vs-B",
+          "left_wins": 1,
+          "right_wins": 3,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Both texts are nearly identical and satisfy the acceptance criteria: they name three concrete failure modes (silent rewrites, lost context, unverifiable claims), state the CI-for-prose thesis in one quotable sentence, and cite [cite:product-strategy] and [cite:readme] at the claims they support. However, text 2 is slightly more disciplined in citation placement. In the final paragraph, text 2 cite"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Both texts are nearly identical and satisfy the core contract: they name three concrete failure modes (silent rewrites, lost context, unverifiable claims), state the CI-for-prose thesis in exactly one sentence, and cite [cite:product-strategy] and [cite:readme] at the claims they support. However, text 2 is slightly more disciplined in citation placement. In the final paragraph, text 1 cites [cite"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Both texts name three concrete failure modes, state the CI-for-prose thesis in one quotable sentence, and cite product-strategy and readme at supporting claims. Text 2 adds a missing [cite:readme] marker on the claim that a ready section has passed checks and every blocking claim has a registered source, which is drawn from the readme source. Text 1 cites product-strategy for that readme-derived c"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Both texts name three concrete failure modes and state the CI-for-prose thesis in one quotable sentence with required [cite:product-strategy] and [cite:readme] markers. Text 1 additionally cites [cite:readme] at the claim 'a section marked ready has passed named, configured checks... every blocking claim has a registered source', which is a factual claim about the tool drawn from the readme source"
+            }
+          ]
+        }
+      ],
+      "armC_meta": {
+        "revised": null,
+        "findings": [],
+        "candidates": []
+      }
+    },
+    {
+      "id": "02-architecture",
+      "deterministic": {
+        "A": {
+          "gate_ready": false,
+          "gate_status": "fail",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 13,
+          "invalid_source_keys": [],
+          "words": 577
+        },
+        "B": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 16,
+          "invalid_source_keys": [],
+          "words": 574
+        },
+        "C": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 5,
+          "invalid_source_keys": [],
+          "words": 570
+        }
+      },
+      "matchups": [
+        {
+          "matchup": "C-vs-A",
+          "left_wins": 2,
+          "right_wins": 1,
+          "ties": 0,
+          "errors": 1,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the clear winner because it adheres strictly to the negative constraint regarding bullet lists. The style rules state: 'No bullet lists in body prose except when enumerating named requirements or fields; never more than one list per section.' Text 1 successfully integrates the required field definitions into a cohesive paragraph, whereas Text 2 uses a bulleted list for the fields and the"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "error",
+              "reason": "judge error: OpenRouter request timed out after 120000 ms"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 satisfies the section contract more precisely: it defines a section contract with real fields (kind, status, target_words, purpose, acceptance, checks) citing [cite:readme], explains the four-layer boundary (file protocol, deterministic CLI, model layer, agent adapters) and why files remain source of truth, and cites [cite:architecture] and [cite:readme] at the claims they support. Its pros"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 satisfies the section contract more completely. It defines a section contract and lists six real fields (>=4 required). It explains the four-layer boundary (file protocol, deterministic CLI, model layer, agent adapters) and why files remain source of truth, citing both [cite:architecture] and [cite:readme] at claims. Text 2 omits the agent adapter MCP detail from sources and its layer expla"
+            }
+          ]
+        },
+        {
+          "matchup": "C-vs-B",
+          "left_wins": 2,
+          "right_wins": 2,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the clear winner on prose quality and adherence to the style rules. The style rules explicitly state: 'No bullet lists in body prose except when enumerating named requirements or fields; never more than one list per section.' Text 2 uses a bulleted list to enumerate the fields of the section contract. While this technically falls under the exception, it results in a disjointed, list-heav"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 is the clear winner because it adheres strictly to the negative constraints regarding formatting. The style rules explicitly state: 'No bullet lists in body prose except when enumerating named requirements or fields; never more than one list per section.' Text 1 uses exactly one list to enumerate the fields of the section contract, satisfying the acceptance criteria while respecting the con"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Both texts meet the section contract: defining section contracts with 4+ fields, explaining the four-layer boundary (file protocol, deterministic CLI, model layer, agent adapters) and why files are source of truth, and citing [cite:architecture] and [cite:readme]. Text 2 lists six real contract fields (status, target_words, purpose, acceptance, checks, reviews) with accurate gate-blocking facts fr"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 satisfies the section contract more precisely: it defines a section contract with real fields including kind/status/target_words/purpose/acceptance/checks (citing [cite:readme]), explains the four-layer boundary (file protocol, deterministic CLI, model layer, agent adapters) and why files remain source of truth, and cites both [cite:architecture] and [cite:readme] at claims. Text 1 lists on"
+            }
+          ]
+        },
+        {
+          "matchup": "A-vs-B",
+          "left_wins": 1,
+          "right_wins": 3,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Both texts are nearly identical and satisfy the section contract: they define a section contract with six fields, explain the four-layer boundary, and cite [cite:architecture] and [cite:readme] at the claims they support. Text 2 is slightly better because it adds inline citations to the two claims about `todo` blocking release and the 33% word floor, which are supported by [cite:readme]. Text 1 om"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Both texts are nearly identical and satisfy the section contract: they define a section contract with six fields, explain the four-layer boundary, and cite [cite:architecture] and [cite:readme] at the claims they support. Text 1 is slightly more precise and faithful to the sources. It correctly states that models 'do not write directly to draft files in the preferred flow,' matching the architectu"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Both texts satisfy the section contract: defining section contract with six fields, explaining the four-layer boundary with file source-of-truth, and citing [cite:architecture] and [cite:readme] at claims. Text 2 follows citation discipline more strictly by placing [cite:readme] at the specific claim for status/target_words (vs Text 1's trailing pile in the intro sentence) and adds [cite:architect"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Both texts meet the section contract: defining section contract with six fields, explaining the four-layer boundary with files as source of truth, and citing [cite:architecture] and [cite:readme] at claims. Text 2 is slightly more precise in the model layer ('never write' vs 'do not write' in a less strict phrasing) and avoids the minor redundancy of Text 1's 'in the preferred flow' followed by 'H"
+            }
+          ]
+        }
+      ],
+      "armC_meta": {
+        "revised": null,
+        "findings": [],
+        "candidates": []
+      }
+    },
+    {
+      "id": "03-gates-and-evidence",
+      "deterministic": {
+        "A": {
+          "gate_ready": false,
+          "gate_status": "fail",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 3,
+          "marker_count": 18,
+          "invalid_source_keys": [],
+          "words": 1733
+        },
+        "B": {
+          "gate_ready": false,
+          "gate_status": "fail",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 8,
+          "marker_count": 17,
+          "invalid_source_keys": [],
+          "words": 1983
+        },
+        "C": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 5,
+          "invalid_source_keys": [],
+          "words": 579
+        }
+      },
+      "matchups": [
+        {
+          "matchup": "C-vs-A",
+          "left_wins": 4,
+          "right_wins": 0,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the clear winner. It adheres strictly to the style rules, providing a clean, professional technical narrative. Text 2 includes a large block of internal monologue and self-correction at the end, which violates the persona and style constraints. Furthermore, Text 1 integrates the acceptance criteria (gate requirements, remediation commands, and citations) smoothly into the prose, whereas "
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 is the clear winner. It adheres strictly to the style rules, using short, declarative sentences and avoiding the rhetorical questions found in Text 1 (e.g., 'does this target satisfy...'). Text 2 also integrates the acceptance criteria more effectively, particularly the requirement to explain that blockers carry the fix command, by providing a concrete, plausible example (`mlab packet build"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 satisfies the section contract and style rules without extraneous content. It names three gate requirements (contract.valid, runtime.fresh, issues.no_blockers) with [cite:gate-engine], explains the evidence spine with [cite:evidence-spine], and states that report blockers carry a remediation command with a concrete example (mlab packet build draft/04-market.md). Citations appear at claims, "
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 fulfills the section contract cleanly: it names three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers) with a citation/evidence requirement via the evidence spine, explains report blockers carry the fix command with a concrete example (runtime.fresh -> mlab packet build draft/04-market.md), and cites both [cite:gate-engine] and [cite:evidence-spine] at supporting c"
+            }
+          ]
+        },
+        {
+          "matchup": "C-vs-B",
+          "left_wins": 4,
+          "right_wins": 0,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the only valid submission. It fulfills the section contract by naming three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers), explaining the remediation mechanism with a concrete example, and citing both required sources at the claims they support. The prose is plain, precise, and adheres to the style rules. Text 2 is not a whitepaper section; it is an internal "
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 is the only valid submission. Text 1 is a stream-of-consciousness self-review that fails to produce a section. Text 2 satisfies the contract: it names three gate requirements (contract.valid, runtime.fresh, issues.no_blockers), explains that remediation fields carry fix commands with a concrete example, and cites both required sources at the claims they support. Prose is plain, declarative,"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 fulfills the section contract: it names three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers) plus the evidence/citation requirement via the evidence spine, explains that blockers carry a remediation command with a concrete example (mlab packet build draft/04-market.md), and cites [cite:gate-engine] and [cite:evidence-spine] at the supported claims. It uses plain "
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 fulfills the section contract: it names three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers) with a citation/evidence dependency via the evidence spine, explains that report blockers carry a fix command with a concrete example (runtime.fresh -> mlab packet build draft/04-market.md), and cites both [cite:gate-engine] and [cite:evidence-spine] at their claims. It u"
+            }
+          ]
+        },
+        {
+          "matchup": "A-vs-B",
+          "left_wins": 2,
+          "right_wins": 0,
+          "ties": 2,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the only submission that actually delivers the requested section. It satisfies all three acceptance criteria: it names three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers) plus the evidence.* namespace, it explains that blockers carry a remediation command with a concrete example, and it cites both [cite:gate-engine] and [cite:evidence-spine] at the claims the"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 is the only one that actually delivers a finished section. Text 1 is a stream-of-consciousness self-review that never produces the requested prose, failing the contract entirely. Text 2 satisfies the acceptance criteria: it names three real gate requirements (contract.valid, runtime.fresh, issues.no_blockers) plus the evidence.* namespace, explains that blockers carry a remediation command "
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "tie",
+              "reason": "Neither text is a valid submission. Text 1 is a draft interleaved with author meta-commentary and self-review, violating prose quality and the no-trailing-pile/cite-at-claim discipline by mixing explanation with content; it also fabricates `mlab run` not in sources. Text 2 is entirely a review checklist of Text 1 with no section prose written, failing the section contract completely. Both tie at z"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "tie",
+              "reason": "Both texts fail the contract as written. Text 1 is a meta-review of a prior draft, not a section fulfilling the contract; it uses bullet lists in body prose, rhetorical framing, and never delivers the required standalone explanation. Text 2 attempts the section but fabricates the command `mlab run draft/04-market.md` (not in sources) and misattributes remediation fields to gate report blockers rat"
+            }
+          ]
+        }
+      ],
+      "armC_meta": {
+        "revised": null,
+        "findings": [],
+        "candidates": []
+      }
+    },
+    {
+      "id": "04-agents",
+      "deterministic": {
+        "A": {
+          "gate_ready": false,
+          "gate_status": "fail",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 16,
+          "invalid_source_keys": [],
+          "words": 548
+        },
+        "B": {
+          "gate_ready": true,
+          "gate_status": "pass_with_warnings",
+          "words_floor": "pass",
+          "near_target": "warn",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 6,
+          "invalid_source_keys": [],
+          "words": 204
+        },
+        "C": {
+          "gate_ready": true,
+          "gate_status": "pass",
+          "words_floor": "pass",
+          "near_target": "pass",
+          "citations_ok": true,
+          "cite_issues_blocking": 0,
+          "marker_count": 13,
+          "invalid_source_keys": [],
+          "words": 488
+        }
+      },
+      "matchups": [
+        {
+          "matchup": "C-vs-A",
+          "left_wins": 2,
+          "right_wins": 2,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the clear winner on prose quality and style adherence. It uses short, declarative sentences and avoids the stacked clauses found in Text 2 (e.g., 'not as secondary users who happen to share a CLI'). Text 1 also integrates the required citations more naturally at the point of the claim, whereas Text 2 tends to pile them at the end of paragraphs. Both texts successfully walk through a work"
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 is the clear winner on factual accuracy and citation discipline. Text 1 hallucinates specific tool names (e.g., `status_project`, `report_project`, `check_static`, `citations_check`, `evidence_report`, `gate_target`) that do not appear in the provided sources. The sources describe the tools conceptually (validation, status, checks, gates) and mention the CLI commands (`mlab status`, `mlab c"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "right",
+              "reason": "Text 2 satisfies the section contract more completely: it explains MCP exposure flags (default, --read-only, --all-tools) with concrete safety annotations and cites [cite:mcp] at each claim; it walks a worked flow from existing draft (adopt) to readiness verdict (gate) using named tools and cites [cite:readme] and [cite:mcp] at supporting claims. Text 1 invents tool names not in sources (validate_"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "right",
+              "reason": "Text 1 satisfies the section contract more completely: it cites both [cite:mcp] and [cite:readme] at the claims they support (acceptance criterion 3), explains MCP exposure flags and typed tools with safety annotations without listing every tool (criterion 1), and walks a coherent worked flow from existing draft (adopt) to readiness verdict via check/revise/gate as an agent would run it (criterion"
+            }
+          ]
+        },
+        {
+          "matchup": "C-vs-B",
+          "left_wins": 4,
+          "right_wins": 0,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 satisfies the section contract completely: it explains the MCP server's typed tools, safety annotations, and exposure flags without listing every tool, and it walks a concrete worked flow (validate, status, adopt/check, revise, gate) from existing draft to readiness verdict. It cites [cite:mcp] and [cite:readme] at the claims they support. Text 2 is truncated mid-sentence, fails to deliver "
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 satisfies the section contract completely: it explains the MCP server's typed tools, safety annotations, and exposure flags without listing every tool, and it walks a concrete worked flow (validate, status, adopt, check, revise, gate) from existing draft to readiness verdict. It cites [cite:mcp] and [cite:readme] at the claims they support. Text 1 is truncated mid-sentence, fails to deliver"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 fulfills the section contract: it explains MCP server offerings (typed tools, safety annotations, exposure flags) without listing every tool, walks a complete worked flow from existing draft to readiness verdict (adopt/check/revise/gate) as an agent would run it, and cites [cite:mcp] and [cite:readme] at the claims they support. Text 2 is truncated mid-sentence, lacks any worked flow, and f"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 fulfills the section contract more completely: it explains MCP server offerings (typed tools, safety annotations, exposure flags) without listing every tool, and walks a concrete worked flow from existing draft to readiness verdict (adopt/check/gate) as an agent would run it, citing [cite:mcp] and [cite:readme] at claims. Text 1 is truncated, omits the required worked flow entirely, and end"
+            }
+          ]
+        },
+        {
+          "matchup": "A-vs-B",
+          "left_wins": 4,
+          "right_wins": 0,
+          "ties": 0,
+          "errors": 0,
+          "votes": [
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 is the only complete submission. It satisfies the section contract by explaining the MCP server's capabilities (typed tools, safety annotations, exposure flags) and walking through a concrete worked flow from adopting a draft to reaching a readiness verdict. It adheres to the citation discipline, using [cite:mcp] and [cite:readme] to support factual claims. Text 2 is truncated mid-sentence "
+            },
+            {
+              "judge": "openrouter:qwen/qwen3.7-plus",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 is the only complete submission. It satisfies all acceptance criteria: it explains the MCP server's typed tools and safety annotations without listing every tool, and it walks a concrete worked flow from adopting an existing draft to a readiness verdict (adopt, status, report, check, revise, check, citations, evidence, gate). It cites [cite:mcp] and [cite:readme] at the claims they support."
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "fwd",
+              "vote": "left",
+              "reason": "Text 1 fulfills the section contract: it explains MCP server offerings (typed tools, safety annotations, exposure flags) with citations to [cite:mcp], and walks a complete worked flow from existing draft (mlab adopt) to readiness verdict (gate) using both [cite:mcp] and [cite:readme] at claims. Text 2 is truncated mid-sentence, lacks the required worked flow, and fails to cite [cite:readme] or com"
+            },
+            {
+              "judge": "openrouter:tencent/hy3",
+              "order": "rev",
+              "vote": "left",
+              "reason": "Text 2 fulfills the section contract; text 1 does not. The contract requires a worked flow from existing draft to readiness verdict and citations of both [cite:mcp] and [cite:readme]. Text 1 truncates before any worked flow and ends with a broken citation [cite:m, omitting readme entirely. Text 2 walks adopt -> status -> report -> check -> revise -> gate with concrete tool names and cites both sou"
+            }
+          ]
+        }
+      ],
+      "armC_meta": {
+        "revised": null,
+        "findings": [],
+        "candidates": []
+      }
+    }
+  ],
+  "config": {
+    "GEN_MODEL": "openrouter:z-ai/glm-5.2",
+    "SELECT_MODEL": "lightning:lightning-ai/gpt-oss-120b",
+    "JUDGE_MODELS": [
+      "openrouter:qwen/qwen3.7-plus",
+      "openrouter:tencent/hy3"
+    ],
+    "SOURCE_TRUNC": 6000
+  },
+  "ledger": [
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3798,
+      "completion_tokens": 3243,
+      "ms": 61387
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3797,
+      "completion_tokens": 3057,
+      "ms": 57183
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3815,
+      "completion_tokens": 146,
+      "ms": 3516
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3816,
+      "completion_tokens": 169,
+      "ms": 3446
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3803,
+      "completion_tokens": 3813,
+      "ms": 71931
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3802,
+      "completion_tokens": 3506,
+      "ms": 65338
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3820,
+      "completion_tokens": 194,
+      "ms": 38597
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3821,
+      "completion_tokens": 176,
+      "ms": 5155
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3856,
+      "completion_tokens": 2494,
+      "ms": 47623
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3856,
+      "completion_tokens": 2184,
+      "ms": 42047
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3877,
+      "completion_tokens": 128,
+      "ms": 3077
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3877,
+      "completion_tokens": 166,
+      "ms": 3410
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4035,
+      "completion_tokens": 2632,
+      "ms": 74864
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4068,
+      "completion_tokens": 205,
+      "ms": 3309
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4068,
+      "completion_tokens": 181,
+      "ms": 5039
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4045,
+      "completion_tokens": 3513,
+      "ms": 105475
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4045,
+      "completion_tokens": 3493,
+      "ms": 97503
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4078,
+      "completion_tokens": 288,
+      "ms": 6127
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4078,
+      "completion_tokens": 236,
+      "ms": 3891
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4070,
+      "completion_tokens": 1715,
+      "ms": 53212
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4070,
+      "completion_tokens": 2642,
+      "ms": 78786
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4103,
+      "completion_tokens": 181,
+      "ms": 3276
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4103,
+      "completion_tokens": 219,
+      "ms": 3767
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 6026,
+      "completion_tokens": 1194,
+      "ms": 24222
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 6027,
+      "completion_tokens": 828,
+      "ms": 16828
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 6052,
+      "completion_tokens": 176,
+      "ms": 6423
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 6052,
+      "completion_tokens": 191,
+      "ms": 6152
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 6598,
+      "completion_tokens": 1004,
+      "ms": 21164
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 6599,
+      "completion_tokens": 2045,
+      "ms": 39986
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 6607,
+      "completion_tokens": 160,
+      "ms": 71846
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 6607,
+      "completion_tokens": 168,
+      "ms": 5842
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 8331,
+      "completion_tokens": 2168,
+      "ms": 41469
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 8331,
+      "completion_tokens": 2686,
+      "ms": 52113
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 8313,
+      "completion_tokens": 105,
+      "ms": 4478
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 8313,
+      "completion_tokens": 129,
+      "ms": 4365
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4301,
+      "completion_tokens": 4321,
+      "ms": 80418
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 4302,
+      "completion_tokens": 5378,
+      "ms": 99551
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4309,
+      "completion_tokens": 188,
+      "ms": 5763
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 4308,
+      "completion_tokens": 174,
+      "ms": 3574
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3810,
+      "completion_tokens": 1035,
+      "ms": 20923
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3811,
+      "completion_tokens": 1495,
+      "ms": 29975
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3817,
+      "completion_tokens": 152,
+      "ms": 3988
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3817,
+      "completion_tokens": 136,
+      "ms": 3195
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3925,
+      "completion_tokens": 982,
+      "ms": 20254
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:qwen/qwen3.7-plus",
+      "prompt_tokens": 3925,
+      "completion_tokens": 1052,
+      "ms": 21928
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3930,
+      "completion_tokens": 123,
+      "ms": 2961
+    },
+    {
+      "kind": "judge",
+      "model": "openrouter:tencent/hy3",
+      "prompt_tokens": 3931,
+      "completion_tokens": 192,
+      "ms": 5364
+    }
+  ],
+  "calls": 50
+}
