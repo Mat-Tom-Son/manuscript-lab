@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.0.0.
+This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.1.0.
 `mlab --help` shows the same six groups with one line per command;
 `mlab help <command>` (or `mlab <command> --help`) prints per-command detail;
 `mlab help admin` prints template-clone admin commands.

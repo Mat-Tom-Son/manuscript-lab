@@ -1,6 +1,6 @@
 {
   "name": "manuscript-lab",
-  "version": "2.0.0",
+  "version": "2.1.0",
   "private": false,
   "description": "Local CI for prose: section contracts, checks, typed reviews, an issue ledger, an evidence spine, and release gates for long-form writing — a zero-dependency CLI and MCP server shared by humans, agents, and CI.",
   "license": "MIT",

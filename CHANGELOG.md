@@ -1,6 +1,6 @@
 # Changelog
 
-## Unreleased
+## 2.1.0 - 2026-07-15
 
 - Fixed the adopt funnel: `mlab adopt` no longer writes `TODO` purpose and
   acceptance markers that its own gates then flag. Imported contracts get a
