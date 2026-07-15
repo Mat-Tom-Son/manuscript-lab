@@ -13,7 +13,7 @@ Every command name that worked before v2 still works — see
 | Command | Does | Key flags |
 | --- | --- | --- |
 | `mlab init` | Create a config-first workspace in the current directory. Bare `init` outside a template clone defaults to `--profile whitepaper --root manuscript` with the title cased from the directory name. | `--profile <name>`, `--root <dir>`, `--title "..."` |
-| `mlab adopt <file-or-dir>` | Import existing markdown into a new contracted workspace. Copies sources verbatim into `draft/NN-slug.md` sections with inferred contracts; never modifies or moves originals. Refuses if `manuscript-lab.config.json` already exists. | `--split file\|h1\|h2`, `--root <dir>`, `--title "..."`, `--profile <name>`, `--dry-run`, `--json` |
+| `mlab adopt [file-or-dir]` | Import existing markdown into a new contracted workspace (default source: the current directory). Copies sources verbatim into `draft/NN-slug.md` sections with inferred contracts — provisional purpose from the first prose sentence, profile default acceptance, and `confirmed: false`, which blocks the manuscript gate until a human reviews each contract and flips it to `confirmed: true`. Never modifies or moves originals. Refuses if `manuscript-lab.config.json` already exists. | `--split file\|h1\|h2`, `--root <dir>`, `--title "..."`, `--profile <name>`, `--dry-run`, `--json` |
 | `mlab doctor` | Diagnose environment, provider keys, and release health. | `--no-network`, `--json` |
 | `mlab validate` | Validate the file protocol and workspace discovery. | `--json` |
 
@@ -23,13 +23,13 @@ Every command name that worked before v2 still works — see
 | --- | --- | --- |
 | `mlab status` | Cockpit view: sections, issues, runs, artifacts, next steps. | `--json` |
 | `mlab compose draft/<section>.md` | Build the runtime context packet for one section under `state/runtime/`. | |
-| `mlab check [target]` | Run document checks. `--fix` creates every missing required scaffolding path (state dirs, README stubs, `state/truth/*.json`), then re-runs the static checks. | `--static-only`, `--fix`, `--model-checks`, `--model <provider/model>` |
+| `mlab check [target]` | Run document checks. `--fix` creates every missing required scaffolding path (state dirs, README stubs, `state/truth/*.json`) and syncs `state/status.md` / `outline.md` statuses from the section contracts (contracts are the source of truth), then re-runs the static checks. | `--static-only`, `--fix`, `--model-checks`, `--model <provider/model>` |
 | `mlab review <target>` | Run typed review passes; findings land as issues in the ledger. `mlab review report <target>` summarizes latest runs. | `--panel <id>`, `--passes <ids>`, `--dry-run` |
-| `mlab issues` | List and triage typed issues. | `list --status open`, `--target <path>`, `--json` |
+| `mlab issues` | List, file, and triage typed issues. `add` is the manual entry point for what a human editor spots; model reviews file the rest. | `add --target <path> --note "..."`, `list --status open`, `decide <id> --decision accept`, `--target <path>`, `--json` |
 | `mlab revise <target>` | Generate candidate revisions for an accepted issue. | `--issue <id>`, `--candidates <n>`, `--dry-run` |
 | `mlab compare <target>` | Blind pairwise comparison of a candidate run. | `--run <candidate-run-id>`, `--dry-run` |
 | `mlab merge <target>` | Preview or apply the comparison winner, with audit trail. | `--run <candidate-run-id>`, `--apply`, `--audit` |
-| `mlab gate <target>` | Evaluate a readiness gate: `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the other gates. | `--json`, `--write`, `--static-only`, `--profile <name>` |
+| `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. | `--json`, `--write`, `--static-only`, `--profile <name>` |
 | `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. | `--write`, `--json` |
 
 ## Evidence
@@ -45,7 +45,7 @@ Every command name that worked before v2 still works — see
 
 | Command | Does | Key flags |
 | --- | --- | --- |
-| `mlab export` | Export reader copies plus `exports/manifest.json` with input/output hashes. Default formats: `md,html`. EPUB needs `zip`; PDF needs `python3` + `reportlab`. | `--formats md,html,epub,pdf`, `--slug <slug>`, `--out <dir>`, `--no-contents`, `--include-todo` |
+| `mlab export` | Export reader copies plus `exports/manifest.json` with input/output hashes. Checks the manuscript gate first: a failing gate prints a draft-export warning and is recorded in the manifest (`readiness`); `--require-ready` refuses instead. Default formats: `md,html`. EPUB needs `zip`; PDF needs `python3` + `reportlab`. | `--formats md,html,epub,pdf`, `--require-ready`, `--slug <slug>`, `--out <dir>`, `--no-contents`, `--include-todo` |
 | `mlab done` | Final release gate: regenerates exports, then verifies manuscript and export readiness. `--skip-exports` is the maintenance form (alias: `done:no-export`). | `--skip-exports`, `--export-formats <list>`, `--include-todo-exports`, `--json` |
 
 ## Agents

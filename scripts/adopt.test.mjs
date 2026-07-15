@@ -26,6 +26,7 @@ try {
   testAdoptRefusesWhenConfigExists();
   testAdoptDryRunWritesNothing();
   testAdoptArgumentErrors();
+  testAdoptDefaultsToCwd();
   console.log("adopt tests passed");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -96,7 +97,11 @@ function testAdoptSingleFile() {
     targetWords: section.target_words,
     sourceLabel: "my-old-draft.md",
   });
-  assert.match(parseSectionContract(draft).get("purpose"), /\(Field Notes\)$/);
+  assert.match(
+    parseSectionContract(draft).get("purpose"),
+    /^Imported from my-old-draft\.md: The imported prose keeps enough plain words/,
+    "purpose should carry the first prose sentence",
+  );
 
   const validate = runValidate(["--json"], { cwd: workspace });
   assert.equal(validate.status, 0, validate.stderr || validate.stdout);
@@ -226,7 +231,7 @@ function testAdoptH1Split() {
     targetWords: parsed.sections[1].target_words,
     sourceLabel: "whitepaper.md",
   });
-  assert.match(parseSectionContract(draft1).get("purpose"), /\(Alpha\)$/);
+  assert.match(parseSectionContract(draft1).get("purpose"), /^Imported from whitepaper\.md: /);
   assert.equal(parsed.sections[0].words, wordCount(body1));
 
   assert.equal(fs.readFileSync(sourceFile, "utf8"), content, "in-workspace source must stay untouched");
@@ -338,7 +343,7 @@ function testAdoptSanitizesControlBytesInPurpose() {
   mkdir(workspace);
   mkdir(sources);
   const sourceFile = path.join(sources, "a.md");
-  fs.writeFileSync(sourceFile, `# Head\u0000Injected\n\n${FILLER}\n`, "utf8");
+  fs.writeFileSync(sourceFile, `# Head\u0000Injected\n\nBody\u0007Injected prose ends the line.\n\n${FILLER}\n`, "utf8");
 
   const result = runAdopt([sourceFile, "--json"], { cwd: workspace });
   assert.equal(result.status, 0, result.stderr || result.stdout);
@@ -347,7 +352,8 @@ function testAdoptSanitizesControlBytesInPurpose() {
   const draft = fs.readFileSync(path.join(workspace, "manuscript", parsed.sections[0].file), "utf8");
   const purpose = parseSectionContract(draft).get("purpose");
   assert.doesNotMatch(purpose, /[\u0000-\u0008\u000E-\u001F\u007F-\u009F]/, "purpose must not carry control bytes");
-  assert.match(purpose, /HeadInjected/, "sanitizing should keep the printable heading text");
+  assert.match(purpose, /BodyInjected/, "sanitizing should keep the printable prose text");
+  assert(!purpose.includes("-->"), "purpose must not smuggle a comment terminator");
   const contractComment = draft.slice(0, draft.indexOf("-->"));
   assert.doesNotMatch(contractComment, /\u0000/, "the written contract must not contain NUL bytes");
 }
@@ -408,8 +414,8 @@ function testAdoptArgumentErrors() {
   mkdir(workspace);
 
   const missing = runAdopt([], { cwd: workspace });
-  assert.equal(missing.status, 2);
-  assert.match(missing.stderr, /requires a source markdown file or directory/i);
+  assert.equal(missing.status, 2, "no-arg adopt in a markdown-free directory should fail");
+  assert.match(missing.stderr, /No markdown files found under/i);
 
   const badSplit = runAdopt(["notes.md", "--split", "h3"], { cwd: workspace });
   assert.equal(badSplit.status, 2);
@@ -427,6 +433,30 @@ function testAdoptArgumentErrors() {
   assert.deepEqual(fs.readdirSync(workspace), [], "argument errors must not write anything");
 }
 
+function testAdoptDefaultsToCwd() {
+  const workspace = path.join(tmp, "default-source");
+  mkdir(workspace);
+  fs.writeFileSync(path.join(workspace, "notes.md"), `# Notes\n\n${FILLER}\n`, "utf8");
+
+  const dry = runAdopt(["--json", "--dry-run"], { cwd: workspace });
+  assert.equal(dry.status, 0, dry.stderr || dry.stdout);
+  const parsed = JSON.parse(dry.stdout);
+  assert.equal(parsed.source_defaulted, true, "omitted source should be recorded as defaulted");
+  assert.equal(parsed.dry_run, true);
+  assert.equal(parsed.sections.length, 1);
+
+  const result = runAdopt([], { cwd: workspace });
+  assert.equal(result.status, 0, result.stderr || result.stdout);
+  assert.match(result.stdout, /No source path given — adopting markdown from the current directory\./);
+  assert.match(result.stdout, /Contracts are provisional \(confirmed: false\)/);
+  assert(fs.existsSync(path.join(workspace, "manuscript-lab.config.json")));
+  assert(fs.existsSync(path.join(workspace, "manuscript/draft/01-notes.md")));
+
+  const repeat = runAdopt([], { cwd: workspace });
+  assert.equal(repeat.status, 2, "defaulted source must not bypass the already-initialized guard");
+  assert.match(repeat.stderr, /Already initialized/);
+}
+
 function assertAdoptedContract(text, { file, id, targetWords, sourceLabel }) {
   const validation = validateSectionContract({ text, file, knownCheckIds, knownReviewIds });
   assert.deepEqual(validation.errors, [], `contract for ${file} should validate: ${validation.errors.join("; ")}`);
@@ -438,12 +468,16 @@ function assertAdoptedContract(text, { file, id, targetWords, sourceLabel }) {
   assert.equal(Number(contract.get("target_words")), targetWords);
   assert(Number(contract.get("target_words")) >= 300, "target_words floor is 300");
   const purpose = contract.get("purpose");
-  assert.match(purpose, /^TODO: confirm — imported from /);
+  assert.match(purpose, /^(Imported from|Carry the content imported from) /);
   assert(purpose.includes(sourceLabel), `purpose should name the source ${sourceLabel}: ${purpose}`);
+  assert.equal(contract.get("confirmed"), "false", "imported contracts start unconfirmed");
   assert(contract.has("acceptance"), "contract should declare acceptance");
 
   const comment = text.slice(0, text.indexOf("-->"));
-  assert.equal((comment.match(/^ {2}- TODO:/gm) ?? []).length, 2, "acceptance should carry two TODO bullets");
+  assert(!comment.includes("TODO"), "imported contracts must not carry TODO placeholders");
+  assert.match(comment, /^ {2}- The section fulfills its purpose without relying on later sections\.$/m);
+  assert.match(comment, /^ {2}- Claims are source-backed or visibly marked for support\.$/m);
+  assert.match(comment, /^ {2}- The ending gives the next section a clean handoff\.$/m);
 
   assert.deepEqual(parseContractList(text, "checks"), ["claims.supported", "style.violations"]);
   assert.deepEqual(parseContractList(text, "reviews"), ["cold.reader", "contract.editor"]);

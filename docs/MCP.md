@@ -131,21 +131,21 @@ Descriptions carry the underlying CLI command and its declared effects.
 | `evidence_report` | `mlab evidence report --json` | reads_project | yes | yes |
 | `review_report` | `mlab review report <target>` | reads_project | yes | yes |
 | `review_run` | `mlab review <target> --panel <panel>` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `room_diagnose` | `mlab room diagnose <target> --json` | reads_project, writes_state | yes | no |
-| `room_blue_sky` | `mlab room blue-sky <target> --json` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `room_report` | `mlab room report <target>` | reads_project | yes | yes |
-| `chorus_run` | `mlab chorus run <target> --json` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `chorus_report` | `mlab chorus report <target>` | reads_project | yes | yes |
+| `room_diagnose` | `mlab lab room diagnose <target> --json` | reads_project, writes_state | yes | no |
+| `room_blue_sky` | `mlab lab room blue-sky <target> --json` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `room_report` | `mlab lab room report <target>` | reads_project | yes | yes |
+| `chorus_run` | `mlab lab chorus run <target> --json` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `chorus_report` | `mlab lab chorus report <target>` | reads_project | yes | yes |
 | `merge_preview` | `mlab merge <target> --run <run-id> --json` | reads_project | yes | yes |
 | `merge_apply` | `mlab merge <target> --run <run-id> --apply --audit --json` | reads_project, writes_state, writes_draft | no | no |
-| `practice_propose` | `mlab practice propose --exercise <exercise> --brief <brief>` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `practice_compare` | `mlab practice compare --exercise <exercise> --brief <brief>` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `practice_bench` | `mlab practice bench --exercises <set>` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `practice_strategies` | `mlab practice strategies --exercises <set> --strategies <list>` | reads_project, writes_state, calls_model, spends_budget | no | no |
-| `artifacts_list` | `mlab artifacts list --kind <kind> --json` | reads_project | yes | yes |
-| `artifacts_inspect` | `mlab artifacts inspect --run <run-id> --json` | reads_project | yes | yes |
-| `eval_practice_strategies` | `mlab eval practice-strategies --from state/practice-strategies/<run-id> --json` | reads_project, writes_state | yes | no |
-| `golden_path_guide` | `mlab golden-path --json` | reads_project | yes | yes |
+| `practice_propose` | `mlab lab practice propose --exercise <exercise> --brief <brief>` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `practice_compare` | `mlab lab practice compare --exercise <exercise> --brief <brief>` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `practice_bench` | `mlab lab practice bench --exercises <set>` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `practice_strategies` | `mlab lab practice strategies --exercises <set> --strategies <list>` | reads_project, writes_state, calls_model, spends_budget | no | no |
+| `artifacts_list` | `mlab lab artifacts list --kind <kind> --json` | reads_project | yes | yes |
+| `artifacts_inspect` | `mlab lab artifacts inspect --run <run-id> --json` | reads_project | yes | yes |
+| `eval_practice_strategies` | `mlab lab eval practice-strategies --from state/practice-strategies/<run-id> --json` | reads_project, writes_state | yes | no |
+| `golden_path_guide` | `mlab lab golden-path --json` | reads_project | yes | yes |
 | `export_reader` | `mlab export --formats <formats> --json` | reads_project, writes_exports | no | no |
 | `done_no_export` | `mlab done:no-export --json` | reads_project, writes_state, touches_workspace | no | no |
 | `done_export` | `mlab done --json` | reads_project, writes_state, writes_exports, touches_workspace | no | no |

@@ -1,5 +1,7 @@
 # Project Filesystem
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 The harness separates reusable infrastructure from project content.
 
 Reusable infrastructure stays in the repository root: `scripts/`, `checks/`, `reviews/`, `.pi/`, generic `docs/`, package files, and provider configuration.

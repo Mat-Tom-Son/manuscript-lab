@@ -1,5 +1,7 @@
 # Story Workspace Switching
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 Use this when loading, restoring, archiving, or starting a story in the active harness workspace.
 
 ## Principle

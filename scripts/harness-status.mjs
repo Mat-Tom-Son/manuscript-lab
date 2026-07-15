@@ -396,7 +396,7 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
     return [
       "Triage open issues before revising.",
       target ? labCommand("issues", `list --status open --target ${target}`) : labCommand("issues", "list --status open"),
-      target ? `npm run plan:revision -- ${target}` : "npm run issues -- stats",
+      target ? labCommand("revise:candidates", `${target} --issue <issue-id>`) : labCommand("issues", "stats"),
     ];
   }
 
@@ -412,7 +412,7 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
     return [
       `Compile the runtime packet for the next planned section: ${nextDraft.file}`,
       labCommand("compose", nextDraft.file),
-      `/doc-write ${nextDraft.file}`,
+      `then draft ${nextDraft.file} toward its contract and run ${labCommand("check", nextDraft.file)}`,
     ];
   }
 
@@ -435,7 +435,7 @@ function suggestedNext({ nextDraft, activeReview, activeDraft, issueStats }) {
   if (nextDraft?.file) {
     return [
       `Draft the next planned section: ${nextDraft.file}`,
-      `/doc-write ${nextDraft.file}`,
+      `write ${nextDraft.file} toward its contract (purpose, acceptance, target words)`,
       labCommand("check", nextDraft.file),
     ];
   }
@@ -501,32 +501,30 @@ function printText(data) {
   }
   console.log("");
 
-  console.log("Room Runs:");
+  // Lab surfaces (room, chorus, generated artifacts) appear only once runs
+  // exist: status reports the state of the writing loop, it does not advertise
+  // R&D features to fresh projects. Discovery lives in `mlab lab --help`.
   if (data.room_runs.length) {
+    console.log("Room Runs (lab):");
     for (const run of data.room_runs) {
       const decision = run.selected || run.parked || run.rejected ? `, selected ${run.selected}, parked ${run.parked}, rejected ${run.rejected}` : "";
       const beats = run.beats ? `, ${run.beats} beat(s)` : "";
       const artifact = run.files?.diagnosis_md || run.files?.report || run.files?.beat_board_md || run.files?.checklist || run.path;
       console.log(`- ${run.section_id}: ${run.operation || "room"} ${run.status}${decision}${beats} -> ${artifact}`);
     }
-  } else {
-    console.log(`- none yet; run ${labCommand("room", "blue-sky draft/<section>.md")}`);
+    console.log("");
   }
-  console.log("");
 
-  console.log("Chorus Runs:");
   if (data.chorus_runs.length) {
+    console.log("Chorus Runs (lab):");
     for (const run of data.chorus_runs) {
       const assembled = run.assembled ? ", assembled" : "";
       const artifact = run.files?.contact_sheet || run.files?.report || run.files?.assembled || run.path;
       console.log(`- ${run.section_id}: ${run.operation || "chorus"} ${run.status}, ${run.beats} beat(s), ${run.candidates} candidate(s), ${run.committed} committed${assembled} -> ${artifact}`);
     }
-  } else {
-    console.log(`- none yet; run ${labCommand("chorus", "run draft/<section>.md")}`);
+    console.log("");
   }
-  console.log("");
 
-  console.log("Generated Artifacts:");
   const generatedGroups = [
     ["Driver", data.generated_artifacts?.driver_runs ?? []],
     ["Practice", data.generated_artifacts?.practice_runs ?? []],
@@ -536,23 +534,20 @@ function printText(data) {
     ["Golden Path", data.generated_artifacts?.golden_paths ?? []],
   ];
   const visibleGroups = generatedGroups.filter(([, items]) => items.length);
-  if (visibleGroups.length) {
+  if (visibleGroups.length || data.artifact_recommendations?.length) {
+    console.log("Generated Artifacts (lab):");
     for (const [label, items] of visibleGroups) {
       for (const item of items.slice(0, 3)) {
         const report = item.report || item.path;
         console.log(`- ${label}/${item.run_id}: ${item.status} -> ${report}`);
       }
     }
-  } else {
-    console.log(`- none yet; run ${labCommand("golden-path", "--write")} or ${labCommand("drive", "--goal \"find the next useful command\" --dry-run --write")}`);
-  }
-  if (data.artifact_recommendations?.length) {
-    for (const item of data.artifact_recommendations.slice(0, 3)) {
+    for (const item of (data.artifact_recommendations ?? []).slice(0, 3)) {
       console.log(`- recommendation: ${item.message}`);
       if (item.next_command) console.log(`  ${item.next_command}`);
     }
+    console.log("");
   }
-  console.log("");
 
   console.log("Project Workspace:");
   if (data.project_workspace?.mode === "installed") {
@@ -574,7 +569,7 @@ function printText(data) {
       if (archived) console.log(`- last archived story: ${archived}`);
       console.log(`- projects tracked: ${data.project_workspace?.project_count ?? 0}`);
     } else {
-      console.log("- not synced yet; run npm run project:sync");
+      console.log(`- not synced yet; run ${labCommand("project:sync")}`);
     }
   }
   console.log("");
@@ -585,7 +580,7 @@ function printText(data) {
       console.log(`- ${item.file} (${formatBytes(item.size)})`);
     }
   } else {
-    console.log("- none yet; run npm run export");
+    console.log(`- none yet; run ${labCommand("export")}`);
   }
   console.log("");
 
@@ -826,10 +821,9 @@ function read(file) {
 }
 
 function printHelp() {
-  console.log(`harness-status - print a quick operator dashboard
+  console.log(`status - print a quick operator dashboard
 
 Usage:
-  npm run status
-  node scripts/harness-status.mjs --json
+  mlab status [--json]
 `);
 }

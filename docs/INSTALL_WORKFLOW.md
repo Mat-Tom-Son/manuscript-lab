@@ -1,5 +1,7 @@
 # Install Workflow
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 > Status: design record. Current surface: README.md and docs/COMMANDS.md.
 
 This document records the package/install workflow. v1 is the installed-package

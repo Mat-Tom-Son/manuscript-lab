@@ -272,7 +272,7 @@ Deterministic requirements (as of 2.0):
 
 Optional profile requirements:
 
-- `claims.no_placeholders`: no `[citation-needed]` markers remain.
+- `evidence.citations.no_placeholders`: no `[citation-needed]` markers remain.
 - `candidates.audited`: candidate-based accepted issues have a merge/audit trail.
 - `taste.gate_applyable`: required taste arbiter results allow apply.
 

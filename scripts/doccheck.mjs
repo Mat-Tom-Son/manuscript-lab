@@ -6,6 +6,8 @@ import crypto from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { placeholderFindings } from "./lib/section-contract.mjs";
+import { syncSectionStatusesFromContracts } from "./lib/status-sync.mjs";
 import {
   REQUIRED_PROJECT_DIRS,
   REQUIRED_PROJECT_FILES,
@@ -82,6 +84,7 @@ for (const flag of options.unknownFlags) {
 }
 
 let fixedScaffolding = [];
+let syncedStatusFiles = [];
 if (options.fix) {
   if (discovery.mode === "none" || !discovery.config) {
     console.error("No Manuscript Lab project found; --fix needs a project. Run mlab init first.");
@@ -97,6 +100,7 @@ if (options.fix) {
     }
     process.exit(1);
   }
+  syncedStatusFiles = syncSectionStatusesFromContracts(abs(""));
   if (!options.json) {
     if (fixedScaffolding.length) {
       console.log("Created missing scaffolding:");
@@ -104,6 +108,11 @@ if (options.fix) {
       console.log("");
     } else {
       console.log("No missing scaffolding to create.\n");
+    }
+    if (syncedStatusFiles.length) {
+      console.log("Synced section statuses from contracts:");
+      for (const rel of syncedStatusFiles) console.log(`- ${rel}`);
+      console.log("");
     }
   }
 }
@@ -201,6 +210,7 @@ const result = {
   model_override: modelOverride() || null,
   fix: options.fix,
   fixed: fixedScaffolding,
+  synced: syncedStatusFiles,
   strict: options.strict,
   static: {
     pass: staticErrorCount === 0,
@@ -240,6 +250,8 @@ if (errors.length) {
   for (const error of errors) console.error(`- ${error}`);
   if (hasMissingScaffoldingErrors(errors)) {
     console.error("\nRun mlab check --fix to create missing scaffolding.");
+  } else if (hasStatusSyncErrors(errors)) {
+    console.error("\nRun mlab check --fix to sync section statuses from the contracts.");
   }
   process.exit(1);
 }
@@ -256,8 +268,8 @@ function checkDraftFile(file) {
     return;
   }
 
-  if (/\b(TODO|TBD|FIXME)\b/.test(text)) {
-    errors.push(`${rel}: contains TODO/TBD/FIXME placeholder text`);
+  for (const finding of placeholderFindings(text)) {
+    errors.push(`${rel}: ${finding}`);
   }
 
   if (text.includes("[citation-needed]")) {
@@ -1561,6 +1573,10 @@ function hasMissingScaffoldingErrors(errorList) {
     /^Expected project directory but found file: /.test(error));
 }
 
+function hasStatusSyncErrors(errorList) {
+  return errorList.some((error) => /is marked \S+, but (?:its section contract is|state\/status\.md says)/.test(error));
+}
+
 function shadowingScaffoldFile(rel) {
   let current = rel;
   while (current && current !== ".") {
@@ -1641,7 +1657,9 @@ Paths:
 Options:
   --static-only          Run static checks only.
   --fix                  Create missing required scaffolding (state dirs, README
-                         stubs, state/truth/*.json) before running checks.
+                         stubs, state/truth/*.json) and sync state/status.md and
+                         outline.md statuses from the section contracts before
+                         running checks.
   --model-checks         Run model-backed checks referenced by section contracts.
   --model <id>           Override configured model IDs for this run.
   --list-model-checks    Print configured model-backed checks and exit.

@@ -43,13 +43,17 @@ npx mlab adopt book.md --split h2
 ```
 
 `adopt` copies every markdown file into contracted `draft/NN-slug.md` sections
-(one per file by default; `h1`/`h2` split a single file at headings) and never
-modifies or moves your originals. Each imported contract starts at
-`status: draft` with a sized `target_words` and TODO purpose/acceptance
-markers. Expect the first report to show blockers — short imports sit below
-the word floor and purposes are still TODO. That is intended protocol
-pressure: the report is your work list, and every blocker names its fix
-command.
+(one per file by default; `h1`/`h2` split a single file at headings; with no
+argument it adopts the current directory) and never modifies or moves your
+originals. Each imported contract starts at `status: draft` with a sized
+`target_words`, a provisional purpose inferred from the first prose sentence,
+the profile's default acceptance criteria, and `confirmed: false`. Expect the
+first report to show blockers — short imports sit below the word floor, and
+every section stays blocked on `contract.confirmed` until you review its
+purpose and acceptance and flip the flag to `confirmed: true`. That is
+intended protocol pressure: the report is your work list, every blocker names
+its fix, and confirming each contract is the one judgment step adopt cannot
+do for you.
 
 Working inside a clone of this repo instead? The template-clone workflow
 (`project:init`, root symlinks, `projects/active/`) still works and is listed

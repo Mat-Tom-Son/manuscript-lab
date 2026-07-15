@@ -373,7 +373,7 @@ function renderRunReadme({ manifest, candidateMeta }) {
     lines.push(`  - Model: \`${candidate.model}\``);
   }
 
-  lines.push("", "## Next", "", `Run \`npm run compare:candidates -- ${manifest.target} --run ${manifest.run_id}\`.`);
+  lines.push("", "## Next", "", `Run \`${cliCommand("compare:candidates", [manifest.target, "--run", manifest.run_id])}\`.`);
   return `${lines.join("\n")}\n`;
 }
 

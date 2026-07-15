@@ -167,6 +167,10 @@ async function runAll() {
   });
   writeReport({ target, run });
 
+  const modelBacked = options.models.length > 0 || Boolean(options.mockResponse);
+  const candidateLine = modelBacked
+    ? `Candidates: ${sampled.length}`
+    : `Seed candidates: ${sampled.length} — deterministic seed lines, no model was called.\nAdd --models <id> for model-backed candidates.`;
   printJsonOrText({
     ok: true,
     schema_version: CHORUS_SCHEMA,
@@ -175,6 +179,7 @@ async function runAll() {
     run_id: run.runId,
     run_dir: run.rel,
     target: target.rel,
+    model_backed: modelBacked,
     beat_count: beatPlan.beats.length,
     candidate_count: sampled.length,
     committed_beat_count: judged.length,
@@ -185,7 +190,7 @@ async function runAll() {
       `Mine candidate files for phrases, risks, and sentence shapes; do not merge wholesale.`,
       options.assemble ? `If you copy accepted prose into ${target.rel}, run ${checkCommand(target.rel)}` : `Optional picker: ${chorusCommand(`judge ${target.rel} --run ${run.runId}`)}`,
     ],
-  }, `Chorus line lab written: ${run.rel}\nBeats: ${beatPlan.beats.length}\nCandidates: ${sampled.length}\nContact sheet: ${normalizeRel(path.join(run.rel, "CONTACT_SHEET.md"))}${assembly ? `\nAssembled: ${assembly.assembled_file}` : ""}`);
+  }, `Chorus line lab written${modelBacked ? "" : " (scaffold run)"}: ${run.rel}\nBeats: ${beatPlan.beats.length}\n${candidateLine}\nContact sheet: ${normalizeRel(path.join(run.rel, "CONTACT_SHEET.md"))}${assembly ? `\nAssembled: ${assembly.assembled_file}` : ""}`);
 }
 
 async function runSample() {
@@ -665,6 +670,12 @@ function writeReport({ target, run }) {
     `Target: \`${target.rel}\``,
     `Status: \`${manifest?.status ?? "planned"}\``,
     `Mode: \`line_lab\``,
+    ...(roster.members.length && roster.members.every((member) => member.provider === "local") ? [
+      "",
+      "> Scaffold run — no model was called. Candidates are deterministic seed",
+      "> lines derived from the beat plan, not generated prose. Re-run with",
+      "> --models <id> for model-backed candidates.",
+    ] : []),
     "",
     "## How To Use This",
     "",

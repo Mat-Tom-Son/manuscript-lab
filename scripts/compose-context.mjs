@@ -21,7 +21,7 @@ if (options.unknown.length) {
 }
 
 if (!options.target) {
-  console.error("Missing target section. Usage: npm run compose -- draft/<section>.md");
+  console.error(`Missing target section. Usage: ${discovery.mode === "installed" ? "mlab compose draft/<section>.md" : "npm run compose -- draft/<section>.md"}`);
   process.exit(1);
 }
 

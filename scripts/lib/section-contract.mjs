@@ -92,6 +92,41 @@ export function stripContract(text) {
   return String(text ?? "").replace(/^\s*<!--[\s\S]*?-->/, "").trim();
 }
 
+// Placeholder detection distinguishes marker forms ("TODO: finish", "[TBD]",
+// a line that opens with TODO) from prose that merely mentions the word, and
+// never looks inside code spans or fences — a document about placeholders must
+// be able to say "TODO" without failing its own checks. Contract comments are
+// stricter: metadata is never prose, so any TODO/TBD/FIXME there is a
+// placeholder.
+const PROSE_PLACEHOLDER_PATTERNS = [
+  /\b(?:TODO|FIXME|TBD)\s*:/, // TODO: finish this
+  /\[(?:TODO|FIXME|TBD)\]/, // [TODO]
+  /^\s*(?:[-*+]\s+|\d+[.)]\s+)?(?:\*\*|__)?(?:TODO|FIXME)\b/m, // line or list item opening with TODO
+  /\bTBD\b/, // bare TBD reads as a placeholder even mid-sentence
+];
+
+export function placeholderFindings(text) {
+  const raw = String(text ?? "");
+  const contractMatch = raw.match(/^\s*<!--[\s\S]*?-->/);
+  const contractText = contractMatch ? contractMatch[0] : "";
+  const body = contractMatch ? raw.slice(contractMatch[0].length) : raw;
+
+  const findings = [];
+  if (/\b(?:TODO|TBD|FIXME)\b/.test(contractText)) {
+    findings.push("section contract contains TODO/TBD/FIXME — complete purpose and acceptance in the contract header");
+  }
+
+  const prose = body
+    .replace(/```[\s\S]*?(```|$)/g, " ")
+    .replace(/~~~[\s\S]*?(~~~|$)/g, " ")
+    .replace(/`[^`\n]*`/g, " ");
+  if (PROSE_PLACEHOLDER_PATTERNS.some((pattern) => pattern.test(prose))) {
+    findings.push("contains TODO/TBD/FIXME placeholder text");
+  }
+
+  return findings;
+}
+
 export function wordCount(text) {
   return String(text ?? "")
     .replace(/```[\s\S]*?```/g, " ")

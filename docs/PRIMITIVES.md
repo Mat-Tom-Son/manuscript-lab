@@ -1,5 +1,7 @@
 # Harness Primitives
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 This harness is a local-first document lab. Its job is to give a human or agent durable primitives for making and improving long-form work.
 
 The manuscript remains the source of truth. The harness supplies context, checks, review evidence, issue tracking, revision audits, and exports.

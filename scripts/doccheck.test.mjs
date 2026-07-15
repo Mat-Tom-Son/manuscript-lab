@@ -6,11 +6,15 @@ import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import { REQUIRED_PROJECT_DIRS, REQUIRED_PROJECT_FILES, TRUTH_STATE_SCHEMA_VERSION } from "./lib/required-scaffolding.mjs";
+import { placeholderFindings } from "./lib/section-contract.mjs";
+import { syncSectionStatusesFromContracts } from "./lib/status-sync.mjs";
 
 const repoRoot = process.cwd();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-doccheck-"));
 
 try {
+  testPlaceholderFindings();
+  testStatusSyncFromContracts();
   testPlainCheckHintsAtFix();
   testFixCreatesMissingScaffoldingIdempotently();
   testFixReportsScaffoldingConflictsCleanly();
@@ -19,6 +23,90 @@ try {
   console.log("doccheck tests passed");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
+}
+
+function testPlaceholderFindings() {
+  const contract = (fields) => `<!--\nid: 01-x\nstatus: draft\n${fields}\n-->\n`;
+
+  // Marker forms in prose are placeholders.
+  for (const body of [
+    "TODO: finish the middle section.",
+    "The ending is [TBD] until review.",
+    "- TODO expand this list item",
+    "**TODO** rewrite the close.",
+    "The launch date is TBD.",
+    "Notes below.\n\n<!-- FIXME: recheck this figure -->",
+  ]) {
+    assert.deepEqual(
+      placeholderFindings(`${contract("purpose: Real purpose.")}# H\n\n${body}\n`),
+      ["contains TODO/TBD/FIXME placeholder text"],
+      `should flag: ${JSON.stringify(body)}`,
+    );
+  }
+
+  // Prose that merely mentions the word, and code spans/fences, are clean.
+  for (const body of [
+    "It catches the section that still says TODO in a shipped draft.",
+    "Writers often leave FIXME markers behind; this tool hunts them.",
+    "Use `TODO:` markers so the checker can find them.",
+    "```\nTODO: examples inside fences are code, not prose\n```",
+  ]) {
+    assert.deepEqual(
+      placeholderFindings(`${contract("purpose: Real purpose.")}# H\n\n${body}\n`),
+      [],
+      `should not flag: ${JSON.stringify(body)}`,
+    );
+  }
+
+  // Any TODO/TBD/FIXME in the contract comment is a placeholder, and both
+  // findings can surface at once.
+  assert.deepEqual(placeholderFindings(`${contract("purpose: TODO: confirm this")}# H\n\nClean prose.\n`), [
+    "section contract contains TODO/TBD/FIXME — complete purpose and acceptance in the contract header",
+  ]);
+  assert.equal(placeholderFindings(`${contract("purpose: TBD")}# H\n\nTODO: also unfinished.\n`).length, 2);
+}
+
+function testStatusSyncFromContracts() {
+  const project = path.join(tmp, "status-sync");
+  fs.mkdirSync(path.join(project, "draft"), { recursive: true });
+  fs.mkdirSync(path.join(project, "state"), { recursive: true });
+
+  fs.writeFileSync(
+    path.join(project, "draft/01-a.md"),
+    "<!--\nid: 01-a\nstatus: review\ntarget_words: 300\npurpose: P.\nacceptance:\n  - A.\n-->\n# A\n\nProse.\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "state/status.md"),
+    [
+      "# Status",
+      "",
+      "| Section | File | Status | Purpose |",
+      "| --- | --- | --- | --- |",
+      "| A | `draft/01-a.md` | todo | Keeps its purpose cell |",
+      "| Meta | n/a | done | Not a draft row |",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "outline.md"),
+    "# Outline\n\n### A\n\nStatus: todo\nFile: `draft/01-a.md`\n\n### Unlinked\n\nStatus: todo\n",
+    "utf8",
+  );
+
+  const changed = syncSectionStatusesFromContracts(project);
+  assert.deepEqual(changed.sort(), ["outline.md", "state/status.md"]);
+
+  const table = fs.readFileSync(path.join(project, "state/status.md"), "utf8");
+  assert.match(table, /\| A \| `draft\/01-a\.md` \| review \| Keeps its purpose cell \|/);
+  assert.match(table, /\| Meta \| n\/a \| done \| Not a draft row \|/, "non-draft rows stay untouched");
+
+  const outline = fs.readFileSync(path.join(project, "outline.md"), "utf8");
+  assert.match(outline, /### A\n\nStatus: review\n/);
+  assert.match(outline, /### Unlinked\n\nStatus: todo\n/, "blocks without File: stay untouched");
+
+  assert.deepEqual(syncSectionStatusesFromContracts(project), [], "second sync is a no-op");
 }
 
 function testPlainCheckHintsAtFix() {

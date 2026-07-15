@@ -1,5 +1,7 @@
 # Context Compiler
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 The context compiler turns a section contract into an auditable runtime packet.
 
 Use it before drafting, reviewing, revising, or verifying a section when the agent should operate from an explicit context boundary.

@@ -1,5 +1,7 @@
 # Model Call Audit Trail
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 This document explains the project-local model-call audit trail and what remains to make model comparison rigorous.
 
 ## Current Coverage

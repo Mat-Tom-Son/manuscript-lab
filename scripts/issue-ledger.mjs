@@ -6,6 +6,9 @@ import { lockPathFor, withFileLock, writeJsonAtomic } from "./lib/files.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 import { ISSUE_CLOSED_SCHEMA_VERSION, ISSUE_DECISIONS_SCHEMA_VERSION } from "./lib/required-scaffolding.mjs";
 
+const ISSUE_CATEGORIES = new Set(["confusion", "continuity", "structure", "style", "science", "evidence", "pacing", "other"]);
+const ISSUE_SEVERITIES = new Set(["blocker", "major", "minor", "note"]);
+
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const args = process.argv.slice(2);
@@ -30,6 +33,30 @@ if (command === "list") {
   const status = options.status ?? "open";
   const issues = filterIssues(ledger.issues, { ...options, status });
   printIssueList(issues);
+  process.exit(0);
+}
+
+if (command === "add") {
+  ensureLedgers();
+  const options = parseOptions(rest);
+  const target = normalizeTargetOption(options.target ?? "");
+  if (!target) fail('add requires --target draft/<section>.md');
+  const note = String(options.note ?? "").trim();
+  if (!note) fail('add requires --note "what the reader hits here"');
+  const category = String(options.category ?? "other");
+  if (!ISSUE_CATEGORIES.has(category)) fail(`--category must be ${[...ISSUE_CATEGORIES].join("|")}`);
+  const severity = String(options.severity ?? "minor");
+  if (!ISSUE_SEVERITIES.has(severity)) fail(`--severity must be ${[...ISSUE_SEVERITIES].join("|")}`);
+  const issue = addManualIssue({
+    target,
+    note,
+    category,
+    severity,
+    quote: String(options.quote ?? ""),
+    why: String(options.why ?? ""),
+    fix: String(options.fix ?? ""),
+  });
+  console.log(`${issue.id}: open (${severity}/${category}) ${target}`);
   process.exit(0);
 }
 
@@ -155,6 +182,43 @@ function closeIssue(id, reason) {
   });
 }
 
+// Manual issues share the model-review record shape so list/decide/revise
+// treat them identically; only the source type differs.
+function addManualIssue({ target, note, category, severity, quote, why, fix }) {
+  return withFileLock(issueLedgerLockPath(), () => {
+    const ledger = loadLedger();
+    const now = new Date().toISOString();
+    const id = `issue_${new Date().getUTCFullYear()}_${String(ledger.next_id).padStart(5, "0")}`;
+    ledger.next_id += 1;
+    const source = { type: "manual", created_at: now };
+    const issue = {
+      id,
+      status: "open",
+      created_at: now,
+      updated_at: now,
+      fingerprint: `manual-${id}`,
+      source,
+      sources: [source],
+      target: { file: target, quote, start_line: null, end_line: null },
+      category,
+      severity,
+      confidence: 1,
+      observation_count: 1,
+      related_fingerprints: [],
+      claim: note,
+      evidence: "",
+      why_it_matters: why,
+      recommended_action: fix,
+      fix_options: [],
+      decision: null,
+      history: [{ at: now, action: "opened", source }],
+    };
+    ledger.issues.push(issue);
+    saveLedger(ledger);
+    return issue;
+  });
+}
+
 function printIssueList(issues) {
   if (!issues.length) {
     console.log("No issues.");
@@ -245,15 +309,16 @@ function normalizeTargetOption(value) {
 }
 
 function printHelp() {
-  console.log(`issue-ledger - manage durable editorial issues
+  console.log(`issues - manage durable editorial issues
 
 Usage:
-  node scripts/issue-ledger.mjs init
-  node scripts/issue-ledger.mjs list [--status open|accepted|rejected|deferred|closed|all] [--target draft/file.md]
-  node scripts/issue-ledger.mjs show <issue_id>
-  node scripts/issue-ledger.mjs stats [--target draft/file.md]
-  node scripts/issue-ledger.mjs decide <issue_id> --decision accept --reason "..." --revision-instruction "..."
-  node scripts/issue-ledger.mjs close <issue_id> --reason "..."
+  mlab issues init
+  mlab issues add --target draft/file.md --note "what the reader hits" [--category structure] [--severity major] [--quote "..."] [--why "..."] [--fix "..."]
+  mlab issues list [--status open|accepted|rejected|deferred|closed|all] [--target draft/file.md]
+  mlab issues show <issue_id>
+  mlab issues stats [--target draft/file.md]
+  mlab issues decide <issue_id> --decision accept --reason "..." --revision-instruction "..."
+  mlab issues close <issue_id> --reason "..."
 
 Filters:
   --target draft/file.md
@@ -262,6 +327,9 @@ Filters:
 
 Decisions:
   accept, reject, defer, merge, convert_to_check, manual_review_needed
+
+Model reviews (mlab review run) file issues automatically; add is the manual
+entry point for what a human editor spots.
 `);
 }
 

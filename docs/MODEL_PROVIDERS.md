@@ -1,5 +1,7 @@
 # Model Providers
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 The harness routes model calls through `scripts/lib/model-provider.mjs`.
 
 The goal is to keep model use primitive-shaped:

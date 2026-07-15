@@ -224,12 +224,15 @@ function fixForSection(section, failures) {
   const ids = failures.map((failure) => failure.id);
   if (ids.includes("contract.status_started")) return `set status: draft in the ${file} section contract (manual edit)`;
   if (ids.includes("contract.present") || ids.includes("contract.valid")) return `add a valid section contract to ${file} (manual edit)`;
+  if (ids.includes("contract.confirmed")) {
+    return `review purpose/acceptance in ${file}, then set confirmed: true in its contract (manual edit)`;
+  }
   if (ids.includes("runtime.fresh")) return `mlab compose ${file}`;
   if (ids.includes("words.floor") || ids.includes("content.nonempty_when_active") || ids.includes("word_count.in_band")) {
     return `write more prose in ${file} toward target_words (manual edit)`;
   }
   if (ids.includes("doccheck.static_pass")) return `mlab check ${file}`;
-  if (ids.includes("status.synced")) return `align state/status.md with the ${file} contract status (manual edit)`;
+  if (ids.includes("status.synced")) return "mlab check --fix";
   if (ids.includes("issues.no_blockers")) return `mlab issues list --target ${file}`;
   return `mlab gate ${file}`;
 }

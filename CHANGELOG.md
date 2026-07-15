@@ -2,6 +2,67 @@
 
 ## Unreleased
 
+- Fixed the adopt funnel: `mlab adopt` no longer writes `TODO` purpose and
+  acceptance markers that its own gates then flag. Imported contracts get a
+  provisional purpose inferred from the first prose sentence, the profile's
+  default acceptance criteria, and a new `confirmed: false` field. A new
+  section requirement, `contract.confirmed`, blocks only on an explicit
+  `confirmed: false` and its report blocker names the file to review; existing
+  contracts without the field are unaffected. `mlab adopt` with no source now
+  adopts the current directory (mirroring bare `init`), and the success output
+  explains the confirm step.
+- Made the placeholder check tell marker forms apart from prose that merely
+  mentions the words: `TODO:`/`[TBD]`/line-initial markers and bare `TBD`
+  still fail, but "the section that still says TODO in a shipped draft" no
+  longer does, and code spans/fences are ignored. Any TODO/TBD/FIXME inside a
+  section contract comment is still flagged, with a message that points at the
+  contract header. One shared implementation now backs both `mlab check` and
+  the gate engine (`scripts/lib/section-contract.mjs#placeholderFindings`).
+- Made section contracts the single source of truth for status: `mlab check
+  --fix` now syncs `state/status.md` and `outline.md` statuses from the
+  contracts (`scripts/lib/status-sync.mjs`), mismatch failures hint at it, and
+  the report's `status.synced` blocker fix is `mlab check --fix` instead of a
+  manual edit.
+- Made `mlab export` gate-aware: it evaluates the manuscript gate first,
+  prints a loud draft-export warning (with the failing requirement ids) when
+  the gate fails, records `readiness` in `exports/manifest.json` and in
+  `--json` output, sets `gate_enforced` honestly, and refuses under the new
+  `--require-ready` flag. Added `scripts/export.test.mjs` — the export path
+  was previously untested.
+- Bare `mlab gate` now evaluates the manuscript gate instead of erroring, and
+  gate error output no longer prints the literal header `ERROR unknown
+  unknown`.
+- Added `mlab issues add --target <path> --note "..."` (`--category`,
+  `--severity`, `--quote`, `--why`, `--fix`) so human editors can file issues
+  into the ledger directly; manual issues share the model-review record shape
+  (`source.type: "manual"`). Added `scripts/issue-ledger.test.mjs`.
+- Unified the guidance layer on one vocabulary per mode: installed-mode
+  `status`/`report`/`done`/`compose`/`issues` output no longer leaks `npm run
+  ...`, `/doc-write`, or `node scripts/...` forms; `issues --help` and the
+  export/gate/status help texts now speak `mlab`.
+- Stopped advertising labs to fresh projects: `mlab status` shows Room,
+  Chorus, and Generated Artifacts blocks (now labeled "(lab)") only when runs
+  exist, and the "run a driver dry-run" recommendation no longer fires on
+  projects with no driver runs. Lab discovery lives in `mlab lab --help`.
+- Made modelless lab runs label themselves: `mlab lab room blue-sky` and
+  `mlab lab chorus run` without `--models` now print "(scaffold run)" with a
+  deterministic-seed explanation, stamp a scaffold banner into
+  `ROOM_REPORT.md` / `CHORUS_REPORT.md`, and expose `model_backed` in their
+  JSON output.
+- Rewrote `AGENTS.md` for the workspaces `mlab init`/`mlab adopt` actually
+  create (mlab verbs, `manuscript/` root, the confirm step, `issues add`,
+  gate-aware export), with the template-clone `npm run` dialect moved to a
+  maintainer appendix.
+- Retold the npm storefront story: `package.json` description now leads with
+  "local CI for prose" (contracts, checks, reviews, ledger, evidence spine,
+  gates, MCP) and the keywords drop `writing-agent`/`evaluation-lab` for
+  `ci`, `gates`, `evidence`, `prose-lint`, `docs-as-code`, `mcp`.
+- Bannered the pre-2.0 doc stratum (`docs/AGENT_HANDOFF.md`,
+  `docs/PRIMITIVES.md`, `docs/MODEL_DRIVER.md`, and twelve more) with a
+  status note pointing at `docs/COMMANDS.md`; updated `docs/MCP.md` lab tool
+  names to `mlab lab ...` forms and the stale `claims.no_placeholders` id in
+  `docs/GATE_ENGINE.md`; refreshed `docs/COMMANDS.md` and `README.md` for the
+  behaviors above.
 - Added the first inward case study (`docs/CASE_STUDY_HARNESS_VS_DIRECT.md`)
   with full evidence under `evals/case-studies/2026-07-harness-vs-direct/`:
   same-model comparison of the mlab loop against a direct pass and a

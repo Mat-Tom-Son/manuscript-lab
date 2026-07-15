@@ -1,5 +1,7 @@
 # Evaluation Lab Roadmap
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 > Status: design record. Evaluation work ships as lab R&D under `mlab lab`. Current surface: docs/COMMANDS.md.
 
 The next phase should move the harness from "review the draft" to "run controlled experiments on revisions."

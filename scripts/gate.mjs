@@ -22,6 +22,7 @@ import {
   normalizeRel,
   parseContractList,
   parseSectionContract,
+  placeholderFindings,
   sectionIdForFile,
   stripCode,
   stripContract,
@@ -248,6 +249,22 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
         : `Section status is "${status || "(blank)"}". Set status: draft in the section contract when writing begins.`
       : "Skipped because the section contract is missing.",
     evidence: { status: status || null },
+  }));
+
+  // Only an explicit `confirmed: false` (written by `mlab adopt`) fails here;
+  // contracts without the field are treated as deliberately authored.
+  const confirmedField = contract ? String(contract.get("confirmed") ?? "").trim().toLowerCase() : "";
+  const unconfirmed = confirmedField === "false";
+  requirements.push(requirement({
+    id: "contract.confirmed",
+    sensor: "section_contract",
+    status: contract ? passFail(!unconfirmed) : "skip",
+    message: contract
+      ? unconfirmed
+        ? `${relPath}: imported section contract is not confirmed. Review purpose and acceptance in the section header, then change confirmed: false to confirmed: true.`
+        : "Section contract is confirmed."
+      : "Skipped because the section contract is missing.",
+    evidence: { confirmed: contract ? confirmedField || null : null },
   }));
 
   const checkIds = contract ? parseContractList(text, "checks") : [];
@@ -960,8 +977,9 @@ function formatCliResult(result, options) {
   const lines = [];
   const errLines = [];
   const marker = result.ready ? "PASS" : result.status === "error" ? "ERROR" : "FAIL";
+  const gateLabel = result.gate_id && result.gate_id !== "unknown" ? ` ${result.gate_id}` : "";
   const targetLabel = result.target.path ?? result.target.id ?? "";
-  const header = `${marker} ${result.gate_id}${targetLabel ? ` ${targetLabel}` : ""}`;
+  const header = `${marker}${gateLabel}${targetLabel && targetLabel !== "unknown" ? ` ${targetLabel}` : ""}`;
   if (result.ready) lines.push(header);
   else errLines.push(header);
 
@@ -1157,7 +1175,7 @@ function exportOverrideVisibility(manifest) {
 
 function inferGate(positionals) {
   const [first, second] = positionals;
-  if (!first) return { error: "Missing gate target. Pass a draft path, citation, citations, or manuscript." };
+  if (!first) return { gateId: "manuscript-ready", targetArg: "manuscript" };
 
   if (first === "section" || first === "section-ready") {
     if (!second) return { error: `${first} requires a draft path.` };
@@ -1436,7 +1454,7 @@ function statusSyncMessage({ contract, hasStatusFile, relPath, status, tableStat
 function staticDraftIssues({ discovery, relPath, text }) {
   const issues = [];
   if (text.trim().length === 0) issues.push(`${relPath}: empty draft file`);
-  if (/\b(TODO|TBD|FIXME)\b/.test(text)) issues.push(`${relPath}: contains TODO/TBD/FIXME placeholder text`);
+  issues.push(...placeholderFindings(text).map((finding) => `${relPath}: ${finding}`));
   if (PLACEHOLDER_PATTERN.test(text)) issues.push(`${relPath}: contains [citation-needed]`);
   PLACEHOLDER_PATTERN.lastIndex = 0;
   if (text.includes('"""')) issues.push(`${relPath}: contains triple double quotes; use normal quotes`);
@@ -1657,12 +1675,13 @@ function helpText() {
   return `gate - deterministic Manuscript Lab readiness gates
 
 Usage:
-  node scripts/gate.mjs draft/<section>.md [--json] [--write]
-  node scripts/gate.mjs section-ready draft/<section>.md [--json] [--write]
-  node scripts/gate.mjs citation [--json] [--write]
-  node scripts/gate.mjs citations [--json] [--write]
-  node scripts/gate.mjs manuscript [--json] [--write]
-  node scripts/gate.mjs export [--formats md,html] [--json] [--write]
+  mlab gate [--json] [--write]                  (defaults to the manuscript gate)
+  mlab gate draft/<section>.md [--json] [--write]
+  mlab gate section-ready draft/<section>.md [--json] [--write]
+  mlab gate citation [--json] [--write]
+  mlab gate citations [--json] [--write]
+  mlab gate manuscript [--json] [--write]
+  mlab gate export [--formats md,html] [--json] [--write]
 
 Options:
   --json              Print the full gate result JSON.

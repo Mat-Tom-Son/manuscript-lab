@@ -1,5 +1,7 @@
 # Writers' Room Workflow Research
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 > Status: research memo / design record. The room ships as lab R&D via `mlab lab room`. Current surface: docs/COMMANDS.md.
 
 Manuscript Lab is already close to a writers' room operating system: it has

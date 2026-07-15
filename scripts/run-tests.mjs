@@ -18,6 +18,8 @@ const alwaysRun = [
   "scripts/report.test.mjs",
   "scripts/doccheck.test.mjs",
   "scripts/adopt.test.mjs",
+  "scripts/export.test.mjs",
+  "scripts/issue-ledger.test.mjs",
   "scripts/mcp-server.test.mjs",
   "scripts/install-init.test.mjs",
   "scripts/install-codex-skill.test.mjs",

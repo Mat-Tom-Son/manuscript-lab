@@ -42,16 +42,20 @@ every markdown file into contracted `draft/` sections without modifying or
 moving your originals.
 
 Expect a freshly adopted draft to report blockers — that is the point. Short
-imported sections sit below the word floor, purposes are marked TODO, and
-claims have no sources yet. The report names each gap and the exact command
-that closes it, so "not ready" is a work list instead of a shrug.
+imported sections sit below the word floor, claims have no sources yet, and
+every imported contract starts `confirmed: false` with a provisional purpose
+inferred from the text: reviewing each section's purpose and acceptance, then
+flipping the flag to `confirmed: true`, is the one judgment step adopt cannot
+do for you. The report names each gap and the exact command or edit that
+closes it, so "not ready" is a work list instead of a shrug.
 
 ## What You Get
 
 - Section contracts: each `draft/*.md` opens with a machine-checked contract
   (status, target words, purpose, acceptance, checks, reviews).
 - Checks: `mlab check` runs deterministic document checks;
-  `mlab check --fix` creates any missing required scaffolding, then re-checks.
+  `mlab check --fix` creates any missing required scaffolding and syncs
+  `state/status.md` / `outline.md` from the section contracts, then re-checks.
 - Typed issues: reviews write durable work items to an issue ledger instead of
   advice that disappears in chat.
 - Candidate trails: high-stakes revisions run as candidates, blind comparison,

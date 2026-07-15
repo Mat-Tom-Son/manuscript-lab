@@ -5,6 +5,7 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { evaluateGate } from "./gate.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
@@ -28,6 +29,23 @@ for (const format of formats) {
 const manuscript = collectManuscript();
 if (!manuscript.chapters.length) fail("No manuscript chapters found. Draft at least one non-todo chapter first.");
 
+// Export never ships silently past a failing gate: by default it warns loudly
+// and marks the manifest; with --require-ready it refuses.
+const readiness = evaluateManuscriptReadiness();
+if (readiness.status !== "ready") {
+  const failing = readiness.failures.length ? ` (failing: ${readiness.failures.join(", ")})` : "";
+  if (options.requireReady) {
+    fail(`Manuscript gate is ${readiness.status === "unknown" ? "unavailable" : "failing"}${failing}. Run mlab report for blockers and fix commands.`);
+  }
+  if (!options.json && !options.quiet) {
+    console.error(readiness.status === "unknown"
+      ? "WARNING: could not evaluate the manuscript gate for this export."
+      : `WARNING: exporting while the manuscript gate is FAILING${failing}.`);
+    console.error("         This export is a draft, not a release. Run mlab report for blockers and fix commands.");
+    console.error("         Pass --require-ready to make export refuse instead.\n");
+  }
+}
+
 const outDir = resolveOutputPath(options.out ?? paths.exportsDir);
 fs.mkdirSync(outDir, { recursive: true });
 
@@ -41,11 +59,18 @@ if (formats.has("pdf")) outputs.push(writePdf(manuscript, path.join(outDir, `${s
 const manifest = writeExportManifest(manuscript, { slug, outputs, outDir });
 
 if (options.json) {
-  console.log(JSON.stringify({ outputs, manifest, title: manuscript.title, chapters: manuscript.chapters.length }, null, 2));
+  console.log(JSON.stringify({
+    outputs,
+    manifest,
+    title: manuscript.title,
+    chapters: manuscript.chapters.length,
+    readiness: { status: readiness.status, failing: readiness.failures },
+  }, null, 2));
 } else {
   console.log(`Exported ${manuscript.title} (${manuscript.chapters.length} chapter(s))`);
   for (const output of outputs) console.log(`- ${output.format}: ${output.file}`);
   console.log(`- manifest: ${manifest.file}`);
+  if (readiness.status !== "ready") console.log(`- readiness: ${readiness.status} (draft export — run mlab report)`);
 }
 
 function collectManuscript() {
@@ -226,7 +251,11 @@ function writeExportManifest(manuscript, { slug, outputs, outDir }) {
     mode: discovery.mode,
     source_commit: gitCommit(),
     source_dirty: gitDirty(),
-    gate_enforced: false,
+    gate_enforced: Boolean(options.requireReady),
+    readiness: {
+      status: readiness.status,
+      failing: readiness.failures,
+    },
     options: {
       formats: [...formats].sort(),
       include_todo: Boolean(options.includeTodo),
@@ -579,8 +608,8 @@ function stripContract(text) {
 }
 
 function parseArgs(rawArgs) {
-  const parsed = { help: false, json: false, includeTodo: false, quiet: false, noContents: false };
-  const booleanOptions = new Set(["help", "json", "includeTodo", "quiet", "noContents"]);
+  const parsed = { help: false, json: false, includeTodo: false, quiet: false, noContents: false, requireReady: false };
+  const booleanOptions = new Set(["help", "json", "includeTodo", "quiet", "noContents", "requireReady"]);
   const valueOptions = new Set(["formats", "out", "slug", "title", "subtitle", "author"]);
 
   for (let index = 0; index < rawArgs.length; index += 1) {
@@ -695,17 +724,34 @@ function exportableSectionKind(kind) {
   return value === "document.section" || value.endsWith(".section");
 }
 
+function evaluateManuscriptReadiness() {
+  try {
+    const data = evaluateGate({
+      gateId: "manuscript-ready",
+      targetArg: "manuscript",
+      discovery,
+      options: { cwd: process.cwd() },
+      command: "manuscript-ready manuscript",
+    });
+    const failures = (data.requirements ?? [])
+      .filter((req) => req.severity === "block" && ["fail", "error"].includes(req.status))
+      .map((req) => req.id);
+    return { status: data.exit_code === 0 ? "ready" : "not_ready", failures };
+  } catch (error) {
+    return { status: "unknown", failures: [], error: error.message };
+  }
+}
+
 function fail(message) {
   console.error(message);
   process.exit(1);
 }
 
 function printHelp() {
-  console.log(`export-manuscript - export draft chapters as Markdown, HTML, EPUB, and PDF
+  console.log(`export - export draft chapters as Markdown, HTML, EPUB, and PDF
 
 Usage:
-  npm run export
-  node scripts/export-manuscript.mjs [options]
+  mlab export [options]
 
 Options:
   --formats md,html,epub,pdf  Formats to export. Default: md,html.
@@ -717,12 +763,15 @@ Options:
   --author "Name"             Add author metadata.
   --include-todo              Include todo chapter shells.
   --no-contents               Skip generated contents pages in Markdown, HTML, and PDF.
+  --require-ready             Refuse to export while the manuscript gate fails.
   --json                      Print machine-readable output.
   --quiet                     Suppress child tool output.
   --help, -h                  Show this help.
 
-Every successful export writes exports/manifest.json with input/output hashes,
-file sizes, formats, chapter metadata, source commit when available, and git
-dirty state.
+Export checks the manuscript gate first: a failing gate prints a draft-export
+warning (or refuses under --require-ready), and every manifest records the
+readiness status. Every successful export writes exports/manifest.json with
+input/output hashes, file sizes, formats, chapter metadata, source commit when
+available, and git dirty state.
 `);
 }

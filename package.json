@@ -2,7 +2,7 @@
   "name": "manuscript-lab",
   "version": "2.0.0",
   "private": false,
-  "description": "File-based writing harness with runtime context packets, checks, typed reviews, issue-ledger revisions, model routing, and exports.",
+  "description": "Local CI for prose: section contracts, checks, typed reviews, an issue ledger, an evidence spine, and release gates for long-form writing — a zero-dependency CLI and MCP server shared by humans, agents, and CI.",
   "license": "MIT",
   "author": "Mat Tom Son",
   "type": "module",
@@ -106,10 +106,16 @@
   },
   "keywords": [
     "writing",
-    "writing-agent",
-    "document-repo",
-    "longform",
     "manuscript",
-    "evaluation-lab"
+    "longform",
+    "ci",
+    "gates",
+    "evidence",
+    "prose-lint",
+    "docs-as-code",
+    "documentation",
+    "mcp",
+    "claims",
+    "citations"
   ]
 }

@@ -1,5 +1,7 @@
 # Agent Handoff
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 Use this when a human or another agent lands in the repo cold.
 
 This file is intentionally generic. It should not name the active sample story, client, characters, domain facts, or export slugs. Put those in `PROJECT.md` or `docs/PROJECT_HANDOFF.md` instead.

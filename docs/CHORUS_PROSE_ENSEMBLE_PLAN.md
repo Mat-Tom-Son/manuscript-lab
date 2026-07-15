@@ -1,5 +1,7 @@
 # Chorus Prose Line Lab Plan
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 > Status: design record. Chorus ships as lab R&D via `mlab lab chorus`. Current surface: docs/COMMANDS.md.
 
 Chorus is an experimental prose line-lab layer for Manuscript Lab. It uses a

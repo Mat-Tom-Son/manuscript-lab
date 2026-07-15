@@ -1,5 +1,7 @@
 # Primitive Contracts
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 Manuscript Lab primitives are CLI operations that a human, package smoke test,
 or model driver can safely compose. A primitive should be boring in the best
 way: explicit inputs, fenced paths, durable artifacts, predictable JSON, and

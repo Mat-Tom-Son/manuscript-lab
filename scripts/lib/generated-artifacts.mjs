@@ -196,15 +196,6 @@ function recommendFromArtifacts(artifacts) {
       next_command: `mlab eval practice-strategies --from ${latestCompleteStrategy.path}`,
     });
   }
-  if (!artifacts.driver_runs.length) {
-    recommendations.push({
-      id: "driver-first-dry-run",
-      priority: "low",
-      message: "Run a persisted driver dry-run to capture the model-operator starting point.",
-      artifact: "",
-      next_command: "mlab drive --goal \"find the next useful command\" --dry-run --write --json",
-    });
-  }
   return recommendations;
 }
 

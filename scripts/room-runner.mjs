@@ -296,6 +296,7 @@ async function runBlueSky() {
     run_dir: run.rel,
     target: target.rel,
     section_id: sectionId,
+    model_backed: useModels,
     card_count: cards.length,
     cluster_count: clusters.clusters.length,
     errors: roleResults.filter((result) => result.error).map((result) => ({ role_id: result.role_id, error: result.error })),
@@ -305,7 +306,10 @@ async function runBlueSky() {
     ],
   };
 
-  printJsonOrText(output, `Room blue-sky written: ${run.rel}\nCards: ${cards.length}\nNext: ${roomCommand(`decide ${target.rel} --run ${runId} --select <idea-id>`)}`);
+  const summary = useModels
+    ? `Room blue-sky written: ${run.rel}\nCards: ${cards.length}`
+    : `Room blue-sky written (scaffold run): ${run.rel}\nSeed cards: ${cards.length} — deterministic prompts from the section contract, no model was called.\nAdd --models <id> for model-backed role passes.`;
+  printJsonOrText(output, `${summary}\nNext: ${roomCommand(`decide ${target.rel} --run ${runId} --select <idea-id>`)}`);
   if (!output.ok) process.exitCode = 1;
 }
 
@@ -1241,6 +1245,12 @@ function renderRoomReport({ manifest, roles, cards, clusters, stressTests, roleR
     `Run ID: \`${manifest.run_id}\``,
     `Target: \`${manifest.target.file}\``,
     `Operation: \`${manifest.operation}\``,
+    ...(manifest.model_backed ? [] : [
+      "",
+      "> Scaffold run — no model was called. These seed cards are deterministic",
+      "> prompts derived from the section contract, not generated ideas.",
+      "> Re-run with --models <id> for model-backed role passes.",
+    ]),
     "",
     "## Roles",
     "",

@@ -144,7 +144,7 @@ function validateStatus(status) {
     const exports = status.exports ?? [];
     const byExt = new Set(exports.map((item) => item.file.split(".").pop()?.toLowerCase()).filter(Boolean));
     for (const ext of exportFormats) {
-      if (!byExt.has(ext)) errors.push(`Missing ${ext.toUpperCase()} export. Run npm run export.`);
+      if (!byExt.has(ext)) errors.push(`Missing ${ext.toUpperCase()} export. Run ${installedMode ? "mlab export" : "npm run export"}.`);
     }
   }
 

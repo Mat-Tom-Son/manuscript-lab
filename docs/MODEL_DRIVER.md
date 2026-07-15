@@ -1,5 +1,7 @@
 # Model Driver
 
+> Status: pre-2.0 reference in the template-clone dialect (`npm run ...`). For the current install-anywhere command surface see [COMMANDS.md](COMMANDS.md).
+
 > Status: design record. Ships as lab R&D via `mlab lab drive`. Current surface: docs/COMMANDS.md.
 
 Status: V1 bounded loop shipped with resume-safe persisted runs, read-only

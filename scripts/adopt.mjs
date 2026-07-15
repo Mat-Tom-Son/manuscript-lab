@@ -22,9 +22,10 @@ const SECTION_KIND = "document.section";
 const SECTION_STATUS = "draft";
 const SPLIT_MODES = new Set(["file", "h1", "h2"]);
 const NEXT_STEPS = ["mlab status", "mlab check --static-only", "mlab report --write"];
-const ACCEPTANCE_TODOS = [
-  "TODO: name the one job this imported section must do for the reader.",
-  "TODO: state the evidence or criteria that mark this section done.",
+const DEFAULT_ACCEPTANCE = [
+  "The section fulfills its purpose without relying on later sections.",
+  "Claims are source-backed or visibly marked for support.",
+  "The ending gives the next section a clean handoff.",
 ];
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -106,6 +107,7 @@ export function adoptWorkspace(options = {}) {
     title,
     split,
     source: sourcePath,
+    source_defaulted: Boolean(options.sourceDefaulted),
     workspace_root: workspaceRoot,
     manuscript_root: manuscriptRoot,
     config_path: configPath,
@@ -236,9 +238,33 @@ function buildImportedSections(collected, split) {
       words,
       targetWords: adoptTargetWords(words),
       replacedExistingContract,
-      purpose: contractSafeValue(`TODO: confirm — imported from ${chunk.sourceLabel}${heading ? ` (${heading})` : ""}`),
+      purpose: contractSafeValue(provisionalPurpose(body, chunk.sourceLabel)),
     };
   });
+}
+
+// Imported contracts get a best-effort provisional purpose instead of a TODO
+// marker: TODO text in the contract trips the placeholder check and leaves the
+// section red with no command that clears it. `confirmed: false` carries the
+// "a human must still review this" signal through the gate instead.
+function provisionalPurpose(body, sourceLabel) {
+  const sentence = firstProseSentence(body);
+  if (sentence) return `Imported from ${sourceLabel}: ${sentence}`;
+  return `Carry the content imported from ${sourceLabel} until its job for the reader is confirmed.`;
+}
+
+function firstProseSentence(text) {
+  const stripped = String(text ?? "")
+    .replace(/```[\s\S]*?```/g, " ")
+    .replace(/^#{1,6}\s+.*$/gm, " ")
+    .replace(/[*_`>]/g, "");
+  for (const paragraph of stripped.split(/\n\s*\n/)) {
+    const flat = paragraph.replace(/\s+/g, " ").trim();
+    if (!flat) continue;
+    const sentence = flat.match(/^.*?[.!?](?=\s|$)/)?.[0] ?? flat;
+    return sentence.length > 160 ? `${sentence.slice(0, 157).trimEnd()}…` : sentence;
+  }
+  return "";
 }
 
 function sectionContract(section, { checks, reviews }) {
@@ -247,10 +273,11 @@ function sectionContract(section, { checks, reviews }) {
     `id: ${section.id}`,
     `kind: ${SECTION_KIND}`,
     `status: ${SECTION_STATUS}`,
+    "confirmed: false",
     `target_words: ${section.targetWords}`,
     `purpose: ${section.purpose}`,
     "acceptance:",
-    ...ACCEPTANCE_TODOS.map((item) => `  - ${item}`),
+    ...DEFAULT_ACCEPTANCE.map((item) => `  - ${item}`),
     "checks:",
     ...checks.map((id) => `  - ${id}`),
     "reviews:",
@@ -339,6 +366,7 @@ function formatSuccess(result, options) {
 
   const noun = result.sections.length === 1 ? "section" : "sections";
   const lines = [];
+  if (result.source_defaulted) lines.push("No source path given — adopting markdown from the current directory.", "");
   if (result.dry_run) lines.push("Dry run: no files written.", "");
   lines.push(`${result.dry_run ? "Would adopt" : "Adopted"} ${result.sections.length} ${noun} into ${result.root}/draft (split: ${result.split})`, "");
   for (const section of result.sections) {
@@ -346,7 +374,14 @@ function formatSuccess(result, options) {
     lines.push(`  ${section.file}  ${section.words} words -> target ${section.target_words}  (from ${section.source})${note}`);
   }
   lines.push("");
-  if (!result.dry_run) lines.push(`Config: ${result.config_path}`, "");
+  if (!result.dry_run) {
+    lines.push(`Config: ${result.config_path}`, "");
+    lines.push(
+      "Contracts are provisional (confirmed: false): review purpose and acceptance",
+      "in each draft header, then change confirmed: false to confirmed: true.",
+      "",
+    );
+  }
   lines.push("Next:");
   for (const step of result.next_steps) lines.push(`  ${step}`);
   lines.push("");
@@ -397,7 +432,10 @@ function parseArgs(args) {
     }
   }
 
-  if (!parsed.help && !parsed.source) parsed.errors.push("adopt requires a source markdown file or directory.");
+  if (!parsed.help && !parsed.source) {
+    parsed.source = ".";
+    parsed.sourceDefaulted = true;
+  }
   if (!SPLIT_MODES.has(parsed.split)) parsed.errors.push(`Unsupported --split "${parsed.split}". Use file, h1, or h2.`);
   return parsed;
 }
@@ -406,13 +444,18 @@ function helpText() {
   return `adopt - create a Manuscript Lab workspace from existing markdown
 
 Usage:
-  mlab adopt <file-or-dir> [--root manuscript] [--title "My Whitepaper"] [--split file|h1|h2] [--profile whitepaper] [--dry-run] [--json]
+  mlab adopt [file-or-dir] [--root manuscript] [--title "My Whitepaper"] [--split file|h1|h2] [--profile whitepaper] [--dry-run] [--json]
 
-Imports every *.md under <file-or-dir> (recursive; hidden entries and
-node_modules are skipped) into draft/NN-slug.md sections with inferred
-section contracts (status: draft, sized target_words, TODO purpose and
-acceptance markers, profile default checks and reviews). Source files are
-copied verbatim, never modified or moved.
+Imports every *.md under [file-or-dir] (default: the current directory;
+recursive; hidden entries and node_modules are skipped) into
+draft/NN-slug.md sections with inferred section contracts (status: draft,
+confirmed: false, sized target_words, a provisional purpose taken from the
+first prose sentence, and profile default acceptance, checks, and reviews).
+Source files are copied verbatim, never modified or moved.
+
+Imported contracts are marked confirmed: false. The manuscript gate blocks
+until you review each section's purpose and acceptance and flip the flag to
+confirmed: true — that review is the human judgment step adopt cannot do.
 
 Refuses when ${CONFIG_FILE} already exists: adopt only bootstraps
 new workspaces.
