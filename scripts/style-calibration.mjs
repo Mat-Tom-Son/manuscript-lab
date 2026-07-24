@@ -5,12 +5,29 @@ import fs from "node:fs";
 import path from "node:path";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseJsonObjectOrThrow } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
+import {
+  analyzePatternOccurrences,
+  evaluatePatternThresholds,
+  findRegisterClusters,
+  loadStyleRegistry,
+  renderWatchlistMarkdown,
+  scoreParagraphRegisters,
+} from "./lib/style-registry.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
+// Root comes from protocol discovery so the canonical registry and state/
+// outputs resolve from any subdirectory of a project; outside any project the
+// tool still works standalone on the current directory.
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const protocolReady = Boolean(discovery.config) && discovery.mode !== "none" && !(discovery.errors?.length ?? 0);
+const protocol = protocolReady ? protocolPaths(discovery, { cwd: process.cwd() }) : null;
+const root = protocolReady ? discovery.manuscriptRoot : process.cwd();
 const args = process.argv.slice(2);
 const command = args[0] ?? "help";
 const rest = args.slice(1);
-const BOOLEAN_OPTIONS = new Set(["json"]);
+const BOOLEAN_OPTIONS = new Set(["json", "enforce"]);
+const registry = loadStyleRegistry(root);
+for (const warning of registry.warnings) console.error(`style registry warning: ${warning}`);
 
 if (command === "help" || args.includes("--help") || args.includes("-h")) {
   printHelp();
@@ -24,11 +41,30 @@ if (command === "signals") {
 
   const outputs = targets.map((target) => writeSignals(resolveInputPath(target)));
   const failures = styleSignalFailures(outputs, options);
+  if (options.enforce) {
+    for (const output of outputs) {
+      failures.push(...output.threshold_failures.map((failure) => failure.message));
+    }
+  }
   if (options.json) console.log(JSON.stringify(outputs, null, 2));
   else for (const output of outputs) console.log(`saved: ${output.signals_file} | ${output.register_map_file}`);
   if (failures.length) {
     for (const failure of failures) console.error(failure);
     process.exit(1);
+  }
+  process.exit(0);
+}
+
+if (command === "watchlist") {
+  const options = parseOptions(rest);
+  const outputFile = String(options.output ?? "style/pattern-watchlist.md");
+  const markdown = renderWatchlistMarkdown(registry, { project: readProjectName() });
+  fs.mkdirSync(path.dirname(abs(outputFile)), { recursive: true });
+  fs.writeFileSync(abs(outputFile), markdown);
+  if (options.json) {
+    console.log(JSON.stringify({ output: outputFile, patterns: registry.patterns.length, registers: registry.registers.length, source: registry.source }, null, 2));
+  } else {
+    console.log(`saved: ${outputFile} (${registry.patterns.length} patterns, ${registry.registers.length} registers, source: ${registry.source})`);
   }
   process.exit(0);
 }
@@ -106,6 +142,7 @@ function writeSignals(target) {
     signals_file: displayPath(signalsFile),
     register_map_file: displayPath(registerMapFile),
     counters: analysis.signals.signals,
+    threshold_failures: analysis.threshold_failures,
   };
 }
 
@@ -131,29 +168,39 @@ function analyzeSection(text, targetPath, sectionId) {
     .filter(Boolean);
   const sentences = splitSentences(body);
 
-  const paragraphSignals = paragraphs.map((paragraph, index) => analyzeParagraph(paragraph, index + 1));
+  const occurrences = analyzePatternOccurrences({ body, paragraphs, registry });
+  const paragraphSignals = paragraphs.map((paragraph, index) => analyzeParagraph(paragraph, index + 1, occurrences));
+  const bodyWordCount = wordCount(body);
+
+  const counters = {};
+  const patternCounts = {};
+  for (const { pattern, count } of occurrences.values()) {
+    if (pattern.count_key) counters[pattern.count_key] = count;
+    patternCounts[pattern.id] = {
+      label: pattern.label ?? pattern.id,
+      count,
+      density_per_1000_words: bodyWordCount ? Number(((count / bodyWordCount) * 1000).toFixed(2)) : 0,
+    };
+  }
+  counters.aphoristic_closer_count = paragraphSignals.filter((item) => item.flags.aphoristic_closer).length;
+  counters.dialogue_paragraph_count = paragraphSignals.filter((item) => item.flags.dialogue).length;
+  counters.comic_paragraph_count = paragraphSignals.filter((item) => (item.scores.comic_observation ?? 0) >= 2).length;
+  counters.systems_pressure_paragraph_count = paragraphSignals.filter((item) => (item.scores.systems_pressure ?? 0) >= 2).length;
+
   const signals = {
     version: 1,
     generated_at: new Date().toISOString(),
     target: targetPath,
     section_id: sectionId,
-    word_count: wordCount(body),
+    word_count: bodyWordCount,
     paragraph_count: paragraphs.length,
     sentence_count: sentences.length,
-    signals: {
-      as_if_count: countMatches(body, /\bas if\b/gi),
-      not_x_but_y_count: countMatches(body, /\bnot\b[^.!?\n]{0,100}\b(but|rather than|instead|it is|it's)\b/gi),
-      not_fragment_reframe_count: countMatches(body, /(?:^|[\n.!?]\s+)Not\s+[^.!?\n]{1,48}[.!?]\s+[A-Z][^.!?\n]{1,120}[.!?]/g),
-      less_x_than_y_count: countMatches(body, /\bless\b[^.!?\n]{0,80}\bthan\b/gi),
-      em_dash_count: countMatches(body, /--|—/g),
-      aphoristic_closer_count: paragraphSignals.filter((item) => item.flags.aphoristic_closer).length,
-      dialogue_paragraph_count: paragraphSignals.filter((item) => item.flags.dialogue).length,
-      comic_paragraph_count: paragraphSignals.filter((item) => item.scores.comic_observation >= 2).length,
-      systems_pressure_paragraph_count: paragraphSignals.filter((item) => item.scores.systems_pressure >= 2).length,
-    },
+    registry_source: registry.source,
+    signals: counters,
+    pattern_counts: patternCounts,
     repeated_sentence_openings: repeatedSentenceOpenings(sentences),
-    pattern_examples: patternExamples(body),
-    clusters: findClusters(paragraphSignals),
+    pattern_examples: patternExamples(paragraphs, occurrences),
+    clusters: findRegisterClusters(paragraphSignals, registry.registers),
   };
 
   const registerMap = {
@@ -172,59 +219,30 @@ function analyzeSection(text, targetPath, sectionId) {
     clusters: signals.clusters,
   };
 
-  return { signals, register_map: registerMap };
+  const thresholdFailures = evaluatePatternThresholds({
+    occurrences,
+    wordCount: bodyWordCount,
+    target: targetPath,
+  });
+
+  return { signals, register_map: registerMap, threshold_failures: thresholdFailures };
 }
 
-function analyzeParagraph(paragraph, paragraphNumber) {
-  const normalized = paragraph.toLowerCase();
-  const scores = {
-    comic_observation: 0,
-    plain_action: 0,
-    technical_explanation: 0,
-    sensory_grounding: 0,
-    emotional_consequence: 0,
-    dialogue_pressure: 0,
-    systems_pressure: 0,
-    interiority: 0,
-    plot_movement: 0,
+function analyzeParagraph(paragraph, paragraphNumber, occurrences) {
+  const { scores, dominant, secondary } = scoreParagraphRegisters(paragraph, registry.registers, {
+    hasDialogue,
+    lastSentence,
+    wordCount,
+  });
+
+  const flags = {
+    aphoristic_closer: isAphoristicCloser(paragraph),
+    dialogue: hasDialogue(paragraph),
   };
-
-  if (/\bas if\b|\bless\b[^.!?]{0,80}\bthan\b|\bnot\b[^.!?]{0,100}\b(but|rather than|instead|it is|it's)\b/i.test(paragraph)) {
-    scores.comic_observation += 2;
+  for (const { pattern, perParagraph } of occurrences.values()) {
+    if (!pattern.flag_key) continue;
+    flags[pattern.flag_key] = (perParagraph[paragraphNumber - 1] ?? 0) > 0;
   }
-  if (/[?!.]["']?$/.test(paragraph) && wordCount(lastSentence(paragraph)) <= 12) scores.comic_observation += 1;
-  if (/(room|screen|chart|folder|page|instrument|device|machine|system|tool|protocol|table|slide|file|document|report|graph|dataset|interface|terminal|panel).{0,80}\b(is|are|has|have|looks|feels|behaves|wants|refuses|suggests|means)\b/i.test(paragraph)) {
-    scores.systems_pressure += 1;
-  }
-  if (/(board|operations|resource|alignment|protocol|budget|facility|facilities|procurement|administrative|asset|classification|owner|deadline|platform|deliverable|metric|index|stakeholder|client|customer|review|approval|compliance|policy|workflow|queue|ticket|requirement|constraint|schedule|risk|governance)/i.test(paragraph)) {
-    scores.systems_pressure += 1;
-  }
-  if (/(algorithm|api|analysis|baseline|battery|coefficient|constraint|data|dataset|delta|equation|experiment|flow|function|geometry|hardware|index|latency|measurement|metric|model|parameter|pressure|protocol|rate|ratio|sample|sensor|signal|solver|system|temperature|test|theorem|threshold|trace|unit|velocity|voltage|window)/i.test(paragraph)) {
-    scores.technical_explanation += 2;
-  }
-  if (/(cold|warm|hot|wet|dry|bright|dark|light|gray|green|orange|white|black|hum|beep|flicker|smell|breath|hand|skin|metal|glass|plastic|stone|screen|clamp|fiber|tape|wheel|silence|noise|vibration|pressure|weight|taste|sound|touch)/i.test(paragraph)) {
-    scores.sensory_grounding += 1;
-  }
-  if (/\b(i|we)\s+(open|cycle|flip|unfold|bend|wedge|trigger|point|release|pick|set|leave|look|glance|close|stand|sit|move|pull|push|write|read|run|test|check|measure|calculate|send|switch|hold|turn)\b/i.test(paragraph)) {
-    scores.plain_action += 2;
-  }
-  if (hasDialogue(paragraph)) scores.dialogue_pressure += 2;
-  if (/(says|ask|asks|tell|tells|say|said|voice|meeting|question|answer|warning|objection)/i.test(paragraph)) {
-    scores.dialogue_pressure += 1;
-  }
-  if (/\bi\s+(think|know|hate|feel|assume|remember|understand|suspect|want|do not|don't)\b/i.test(paragraph)) {
-    scores.interiority += 2;
-  }
-  if (/(brittle|heavier|demand|trap|dangerous|fatigue|warning|pleasure|annoying|unpleasant|bad|worse|threat|risk|afraid)/i.test(paragraph)) {
-    scores.emotional_consequence += 1;
-  }
-  if (/(invite|deadline|monday|go|leave|arrive|return|push|request|task|decision|meeting|next|then|now)/i.test(paragraph)) {
-    scores.plot_movement += 1;
-  }
-
-  const ranked = Object.entries(scores).sort((left, right) => right[1] - left[1]);
-  const dominant = ranked[0]?.[1] > 0 ? ranked[0][0].replaceAll("_", " ") : "plain action";
-  const secondary = ranked[1]?.[1] > 0 ? ranked[1][0].replaceAll("_", " ") : "";
 
   return {
     paragraph: paragraphNumber,
@@ -232,48 +250,8 @@ function analyzeParagraph(paragraph, paragraphNumber) {
     scores,
     dominant_register: dominant,
     secondary_register: secondary,
-    flags: {
-      aphoristic_closer: isAphoristicCloser(paragraph),
-      dialogue: hasDialogue(paragraph),
-      as_if: /\bas if\b/i.test(paragraph),
-      not_x_but_y: /\bnot\b[^.!?\n]{0,100}\b(but|rather than|instead|it is|it's)\b/i.test(paragraph),
-      not_fragment_reframe: /(?:^|[\n.!?]\s+)Not\s+[^.!?\n]{1,48}[.!?]\s+[A-Z][^.!?\n]{1,120}[.!?]/.test(paragraph),
-      less_x_than_y: /\bless\b[^.!?\n]{0,80}\bthan\b/i.test(paragraph),
-    },
+    flags,
   };
-}
-
-function findClusters(paragraphSignals) {
-  const clusters = [];
-  const clusterTypes = [
-    { key: "comic_observation", label: "high-density comic observation" },
-    { key: "systems_pressure", label: "systems pressure cluster" },
-    { key: "technical_explanation", label: "technical explanation cluster" },
-  ];
-
-  for (const type of clusterTypes) {
-    let current = [];
-    for (const paragraph of paragraphSignals) {
-      if (paragraph.scores[type.key] >= 2 || paragraph.dominant_register === type.key.replaceAll("_", " ")) {
-        current.push(paragraph.paragraph);
-      } else {
-        pushCluster(clusters, current, type.label);
-        current = [];
-      }
-    }
-    pushCluster(clusters, current, type.label);
-  }
-
-  return clusters;
-}
-
-function pushCluster(clusters, paragraphs, clusterType) {
-  if (paragraphs.length < 3) return;
-  clusters.push({
-    paragraphs,
-    cluster_type: clusterType,
-    risk: "Several consecutive paragraphs use the same register or rhetorical move; review for saturation rather than automatic cuts.",
-  });
 }
 
 function repeatedSentenceOpenings(sentences) {
@@ -296,18 +274,17 @@ function repeatedSentenceOpenings(sentences) {
     .slice(0, 12);
 }
 
-function patternExamples(body) {
-  return {
-    as_if: collectMatches(body, /[^.!?\n]{0,120}\bas if\b[^.!?\n]{0,160}[.!?]/gi, 8),
-    not_x_but_y: collectMatches(body, /[^.!?\n]{0,120}\bnot\b[^.!?\n]{0,100}\b(but|rather than|instead|it is|it's)\b[^.!?\n]{0,140}[.!?]/gi, 8),
-    not_fragment_reframe: collectMatches(body, /(?:^|[\n.!?]\s+)Not\s+[^.!?\n]{1,48}[.!?]\s+[A-Z][^.!?\n]{1,120}[.!?]/g, 8),
-    less_x_than_y: collectMatches(body, /[^.!?\n]{0,120}\bless\b[^.!?\n]{0,80}\bthan\b[^.!?\n]{0,140}[.!?]/gi, 8),
-    aphoristic_closers: body
-      .split(/\n{2,}/)
-      .map((paragraph) => lastSentence(paragraph.trim()))
-      .filter((sentence) => sentence && wordCount(sentence) <= 12)
-      .slice(0, 12),
-  };
+function patternExamples(paragraphs, occurrences) {
+  const examples = {};
+  for (const { pattern, examples: matched } of occurrences.values()) {
+    if (!pattern.example_key && pattern.id === "punctuation.em_dash") continue;
+    examples[pattern.example_key ?? pattern.id] = matched;
+  }
+  examples.aphoristic_closers = paragraphs
+    .map((paragraph) => lastSentence(paragraph.trim()))
+    .filter((sentence) => sentence && wordCount(sentence) <= 12)
+    .slice(0, 12);
+  return examples;
 }
 
 function buildFingerprintPrompt(targets) {
@@ -414,14 +391,6 @@ function isAphoristicCloser(paragraph) {
   return /[.!?]$/.test(last) && !/^"/.test(last);
 }
 
-function countMatches(value, regex) {
-  return [...String(value ?? "").matchAll(regex)].length;
-}
-
-function collectMatches(value, regex, limit) {
-  return [...String(value ?? "").matchAll(regex)].map((match) => match[0].trim().replace(/\s+/g, " ")).slice(0, limit);
-}
-
 function wordCount(value) {
   return String(value ?? "").trim().split(/\s+/).filter(Boolean).length;
 }
@@ -445,10 +414,12 @@ function printHelp() {
 
 Usage:
   node scripts/style-calibration.mjs signals <draft-section.md> [...]
+  node scripts/style-calibration.mjs watchlist [--output style/pattern-watchlist.md]
   node scripts/style-calibration.mjs fingerprint <approved-section.md> [...] [--model provider/model]
 
 Commands:
   signals      Generate static style signals and register maps under state/style/.
+  watchlist    Project the canonical style registry to a readable Markdown watchlist.
   fingerprint  Extract or refresh style/voice-fingerprint.json from approved samples.
 
 Options:
@@ -456,8 +427,13 @@ Options:
   --model id          Model for fingerprint extraction. Prefix with lightning: or openrouter: to route a model.
   --max-tokens n      Max response tokens for fingerprint extraction.
   --temperature n     Fingerprint extraction temperature.
-  --output file       Fingerprint output path. Default: style/voice-fingerprint.json.
+  --output file       Fingerprint or watchlist output path.
   --max-not-x-but-y n Fail signals when any target has more than n not-X-but-Y patterns.
+  --enforce           Fail signals when registry max_count/max_per_1000_words/cluster limits are exceeded.
+
+Patterns and registers come from built-in defaults merged with
+state/truth/style.json (style_profile.pattern_registry, style_profile.registers).
+Set "disabled": true on an entry to remove it; matching ids override defaults.
 
 Environment:
   OPENROUTER_API_KEY  Required for OpenRouter fingerprint models.
@@ -470,7 +446,9 @@ function sha256(value) {
 }
 
 function resolveInputPath(input) {
-  return path.isAbsolute(input) ? input : abs(input);
+  if (path.isAbsolute(input)) return input;
+  if (protocol) return protocol.resolveProjectInputOrCwd(input);
+  return abs(input);
 }
 
 function read(file) {

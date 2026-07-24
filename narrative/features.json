@@ -1,0 +1,256 @@
+{
+  "version": 1,
+  "schema": "narrative_features_v1",
+  "template_prompt": "narrative/prompts/template-extract.md",
+  "default_model": "qwen/qwen3.7-plus",
+  "notes": [
+    "Feature definitions adapted from StoryScope (Russell et al. 2026, arXiv:2604.03136), Tables 13-15.",
+    "ai_lean / human_lean are directional priors from a corpus of published fiction vs one-shot model generations.",
+    "They are NOT thresholds and NOT evidence of authorship. mlab never computes an authorship score.",
+    "A value matching ai_lean is only worth attention when it is unchosen, saturated across sections, or fights the contract."
+  ],
+  "features": [
+    {
+      "id": "thematic_explicitness",
+      "label": "Thematic explicitness",
+      "dimension": "meaning",
+      "type": "ordinal",
+      "options": ["none", "implicit", "stated_once", "stated_repeatedly"],
+      "question": "Does the narration state the theme or moral outright?",
+      "ai_lean": "stated_repeatedly",
+      "human_lean": "implicit",
+      "applies_to": ["*"]
+    },
+    {
+      "id": "narrator_thematic_commentary",
+      "label": "Narrator thematic commentary",
+      "dimension": "meaning",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does the narrator explicitly comment on themes beyond the characters' perspectives?",
+      "ai_lean": "yes",
+      "human_lean": "no",
+      "applies_to": ["*"]
+    },
+    {
+      "id": "philosophical_dialogue",
+      "label": "Dialogue as philosophical debate",
+      "dimension": "meaning",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does dialogue serve mainly to debate ideas or deliver the theme?",
+      "ai_lean": "yes",
+      "human_lean": "no",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "moral_stance",
+      "label": "Moral stance toward protagonist",
+      "dimension": "meaning",
+      "type": "categorical",
+      "options": ["ambivalent", "clear", "none"],
+      "question": "Does the narrative frame the protagonist's choices as morally clear or ambiguous?",
+      "ai_lean": "clear",
+      "human_lean": "ambivalent",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "emotion_expression_mode",
+      "label": "Dominant emotional expression",
+      "dimension": "embodiment",
+      "type": "categorical",
+      "options": ["explicit_label", "embodied_metaphor", "behavioral_cue", "dialogue", "mixed", "ambiguous"],
+      "question": "How are characters' emotions most commonly conveyed?",
+      "ai_lean": "embodied_metaphor",
+      "human_lean": "explicit_label",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "setting_as_psychological_mirror",
+      "label": "Setting as psychological mirror",
+      "dimension": "embodiment",
+      "type": "ordinal",
+      "options": ["none", "occasional", "pervasive"],
+      "question": "Does the physical environment mirror characters' inner states?",
+      "ai_lean": "pervasive",
+      "human_lean": "occasional",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "sensory_density",
+      "label": "Sensory density",
+      "dimension": "embodiment",
+      "type": "ordinal",
+      "options": ["minimal", "moderate", "lush"],
+      "question": "How dense is sensory description across the section?",
+      "ai_lean": "lush",
+      "human_lean": "moderate",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "olfactory_emphasis",
+      "label": "Smell-based imagery present",
+      "dimension": "embodiment",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does the section lean on smell-based imagery?",
+      "ai_lean": "yes",
+      "human_lean": "no",
+      "applies_to": ["fiction.*"]
+    },
+    {
+      "id": "character_introduction_mode",
+      "label": "Character introduction mode",
+      "dimension": "embodiment",
+      "type": "categorical",
+      "options": ["external_description", "in_action", "in_dialogue", "inner_thought", "reported", "prior_section", "unclear"],
+      "question": "How are new characters primarily introduced?",
+      "ai_lean": "external_description",
+      "human_lean": "in_dialogue",
+      "applies_to": ["fiction.*"]
+    },
+    {
+      "id": "causal_continuity",
+      "label": "Causal chain continuity",
+      "dimension": "structure",
+      "type": "categorical",
+      "options": ["single_unbroken", "mostly_linear", "branching", "fragmented", "not_applicable"],
+      "question": "How continuous is the main causal chain through the section?",
+      "ai_lean": "single_unbroken",
+      "human_lean": "branching",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "subplot_presence",
+      "label": "Subplot presence and relation",
+      "dimension": "structure",
+      "type": "categorical",
+      "options": ["none", "thematically_parallel", "contrasting", "independent"],
+      "question": "Are there subplots, and how do they relate to the central thread?",
+      "ai_lean": "none",
+      "human_lean": "thematically_parallel",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "resolution_mode",
+      "label": "Mode of resolution",
+      "dimension": "structure",
+      "type": "categorical",
+      "options": ["external_action", "internal_understanding", "mixed", "unresolved", "not_applicable"],
+      "question": "Is the section's main tension resolved externally, internally, or left open?",
+      "ai_lean": "internal_understanding",
+      "human_lean": "unresolved",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "resolution_agency",
+      "label": "Agency in resolution",
+      "dimension": "structure",
+      "type": "categorical",
+      "options": ["protagonist_choice", "mixed", "external_fate", "not_applicable"],
+      "question": "Is the resolution driven by the protagonist's choices or external events?",
+      "ai_lean": "protagonist_choice",
+      "human_lean": "mixed",
+      "applies_to": ["fiction.*"]
+    },
+    {
+      "id": "scene_turn_present",
+      "label": "Scene-level turn present",
+      "dimension": "structure",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does at least one event genuinely turn the situation?",
+      "ai_lean": null,
+      "human_lean": null,
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "loose_ends_present",
+      "label": "Loose ends left open",
+      "dimension": "structure",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does the section leave consequences or threads deliberately open?",
+      "ai_lean": "no",
+      "human_lean": "yes",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "temporal_order",
+      "label": "Temporal order",
+      "dimension": "time_openness",
+      "type": "categorical",
+      "options": ["linear", "mostly_linear", "nonlinear"],
+      "question": "Does the narrative move strictly forward in time?",
+      "ai_lean": "linear",
+      "human_lean": "nonlinear",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    },
+    {
+      "id": "anachrony_devices",
+      "label": "Time devices in play",
+      "dimension": "time_openness",
+      "type": "ordinal",
+      "options": ["none", "single", "multiple"],
+      "question": "How many distinct time devices (flashback, flash-forward, jump, recontextualization) does the section use?",
+      "ai_lean": "none",
+      "human_lean": "multiple",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "recontextualization",
+      "label": "Revelation recontextualizes earlier material",
+      "dimension": "time_openness",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does a reveal force reinterpretation of earlier scenes?",
+      "ai_lean": "no",
+      "human_lean": "yes",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "reader_address",
+      "label": "Direct reader address",
+      "dimension": "time_openness",
+      "type": "binary",
+      "options": ["no", "yes"],
+      "question": "Does the narration directly address the reader?",
+      "ai_lean": "no",
+      "human_lean": "yes",
+      "applies_to": ["*"]
+    },
+    {
+      "id": "location_variety",
+      "label": "Location variety",
+      "dimension": "time_openness",
+      "type": "ordinal",
+      "options": ["single", "couple", "many"],
+      "question": "How many distinct locations does the section inhabit?",
+      "ai_lean": "single",
+      "human_lean": "many",
+      "applies_to": ["fiction.*"]
+    },
+    {
+      "id": "dialogue_proportion",
+      "label": "Dialogue-to-narration proportion",
+      "dimension": "time_openness",
+      "type": "ordinal",
+      "options": ["none", "sparse", "balanced", "heavy"],
+      "question": "What share of the section is direct dialogue?",
+      "ai_lean": "sparse",
+      "human_lean": "balanced",
+      "applies_to": ["fiction.*", "essay"]
+    },
+    {
+      "id": "intertext_explicitness",
+      "label": "Intertextual reference explicitness",
+      "dimension": "time_openness",
+      "type": "categorical",
+      "options": ["none", "implicit_only", "named_present"],
+      "question": "Are references to other works, brands, or places vague echoes or named?",
+      "ai_lean": "implicit_only",
+      "human_lean": "named_present",
+      "applies_to": ["fiction.*", "essay", "technical.narrative"]
+    }
+  ]
+}

@@ -1,5 +1,72 @@
 # Changelog
 
+## 2.2.0 - 2026-07-23
+
+- Added the narrative observation pipeline (`mlab narrative`): `extract`
+  converts a section into a cached structural template (one model call per
+  changed section, content-hash cached, evidence quotes verified verbatim
+  against the section body); `features` derives 22 discourse-level
+  observations deterministically from the template (resolution mode, emotional
+  expression mode, thematic explicitness, temporal shape, subplot presence,
+  setting-as-mirror, and more, with `applies_to` kinds so fiction-only
+  features never fire on documents); `profile` aggregates a manuscript-wide
+  convergence report with longest-run and dominant-share flags; `check`
+  compares observations against declared contract intents; `diff` compares two
+  drafts or candidates on fixed structural axes and says whether they are
+  different choices or the same choices reworded. Feature definitions adapted
+  from StoryScope (arXiv:2604.03136) ship in `narrative/features.json` with
+  per-project overrides. All output is advisory: no authorship scores, nothing
+  blocks a gate. See `docs/NARRATIVE.md`.
+- Added narrative intents to section contracts (`narrative_resolution`,
+  `narrative_agency`, `narrative_emotion`, `narrative_commentary`,
+  `narrative_time`, `narrative_subplots`, `narrative_reader_address`).
+  `mlab compose` injects declared intents into the drafting context as craft
+  guidance (intent doc + rule stack), `mlab narrative check` reports drift
+  (`--strict` to enforce), and the new non-blocking
+  `narrative.default_pressure` review pass treats declared shapes as chosen
+  rather than flaggable.
+- Added the `narrative.default_pressure` review pass and `narrative.observer`
+  context pack: a revision/polish-stage sensor for default narrative moves
+  (theme explained after it lands, uniform embodied emotion, pervasive
+  setting-mirroring, over-tidy causality), grounded in the cached observation
+  artifacts, quote-anchored, and forbidden from making authorship claims.
+- Made the style pattern and register taxonomy data-driven: built-in defaults
+  now merge with `state/truth/style.json` (`style_profile.pattern_registry`,
+  `style_profile.registers`; same-id overrides, `disabled: true` removes).
+  `mlab lab style` gains `--enforce` (registry count/density/cluster limits)
+  and a `watchlist` subcommand that projects the registry to
+  `style/pattern-watchlist.md` (the file the pattern-saturation review pack
+  already reads). With an empty registry, every pre-existing field of the
+  signals and register-map artifacts keeps its previous value (verified
+  against all repo draft sections); the artifacts gain two additive fields
+  (`registry_source`, `pattern_counts`) and keep schema version 1. Signals and
+  word-usage now resolve the project root via protocol discovery, so the
+  canonical registry and `state/style/` outputs are found from any
+  subdirectory; outside a project both tools still run standalone on the
+  current directory.
+- Added `mlab lab words contrast --reference <approved> --candidate <drafts>`:
+  reports terms overrepresented by smoothed relative frequency in candidate
+  prose versus the project's own approved prose (rates per 10k words,
+  relative rate, per-file spread) — self-calibrating tic detection instead of
+  a universal blacklist. `mlab lab words --registry` watches phrase patterns
+  from the canonical style registry with their per-pattern limits.
+- `mlab report` now includes an advisory Narrative Observations block
+  (summary counts, top convergence flags, intent drift, stale-observation
+  notes) when `state/observations/` artifacts exist. The report rebuilds this
+  summary from current feature artifacts instead of trusting an older profile
+  snapshot, and stale observations are excluded from convergence and intent
+  drift. Template, feature-definition, and section-kind hashes keep each
+  pipeline stage honest. It never affects PASS/FAIL or blockers.
+- `mlab narrative profile --model <id>` annotates the profile with known
+  narrative tendencies of the drafting model family (from StoryScope Tables 5
+  and 16) as directional watch notes.
+- Expanded top-level command discovery for the narrative pipeline, tightened
+  contrast-mode numeric validation, and made short-document style clusters
+  honor their configured paragraph windows.
+- Tightened the npm packlist so ignored case-study workspace files cannot be
+  swept into a public tarball by the broad `evals/` package include; packlist
+  tests now require every new narrative asset explicitly.
+
 ## 2.1.0 - 2026-07-15
 
 - Fixed the adopt funnel: `mlab adopt` no longer writes `TODO` purpose and

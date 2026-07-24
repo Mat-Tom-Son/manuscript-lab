@@ -1,4 +1,5 @@
 import path from "node:path";
+import { NARRATIVE_INTENTS } from "./narrative-schema.mjs";
 
 export const ALLOWED_SECTION_STATUSES = new Set(["todo", "draft", "review", "revise", "done"]);
 
@@ -82,6 +83,14 @@ export function validateSectionContract({ text, file = "draft section", knownChe
   for (const reviewId of parseContractList(text, "reviews")) {
     if (knownReviewIds.size && !knownReviewIds.has(reviewId)) {
       errors.push(`${file}: section contract references unknown review pass "${reviewId}"`);
+    }
+  }
+
+  for (const [key, spec] of Object.entries(NARRATIVE_INTENTS)) {
+    if (!contract.has(key)) continue;
+    const value = String(contract.get(key) ?? "").trim().toLowerCase();
+    if (!spec.values.includes(value)) {
+      errors.push(`${file}: unsupported ${key} "${contract.get(key)}" (expected one of: ${spec.values.join(", ")})`);
     }
   }
 

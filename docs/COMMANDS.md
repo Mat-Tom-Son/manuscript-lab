@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.1.0.
+This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.2.0.
 `mlab --help` shows the same six groups with one line per command;
 `mlab help <command>` (or `mlab <command> --help`) prints per-command detail;
 `mlab help admin` prints template-clone admin commands.
@@ -30,7 +30,8 @@ Every command name that worked before v2 still works — see
 | `mlab compare <target>` | Blind pairwise comparison of a candidate run. | `--run <candidate-run-id>`, `--dry-run` |
 | `mlab merge <target>` | Preview or apply the comparison winner, with audit trail. | `--run <candidate-run-id>`, `--apply`, `--audit` |
 | `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. | `--json`, `--write`, `--static-only`, `--profile <name>` |
-| `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. | `--write`, `--json` |
+| `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. Includes an advisory Narrative Observations block when `state/observations/` artifacts exist (never affects PASS/FAIL). | `--write`, `--json` |
+| `mlab narrative <sub>` | Narrative observation pipeline: `extract` (one cached model call per changed section builds a structural template), `features` (derive observations, no model), `check` (contract `narrative_*` intents vs observations), `diff <a> <b>` (are two drafts different choices or the same choices reworded?), `profile` (manuscript convergence report; `--model` adds drafting-model watch notes). Advisory only; see `docs/NARRATIVE.md`. | `--json`, `--force`, `--strict`, `--model <id>`, `--mock-response <file>` |
 
 ## Evidence
 
@@ -69,8 +70,8 @@ lists them. The old top-level names remain as aliases.
 | `mlab lab artifacts` | List and inspect generated run artifacts (`list`, `inspect --run <id>`). |
 | `mlab lab golden-path` | Print or persist the first-use onboarding sequence. |
 | `mlab lab taste <target> --run <id>` | Taste-arbiter gate for candidate runs. |
-| `mlab lab style <target>` | Style calibration signals. |
-| `mlab lab words <target>` | Word-usage report. |
+| `mlab lab style <target>` | Style calibration signals, driven by the pattern/register registry in `state/truth/style.json` (built-in defaults; `--enforce` applies registry limits). `style:watchlist` projects the registry to `style/pattern-watchlist.md`. |
+| `mlab lab words <target>` | Word-usage report. `--registry` also watches phrase patterns from the canonical style registry with their per-pattern limits. `words contrast --reference <approved> --candidate <drafts>` reports terms overrepresented against your own approved prose. |
 | `mlab lab model smoke\|capabilities\|calls` | Provider smoke test, capability probe, and model-call audit report. |
 
 ## Compatibility aliases

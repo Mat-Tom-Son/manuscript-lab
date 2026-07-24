@@ -67,6 +67,20 @@
         "draft/{section}"
       ]
     },
+    "narrative.observer": {
+      "description": "Gives the reviewer the project brief, taste doctrine, cached narrative observations (template, feature signals, manuscript profile), and the target section.",
+      "include": [
+        "PROJECT.md",
+        "style.md",
+        "taste/TASTE.md",
+        "taste/VOICE.md",
+        "taste/FAILURE_MODES.md",
+        "state/observations/{section_id}-template.json",
+        "state/observations/{section_id}-narrative-signals.json",
+        "state/observations/manuscript-narrative-profile.json",
+        "draft/{section}"
+      ]
+    },
     "taste.editor": {
       "description": "Gives the reviewer project taste doctrine, voice/taste memory, style guide, section criteria, and the target section.",
       "include": [
@@ -288,6 +302,28 @@
       "blocking": false,
       "min_confidence": 0.5,
       "max_issues": 12
+    },
+    {
+      "id": "narrative.default_pressure",
+      "label": "Narrative Default Pressure Sensor",
+      "stage": [
+        "revision",
+        "polish"
+      ],
+      "applies_to": [
+        "fiction.chapter",
+        "fiction.section",
+        "essay",
+        "technical.narrative"
+      ],
+      "context_pack": "narrative.observer",
+      "models": [
+        "qwen/qwen3.7-plus"
+      ],
+      "prompt": "reviews/prompts/narrative-default-pressure.md",
+      "blocking": false,
+      "min_confidence": 0.55,
+      "max_issues": 6
     },
     {
       "id": "hard.sf.science",

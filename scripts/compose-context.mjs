@@ -4,6 +4,7 @@ import fs from "node:fs";
 import path from "node:path";
 import crypto from "node:crypto";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { describeNarrativeIntent, parseNarrativeIntents } from "./lib/narrative-schema.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
@@ -407,7 +408,7 @@ ${bulletList(acceptance.length ? acceptance : ["Advance the document's main goal
 ## Expected Section Turn
 
 The section should begin with one state of knowledge, tension, task, or argument and end with a changed state. If the contract names a specific turn, prioritize it over generic polish.
-
+${narrativeIntentMarkdown(contract)}
 ## Required Checks
 
 ${bulletList(checks.length ? checks.map((check) => `\`${check}\``) : ["No model-backed checks are named in the section contract."])}
@@ -523,7 +524,7 @@ ${yamlList(contract.lists.acceptance ?? [], 4)}
   required_checks:
 ${yamlList(contract.lists.checks ?? [], 4)}
   suggested_reviews:
-${yamlList(contract.lists.reviews ?? [], 4)}
+${yamlList(contract.lists.reviews ?? [], 4)}${narrativeIntentYaml(contract)}
 
 style_rules:
 ${yamlList([
@@ -570,6 +571,29 @@ function knownRisksFor(contract) {
   if ((contract.lists.checks ?? []).includes("scene.turn")) risks.push("Section may lack a clear local turn.");
   if ((contract.lists.acceptance ?? []).length === 0) risks.push("Section contract has no explicit acceptance criteria.");
   return unique(risks);
+}
+
+function narrativeIntentMarkdown(contract) {
+  const { intents, warnings } = parseNarrativeIntents(contract.fields);
+  for (const warning of warnings) console.error(`narrative intent warning: ${warning}`);
+  const keys = Object.keys(intents);
+  if (!keys.length) return "";
+  const lines = keys.map((key) => `- \`${key}: ${intents[key]}\` — ${describeNarrativeIntent(key, intents[key])}`);
+  return `
+## Narrative Intent (declared in contract)
+
+These are chosen narrative shapes for this section. They override default narrative habits; do not drift back to the common alternative.
+
+${lines.join("\n")}
+`;
+}
+
+function narrativeIntentYaml(contract) {
+  const { intents } = parseNarrativeIntents(contract.fields);
+  const keys = Object.keys(intents);
+  if (!keys.length) return "";
+  const lines = keys.map((key) => `    ${key}: ${yamlString(intents[key])}`);
+  return `\n  narrative_intent:\n${lines.join("\n")}`;
 }
 
 function parseSectionContract(text) {

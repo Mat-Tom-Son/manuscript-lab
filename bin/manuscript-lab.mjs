@@ -28,6 +28,7 @@ const commands = {
   "gate": ["scripts/gate.mjs"],
   "issues": ["scripts/issue-ledger.mjs"],
   "mcp": ["scripts/mcp-server.mjs"],
+  "narrative": ["scripts/narrative-signals.mjs"],
   "project": ["scripts/story-workspace.mjs"],
   "report": ["scripts/report.mjs"],
   "revise:candidates": ["scripts/revision-candidates.mjs"],
@@ -89,6 +90,8 @@ const aliases = {
   "story:restore": ["scripts/story-workspace.mjs", "restore"],
   "story:unload": ["scripts/story-workspace.mjs", "unload"],
   "style:signals": ["scripts/style-calibration.mjs", "signals"],
+  "style:fingerprint": ["scripts/style-calibration.mjs", "fingerprint"],
+  "style:watchlist": ["scripts/style-calibration.mjs", "watchlist"],
   "taste:arbiter": ["scripts/taste-arbiter.mjs"],
   "words": ["scripts/word-usage.mjs"],
 };
@@ -175,6 +178,12 @@ function runLab(labArgs) {
       process.exit(1);
     }
     runScript(modelTarget, labArgs.slice(2));
+  }
+  if (sub === "style") {
+    const styleSubcommands = new Set(["signals", "watchlist", "fingerprint", "help"]);
+    const next = labArgs[1];
+    const styleArgs = styleSubcommands.has(next) || next === "--help" || next === "-h" ? labArgs.slice(1) : ["signals", ...labArgs.slice(1)];
+    runScript(["scripts/style-calibration.mjs"], styleArgs);
   }
   const labTarget = labCommands[sub];
   if (!labTarget) {
@@ -417,6 +426,7 @@ Daily loop:
   merge        — materialize or apply the candidate arena winner
   gate         — evaluate readiness gates (section, citation, manuscript, export)
   report       — project readiness report with blockers and fix commands
+  narrative    — advisory narrative-structure observations and intent checks
 
 Evidence:
   claims       — list and audit tracked claims
@@ -457,8 +467,8 @@ Commands:
   artifacts    — inspect generated run artifacts
   golden-path  — first useful product path evidence
   taste        — taste arbiter gate for candidate arena winners
-  style        — style calibration signals
-  words        — word usage report for a section
+  style        — style signals, registry watchlist, and voice fingerprint
+  words        — word usage and reference/candidate contrast reports
   model        — provider utilities: mlab lab model <smoke|capabilities|calls>
 
 Every lab command also works as a top-level alias (for example \`mlab room ...\`).

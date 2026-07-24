@@ -2,14 +2,36 @@
 
 import fs from "node:fs";
 import path from "node:path";
+import { loadStyleRegistry, registryPhraseWatchTerms } from "./lib/style-registry.mjs";
+import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 
-const root = process.cwd();
-const options = parseArgs(process.argv.slice(2));
+// Root comes from protocol discovery so the canonical registry resolves from
+// any subdirectory of a project; outside any project the tool still works
+// standalone on the current directory.
+const discovery = discoverProtocol({ cwd: process.cwd() });
+const protocolReady = Boolean(discovery.config) && discovery.mode !== "none" && !(discovery.errors?.length ?? 0);
+const protocol = protocolReady ? protocolPaths(discovery, { cwd: process.cwd() }) : null;
+const root = protocolReady ? discovery.manuscriptRoot : process.cwd();
+const rawArgs = process.argv.slice(2);
+const contrastMode = rawArgs[0] === "contrast";
+const options = contrastMode ? null : parseArgs(rawArgs);
 
 function main() {
   if (options.help) {
     printHelp();
     process.exit(0);
+  }
+
+  if (options.registry) {
+    const registry = loadStyleRegistry(root);
+    for (const warning of registry.warnings) console.error(`style registry warning: ${warning}`);
+    for (const entry of registryPhraseWatchTerms(registry)) {
+      if (!options.watchTerms.includes(entry.term)) options.watchTerms.push(entry.term);
+      options.watchLimits.set(entry.term, {
+        maxCount: entry.max_count,
+        maxDensity: entry.max_per_1000_words,
+      });
+    }
   }
 
   if (!options.paths.length) fail("Provide at least one Markdown file or directory.");
@@ -31,6 +53,7 @@ function main() {
       watch_terms: options.watchTerms,
       max_watch_count: options.maxWatchCount,
       max_watch_density: options.maxWatchDensity,
+      registry: options.registry,
     },
     pass: !watchFailures,
     files: fileReports,
@@ -112,8 +135,11 @@ function analyzeWatchlist(tokens, wordCount) {
       const termTokens = tokenize(term);
       const count = termTokens.length ? countTokenSequence(tokens, termTokens) : 0;
       const density = densityPerThousand(count, wordCount);
-      const exceedsCount = Number.isFinite(options.maxWatchCount) && count > options.maxWatchCount;
-      const exceedsDensity = Number.isFinite(options.maxWatchDensity) && density > options.maxWatchDensity;
+      const limits = options.watchLimits.get(term) ?? {};
+      const maxCount = Number.isFinite(limits.maxCount) && limits.maxCount !== null ? limits.maxCount : options.maxWatchCount;
+      const maxDensity = Number.isFinite(limits.maxDensity) && limits.maxDensity !== null ? limits.maxDensity : options.maxWatchDensity;
+      const exceedsCount = Number.isFinite(maxCount) && count > maxCount;
+      const exceedsDensity = Number.isFinite(maxDensity) && density > maxDensity;
       return {
         term,
         normalized: termTokens.join(" "),
@@ -230,10 +256,12 @@ function parseArgs(args) {
     help: false,
     json: false,
     includeStopwords: false,
+    registry: false,
     minCount: 3,
     top: 20,
     phraseSizes: [2, 3],
     watchTerms: [],
+    watchLimits: new Map(),
     maxWatchCount: Number.POSITIVE_INFINITY,
     maxWatchDensity: Number.POSITIVE_INFINITY,
     paths: [],
@@ -244,6 +272,7 @@ function parseArgs(args) {
     if (arg === "--help" || arg === "-h") parsed.help = true;
     else if (arg === "--json") parsed.json = true;
     else if (arg === "--include-stopwords") parsed.includeStopwords = true;
+    else if (arg === "--registry") parsed.registry = true;
     else if (arg === "--min-count") {
       parsed.minCount = numberArg("--min-count", args[index + 1]);
       index += 1;
@@ -354,6 +383,7 @@ function printWatchlist(rows) {
 
 function printHelp() {
   console.log(`Usage: node scripts/word-usage.mjs [options] <file-or-dir...>
+       node scripts/word-usage.mjs contrast --reference <path...> --candidate <path...>
 
 Reports repeated words and phrases in Markdown prose.
 
@@ -366,12 +396,216 @@ Options:
   --include-stopwords            Include common stopwords in word counts.
   --watch <term[,term...]>       Count one or more watchlisted words or phrases.
   --watch-file <path>            Read watch terms, one per line. # comments allowed.
+  --registry                     Also watch phrase patterns from the canonical style
+                                 registry (state/truth/style.json), with their limits.
   --max-watch-count <n>          Exit nonzero when a watch term count is above n.
   --max-watch-density <n>        Exit nonzero when a watch term density per 1k words is above n.
   -h, --help                     Show this help.
 
+Contrast mode reports terms overrepresented by smoothed relative frequency in a
+candidate corpus versus a reference corpus (rates per 10k words):
+  --reference <path[,path...]>   Reference corpus files/dirs (e.g. approved prose). Repeatable.
+  --candidate <path[,path...]>   Candidate corpus files/dirs (e.g. generated drafts). Repeatable.
+  --phrases <sizes>              Term sizes 1-4. Default: 1,2,3.
+  --min-candidate-count <n>      Ignore terms rarer than n in the candidate corpus. Default: 3.
+  --min-relative-rate <r>        Report terms at least r times more frequent. Default: 3.
+  --top <n>                      Rows to report. Default: 30.
+  --include-stopwords            Include stopword-only terms.
+  --fail-over <r>                Exit nonzero when any reported term reaches relative rate r.
+  --json                         Print machine-readable JSON.
+
 The scanner strips leading YAML front matter, leading HTML-comment section contracts,
 other HTML comments, fenced code blocks, inline code, and Markdown link targets.`);
+}
+
+function runContrast(args) {
+  const parsed = {
+    help: false,
+    json: false,
+    includeStopwords: false,
+    reference: [],
+    candidate: [],
+    phraseSizes: [1, 2, 3],
+    minCandidateCount: 3,
+    minRelativeRate: 3,
+    top: 30,
+    failOver: Number.POSITIVE_INFINITY,
+  };
+
+  for (let index = 0; index < args.length; index += 1) {
+    const arg = args[index];
+    if (arg === "--help" || arg === "-h") parsed.help = true;
+    else if (arg === "--json") parsed.json = true;
+    else if (arg === "--include-stopwords") parsed.includeStopwords = true;
+    else if (arg === "--reference") {
+      parsed.reference.push(...splitWatchTerms(args[index + 1] ?? ""));
+      index += 1;
+    } else if (arg.startsWith("--reference=")) parsed.reference.push(...splitWatchTerms(arg.slice("--reference=".length)));
+    else if (arg === "--candidate") {
+      parsed.candidate.push(...splitWatchTerms(args[index + 1] ?? ""));
+      index += 1;
+    } else if (arg.startsWith("--candidate=")) parsed.candidate.push(...splitWatchTerms(arg.slice("--candidate=".length)));
+    else if (arg === "--phrases") {
+      parsed.phraseSizes = parseContrastSizes(args[index + 1]);
+      index += 1;
+    } else if (arg.startsWith("--phrases=")) parsed.phraseSizes = parseContrastSizes(arg.slice("--phrases=".length));
+    else if (arg === "--min-candidate-count") {
+      parsed.minCandidateCount = numberArg("--min-candidate-count", args[index + 1]);
+      index += 1;
+    } else if (arg.startsWith("--min-candidate-count=")) parsed.minCandidateCount = numberArg("--min-candidate-count", arg.slice("--min-candidate-count=".length));
+    else if (arg === "--min-relative-rate") {
+      parsed.minRelativeRate = numberArg("--min-relative-rate", args[index + 1]);
+      index += 1;
+    } else if (arg.startsWith("--min-relative-rate=")) parsed.minRelativeRate = numberArg("--min-relative-rate", arg.slice("--min-relative-rate=".length));
+    else if (arg === "--top") {
+      parsed.top = numberArg("--top", args[index + 1]);
+      index += 1;
+    } else if (arg.startsWith("--top=")) parsed.top = numberArg("--top", arg.slice("--top=".length));
+    else if (arg === "--fail-over") {
+      parsed.failOver = numberArg("--fail-over", args[index + 1]);
+      index += 1;
+    } else if (arg.startsWith("--fail-over=")) parsed.failOver = numberArg("--fail-over", arg.slice("--fail-over=".length));
+    else fail(`Unknown contrast option: ${arg}`);
+  }
+
+  if (parsed.help) {
+    printHelp();
+    process.exit(0);
+  }
+  if (!parsed.reference.length || !parsed.candidate.length) {
+    fail("contrast requires at least one --reference and one --candidate path");
+  }
+  if (!Number.isInteger(parsed.minCandidateCount) || parsed.minCandidateCount < 1) {
+    fail("--min-candidate-count must be a positive integer");
+  }
+  if (!Number.isFinite(parsed.minRelativeRate) || parsed.minRelativeRate < 0) {
+    fail("--min-relative-rate must be zero or greater");
+  }
+  if (!Number.isInteger(parsed.top) || parsed.top < 1) {
+    fail("--top must be a positive integer");
+  }
+  if (Number.isFinite(parsed.failOver) && parsed.failOver < 0) {
+    fail("--fail-over must be zero or greater");
+  }
+
+  const referenceCorpus = buildContrastCorpus(parsed.reference, parsed);
+  const candidateCorpus = buildContrastCorpus(parsed.candidate, parsed);
+  if (!referenceCorpus.wordCount) fail("Reference corpus has no words.");
+  if (!candidateCorpus.wordCount) fail("Candidate corpus has no words.");
+
+  const rows = [];
+  for (const [term, candidateCount] of candidateCorpus.counts) {
+    if (candidateCount < parsed.minCandidateCount) continue;
+    const referenceCount = referenceCorpus.counts.get(term) ?? 0;
+    const candidateRate = ratePerTenThousand(candidateCount, candidateCorpus.wordCount);
+    const referenceRate = ratePerTenThousand(referenceCount, referenceCorpus.wordCount);
+    const smoothedReferenceRate = ratePerTenThousand(referenceCount + 0.5, referenceCorpus.wordCount);
+    const relativeRate = Number((candidateRate / smoothedReferenceRate).toFixed(2));
+    if (relativeRate < parsed.minRelativeRate) continue;
+    rows.push({
+      term,
+      candidate_count: candidateCount,
+      candidate_per_10000: candidateRate,
+      reference_count: referenceCount,
+      reference_per_10000: referenceRate,
+      relative_rate: relativeRate,
+      candidate_files: candidateCorpus.fileCounts.get(term) ?? 0,
+      reference_files: referenceCorpus.fileCounts.get(term) ?? 0,
+    });
+  }
+
+  rows.sort((left, right) => right.relative_rate - left.relative_rate || right.candidate_count - left.candidate_count || left.term.localeCompare(right.term));
+  const reported = rows.slice(0, parsed.top);
+  const flagged = reported.filter((row) => row.relative_rate >= parsed.failOver);
+
+  const result = {
+    version: 1,
+    generated_at: new Date().toISOString(),
+    mode: "contrast",
+    options: {
+      reference: parsed.reference,
+      candidate: parsed.candidate,
+      phrase_sizes: parsed.phraseSizes,
+      min_candidate_count: parsed.minCandidateCount,
+      min_relative_rate: parsed.minRelativeRate,
+      include_stopwords: parsed.includeStopwords,
+      top: parsed.top,
+      fail_over: Number.isFinite(parsed.failOver) ? parsed.failOver : null,
+    },
+    reference: { files: referenceCorpus.files.length, word_count: referenceCorpus.wordCount },
+    candidate: { files: candidateCorpus.files.length, word_count: candidateCorpus.wordCount },
+    pass: flagged.length === 0,
+    overrepresented: reported,
+  };
+
+  if (parsed.json) {
+    console.log(JSON.stringify(result, null, 2));
+  } else {
+    console.log(
+      `Contrast report: candidate ${result.candidate.files} file(s) / ${result.candidate.word_count} word(s) vs reference ${result.reference.files} file(s) / ${result.reference.word_count} word(s)`,
+    );
+    console.log("");
+    if (!reported.length) {
+      console.log("No overrepresented terms at the current thresholds.");
+    } else {
+      console.log("Overrepresented in candidate (term: candidate/10k vs reference/10k, xN, files):");
+      for (const row of reported) {
+        const marker = row.relative_rate >= parsed.failOver ? "FAIL " : "";
+        console.log(
+          `- ${marker}${row.term}: ${row.candidate_per_10000} vs ${row.reference_per_10000} (x${row.relative_rate}); ${row.candidate_files}/${result.candidate.files} candidate file(s), ${row.reference_files}/${result.reference.files} reference file(s)`,
+        );
+      }
+    }
+  }
+
+  process.exit(result.pass ? 0 : 1);
+}
+
+function buildContrastCorpus(paths, parsed) {
+  const files = collectMarkdownFiles(paths);
+  if (!files.length) fail(`No Markdown files found in: ${paths.join(", ")}`);
+  const counts = new Map();
+  const fileCounts = new Map();
+  let wordCount = 0;
+
+  for (const file of files) {
+    const tokens = tokenize(markdownToText(stripMarkdownContracts(read(file))));
+    wordCount += tokens.length;
+    const perFile = contrastTermCounts(tokens, parsed);
+    for (const [term, count] of perFile) {
+      counts.set(term, (counts.get(term) ?? 0) + count);
+      fileCounts.set(term, (fileCounts.get(term) ?? 0) + 1);
+    }
+  }
+
+  return { files, counts, fileCounts, wordCount };
+}
+
+function contrastTermCounts(tokens, parsed) {
+  const counts = new Map();
+  for (const size of parsed.phraseSizes) {
+    for (let index = 0; index <= tokens.length - size; index += 1) {
+      const termTokens = tokens.slice(index, index + size);
+      if (!parsed.includeStopwords && termTokens.every((token) => STOPWORDS.has(token))) continue;
+      const term = termTokens.join(" ");
+      counts.set(term, (counts.get(term) ?? 0) + 1);
+    }
+  }
+  return counts;
+}
+
+function parseContrastSizes(value) {
+  const sizes = String(value ?? "")
+    .split(",")
+    .map((item) => Number(item.trim()))
+    .filter((item) => Number.isInteger(item) && item >= 1 && item <= 4);
+  if (!sizes.length) fail("contrast --phrases must include at least one integer from 1 through 4");
+  return unique(sizes);
+}
+
+function ratePerTenThousand(count, wordCount) {
+  if (!wordCount) return 0;
+  return Number(((count / wordCount) * 10000).toFixed(2));
 }
 
 function read(file) {
@@ -379,7 +613,9 @@ function read(file) {
 }
 
 function abs(value) {
-  return path.isAbsolute(value) ? value : path.join(root, value);
+  if (path.isAbsolute(value)) return value;
+  if (protocol) return protocol.resolveProjectInputOrCwd(value);
+  return path.join(root, value);
 }
 
 function displayPath(value) {
@@ -573,4 +809,5 @@ const STOPWORDS = new Set([
   "yourselves",
 ]);
 
-main();
+if (contrastMode) runContrast(rawArgs.slice(1));
+else main();

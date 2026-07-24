@@ -5,7 +5,16 @@ import fs from "node:fs";
 import path from "node:path";
 import { evaluateGate } from "./gate.mjs";
 import { writeFileAtomic, writeJsonAtomic } from "./lib/files.mjs";
-import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { discoverProtocol, listDrafts, protocolPaths } from "./lib/protocol.mjs";
+import {
+  NARRATIVE_SIGNALS_SCHEMA,
+  aggregateNarrativeProfile,
+  checkIntentsAgainstFeatures,
+  loadNarrativeFeatures,
+  narrativeSignalStaleness,
+  parseNarrativeIntents,
+} from "./lib/narrative-schema.mjs";
+import { parseSectionContract, sectionIdForFile } from "./lib/section-contract.mjs";
 
 const REPORT_SCHEMA = "manuscript-lab.report.v1";
 
@@ -49,6 +58,7 @@ function buildReport() {
   const modelCalls = readModelCalls();
   const revisionTrail = buildRevisionTrail(statusRun.data?.candidate_runs ?? []);
   const exportManifest = readExportManifest();
+  const narrative = readNarrativeObservations();
   const status = statusRun.data ?? {};
   const evidence = evidenceRun.data ?? null;
   const gate = gateRun.data ?? null;
@@ -105,6 +115,15 @@ function buildReport() {
     generated_artifacts: summarizeGeneratedArtifacts(status.generated_artifacts ?? {}),
     model_calls: modelCalls.count,
     exports: (status.exports ?? []).length,
+    narrative: narrative
+      ? {
+          sections_observed: narrative.sections_observed,
+          sections_total: narrative.sections_total,
+          convergence_flags: narrative.convergence_flags.length,
+          intent_drift: narrative.intent_drift.length,
+          stale_templates: narrative.stale_templates.length,
+        }
+      : null,
   };
 
   return {
@@ -137,6 +156,7 @@ function buildReport() {
       manuscript: gate ?? { error: gateRun.error || "Manuscript gate unavailable." },
     },
     revision_trail: revisionTrail,
+    narrative,
     candidate_runs: status.candidate_runs ?? [],
     room_runs: status.room_runs ?? [],
     chorus_runs: status.chorus_runs ?? [],
@@ -442,6 +462,108 @@ function collectJsonFiles(dir, out) {
   }
 }
 
+function renderNarrativeHtml(narrative) {
+  if (!narrative) return "";
+  const flagRows = narrative.convergence_flags.length
+    ? narrative.convergence_flags
+        .map(
+          (flag) =>
+            `<li>${escapeHtml(flag.label)}: ${escapeHtml(flag.reasons.join("; "))}${flag.matches_ai_lean ? " <em>[model-default direction]</em>" : ""}</li>`,
+        )
+        .join("\n")
+    : "<li>No convergence flags.</li>";
+  const driftRows = narrative.intent_drift.length
+    ? narrative.intent_drift
+        .map(
+          (drift) =>
+            `<li>${escapeHtml(drift.section_id)} ${escapeHtml(drift.intent)}: declared <code>${escapeHtml(drift.declared)}</code>, observed <code>${escapeHtml(String(drift.observed))}</code></li>`,
+        )
+        .join("\n")
+    : "<li>No intent drift.</li>";
+  const stale = narrative.stale_templates.length
+    ? `<p>Stale observations (excluded from the live summary): ${narrative.stale_templates.map((id) => `<code>${escapeHtml(id)}</code>`).join(", ")} — rerun <code>mlab narrative extract</code>, then <code>mlab narrative features</code>.</p>`
+    : "";
+  return `
+    <h2>Narrative Observations (advisory, never gate)</h2>
+    <section class="meta">
+      <p>Observed: ${narrative.sections_observed}/${narrative.sections_total} section(s)</p>
+      <p>Convergence:</p>
+      <ul>
+${flagRows}
+      </ul>
+      <p>Intent drift:</p>
+      <ul>
+${driftRows}
+      </ul>
+${stale}
+    </section>
+`;
+}
+
+function readNarrativeObservations() {
+  const file = paths.stateAbs("observations/manuscript-narrative-profile.json");
+  if (!fs.existsSync(file)) return null;
+  try {
+    const profile = JSON.parse(fs.readFileSync(file, "utf8"));
+    if (profile?.schema !== "narrative_profile_v1") return null;
+    const featureConfig = loadNarrativeFeatures(discovery.packageRoot, discovery.manuscriptRoot);
+    const drafts = listDrafts(discovery);
+    const entries = [];
+    const missing = [];
+    const staleObservations = [];
+    drafts.forEach((draft, index) => {
+      const text = fs.existsSync(draft.fullPath) ? fs.readFileSync(draft.fullPath, "utf8") : "";
+      const contract = parseSectionContract(text);
+      const sectionId = sectionIdForFile(draft.fullPath, contract);
+      const kind = String(contract?.get("kind") ?? "").trim();
+      const signals = readJsonIfExists(paths.stateAbs(`observations/${sectionId}-narrative-signals.json`), null);
+      if (!signals || signals.schema !== NARRATIVE_SIGNALS_SCHEMA) {
+        missing.push(draft.path);
+        return;
+      }
+      const template = readJsonIfExists(paths.stateAbs(`observations/${sectionId}-template.json`), null);
+      const freshness = narrativeSignalStaleness({
+        signalsArtifact: signals,
+        templateArtifact: template,
+        sectionText: text,
+        kind,
+        featuresSha256: featureConfig.sha256,
+      });
+      if (freshness.stale) {
+        staleObservations.push({
+          section_id: sectionId,
+          target: draft.path,
+          reasons: freshness.reasons,
+        });
+        return;
+      }
+      const { intents } = parseNarrativeIntents(contract);
+      entries.push({
+        section_id: sectionId,
+        order_index: index,
+        kind,
+        features: signals.features,
+        intent_check: checkIntentsAgainstFeatures(intents, signals.features),
+      });
+    });
+    const aggregate = aggregateNarrativeProfile(entries, { featureSet: featureConfig.features });
+    return {
+      advisory: true,
+      generated_at: new Date().toISOString(),
+      profile_generated_at: profile.generated_at ?? "",
+      sections_observed: entries.length,
+      sections_total: drafts.length,
+      sections_missing_observations: missing,
+      stale_templates: staleObservations.map((entry) => entry.section_id),
+      stale_observations: staleObservations,
+      ...aggregate,
+      ...(profile.drafting_model_watch ? { drafting_model_watch: profile.drafting_model_watch } : {}),
+    };
+  } catch {
+    return null;
+  }
+}
+
 function readExportManifest() {
   const file = paths.exportsAbs("manifest.json");
   const manifest = readJsonIfExists(file, null);
@@ -575,6 +697,23 @@ function printText(report) {
   if (report.export_manifest?.file) console.log(`- export manifest: ${report.export_manifest.file}`);
   if (report.artifacts?.html) console.log(`- html report: ${report.artifacts.html}`);
   if (report.artifacts?.json) console.log(`- json report: ${report.artifacts.json}`);
+
+  if (report.narrative) {
+    console.log("");
+    console.log("Narrative Observations (advisory, never gate):");
+    console.log(`- observed: ${report.narrative.sections_observed}/${report.narrative.sections_total} section(s)`);
+    for (const flag of report.narrative.convergence_flags.slice(0, 3)) {
+      console.log(`- convergence: ${flag.label}: ${flag.reasons.join("; ")}${flag.matches_ai_lean ? " [model-default direction]" : ""}`);
+    }
+    for (const drift of report.narrative.intent_drift.slice(0, 5)) {
+      console.log(`- intent drift: ${drift.section_id} ${drift.intent}: declared ${drift.declared}, observed ${drift.observed}`);
+    }
+    if (report.narrative.stale_templates.length) {
+      console.log(
+        `- stale observations: ${report.narrative.stale_templates.join(", ")} (excluded; rerun mlab narrative extract, then mlab narrative features)`,
+      );
+    }
+  }
 
   console.log("");
   console.log("Blockers:");
@@ -738,7 +877,7 @@ function renderHtml(report) {
       <div class="metric"><strong>${report.summary.revision_trail.audits}</strong> diff audits</div>
       <div class="metric"><strong>${report.summary.model_calls}</strong> model calls</div>
     </section>
-
+${renderNarrativeHtml(report.narrative)}
     <h2>Blockers</h2>
     <table>
       <thead><tr><th>Type</th><th>Target</th><th>Message</th><th>Fix</th></tr></thead>

@@ -81,6 +81,13 @@ closes it, so "not ready" is a work list instead of a shrug.
   `exports/manifest.json` with input/output hashes. EPUB and PDF are explicit
   opt-ins (`--formats md,html,epub,pdf`); EPUB needs `zip`, PDF needs
   `python3` with the `reportlab` package.
+- Narrative observations: `mlab narrative` extracts a cached structural
+  template per section, derives discourse-level observations (how meaning,
+  emotion, time, and resolution are handled), checks them against declared
+  `narrative_*` contract intents, diffs candidates structurally, and reports
+  manuscript-wide convergence — advisory craft diagnostics for the narrow
+  repertoire model-assisted drafts drift into, never an "AI score". See
+  `docs/NARRATIVE.md`.
 
 The full command reference is `docs/COMMANDS.md`.
 

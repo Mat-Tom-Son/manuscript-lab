@@ -28,6 +28,7 @@ const alwaysRun = [
   "scripts/validate-codex-skill.mjs",
   "scripts/word-usage.test.mjs",
   "scripts/style-calibration.test.mjs",
+  "scripts/narrative-signals.test.mjs",
   "scripts/taste-arbiter.test.mjs",
   "scripts/harness-hardening.test.mjs",
 ];
