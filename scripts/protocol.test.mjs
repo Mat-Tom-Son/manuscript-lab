@@ -133,6 +133,7 @@ function testConfigValidationWarningsAndTypes() {
       checks: [],
       reviews: "default",
       model: "openrouter",
+      gates: [],
     },
     { configDir },
   );
@@ -142,6 +143,38 @@ function testConfigValidationWarningsAndTypes() {
   assert(typed.errors.some((error) => /checks must be an object/.test(error)));
   assert(typed.errors.some((error) => /reviews must be an object/.test(error)));
   assert(typed.errors.some((error) => /model must be an object/.test(error)));
+  assert(typed.errors.some((error) => /gates must be an object/.test(error)));
+
+  const gatePolicy = validateProtocolConfig(
+    {
+      ...base,
+      gates: {
+        reviews: { declared_have_run: "warn", declared_fresh: "off" },
+        profiles: {
+          release: {
+            reviews: { declared_have_run: "block", declared_fresh: "block" },
+          },
+        },
+      },
+    },
+    { configDir },
+  );
+  assert.deepEqual(gatePolicy.errors, []);
+
+  const invalidGatePolicy = validateProtocolConfig(
+    {
+      ...base,
+      gates: {
+        section: { words_floor_ratio: 2 },
+        reviews: { declared_have_run: "sometimes" },
+        profiles: { release: { reviews: { declared_fresh: true } } },
+      },
+    },
+    { configDir },
+  );
+  assert(invalidGatePolicy.errors.some((error) => /words_floor_ratio/.test(error)));
+  assert(invalidGatePolicy.errors.some((error) => /declared_have_run must be one of/.test(error)));
+  assert(invalidGatePolicy.errors.some((error) => /declared_fresh must be one of/.test(error)));
 }
 
 function testWindowsAndBackslashPathsFail() {

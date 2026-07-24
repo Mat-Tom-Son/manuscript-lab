@@ -102,6 +102,11 @@ npm run review:report -- draft/<section>.md
 npm run issues -- list --status open
 ```
 
+Gate and report output distinguish a declared pass that never completed from a
+successful run that became stale after the section body or review definition
+changed. Follow the emitted `mlab review run ... --passes ...` fix command;
+successful mock-response runs count, provider/parse failures do not.
+
 For accepted issues with multiple plausible fixes:
 
 ```bash

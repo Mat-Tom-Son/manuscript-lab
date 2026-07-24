@@ -971,13 +971,24 @@ function assertInstalledProjectReviewRegistration(workspace, runner) {
   assert.equal(run.results[0].imported_issue_ids.length, 1);
   const runRecord = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, run.results[0].file), "utf8"));
   assert.equal(runRecord.pass.origin, "project");
+  assert.match(runRecord.target.sha256, /^[a-f0-9]{64}$/);
+  assert.match(runRecord.target.body_sha256, /^[a-f0-9]{64}$/);
+  assert.match(runRecord.pass.definition_sha256, /^[a-f0-9]{64}$/);
+  assert.match(runRecord.registry_sha256, /^[a-f0-9]{64}$/);
+  assert.equal(runRecord.attempts[0].status, "mock");
 
   const gateResult = runner(["gate", "draft/01-opening.md", "--json"], { cwd: workspace });
   assert.notEqual(gateResult.status, 2, gateResult.stderr || gateResult.stdout);
   const gate = JSON.parse(gateResult.stdout);
   const reviewIds = gate.requirements.find((requirement) => requirement.id === "contract.review_ids_exist");
   assert.equal(reviewIds?.status, "pass", JSON.stringify(reviewIds, null, 2));
+  const coverage = gate.requirements.find((requirement) => requirement.id === "reviews.declared_have_run");
+  assert.equal(coverage?.status, "skip", JSON.stringify(coverage, null, 2));
+  assert.match(coverage.message, /No applicable declared review passes target active sections/);
+  const freshness = gate.requirements.find((requirement) => requirement.id === "reviews.declared_fresh");
+  assert.equal(freshness?.status, "skip", JSON.stringify(freshness, null, 2));
   assert.equal(typeof gate.input_hashes.reviews_registry, "string");
+  assert.equal(typeof gate.input_hashes.review_runs, "string");
 }
 
 function assertInstalledCandidatePreview(workspace, runner) {

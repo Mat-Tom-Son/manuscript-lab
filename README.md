@@ -69,9 +69,12 @@ closes it, so "not ready" is a work list instead of a shrug.
   stable `evidence.*` requirement ids.
 - Gates: `section-ready`, `citation-ready`, `manuscript-ready`, and
   `export-ready` decide readiness from evidence, not vibes. Sections marked
-  `todo` block, and prose below 33% of a section's target word count blocks.
+  `todo` block, prose below 33% of a section's target word count blocks, and
+  applicable declared reviews warn when they have never completed or no longer
+  match the section body and review definition.
 - Reports with fix commands: every blocker in `mlab report` (terminal, JSON,
-  HTML) carries the command that addresses it. For example:
+  HTML) carries the command that addresses it. Advisory review gaps are shown
+  separately with exact `mlab review run ... --passes ...` commands. For example:
 
   ```text
   Blockers:
@@ -172,6 +175,28 @@ Project-specific review charters do not need to be added to the package. Point
 root, keep its prompts there, then use those IDs in section contracts. The
 suite merges with built-ins; collisions and path escapes fail validation. See
 `docs/FILE_PROTOCOL.md` and inspect the result with `mlab review list`.
+
+Successful review runs record target-body, target-file, pass-definition, and
+registry fingerprints. Gates use those artifacts to distinguish “no review has
+run,” “the latest successful review is stale,” and “completed reviews have no
+persisted errors.” Coverage and freshness warn by default, including for
+keyless projects using `--mock-response`. A release profile can make them
+blocking:
+
+```json
+{
+  "gates": {
+    "profiles": {
+      "release": {
+        "reviews": {
+          "declared_have_run": "block",
+          "declared_fresh": "block"
+        }
+      }
+    }
+  }
+}
+```
 
 ## Docs
 

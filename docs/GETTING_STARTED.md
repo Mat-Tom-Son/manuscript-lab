@@ -133,8 +133,11 @@ npx mlab report --write
 
 The report (terminal, `reports/latest.json`, `reports/latest.html`) lists each
 failing section individually with its reasons, and every blocker carries a
-`fix:` line with the exact command to run next. `report` and `gate` share one
-gate engine, so they cannot disagree.
+`fix:` line with the exact command to run next. It also lists advisory gaps
+with fixes: an active section whose applicable declared review has never
+completed, or whose latest successful run predates the current section body or
+review definition, no longer disappears inside a generic green result.
+`report` and `gate` share one gate engine, so they cannot disagree.
 
 ## 7. Add Model Reviews Later
 
@@ -153,6 +156,30 @@ npx mlab issues list --status open
 Reviews create typed issues. Triage them before revising; for high-stakes
 revisions use the candidate loop (`revise`, `compare`, `merge`) described in
 `docs/COMMANDS.md`.
+
+Successful runs—including `--mock-response` runs—satisfy declared-review
+coverage. Provider and parse errors do not. Coverage and freshness are
+deterministic warnings by default, so the core workflow remains usable without
+provider keys. To enforce them for a named release profile, add:
+
+```json
+{
+  "gates": {
+    "profiles": {
+      "release": {
+        "reviews": {
+          "declared_have_run": "block",
+          "declared_fresh": "block"
+        }
+      }
+    }
+  }
+}
+```
+
+Then run `npx mlab gate manuscript --profile release`. Each policy value may
+be `off`, `warn`, or `block`; project-wide defaults can also live directly
+under `gates.reviews`.
 
 To add a project-specific lens, put a suite and its prompt files under the
 manuscript root, then register it in `manuscript-lab.config.json`:

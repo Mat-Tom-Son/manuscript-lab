@@ -54,9 +54,10 @@ Override:
 
 ## Gate Config
 
-Gate configs should be YAML or JSON files. Template configs can live under
-`templates/gates/`; project-local configs can later live under `gates/` or be
-passed with `--config`.
+Complete gate-config files remain the target design. Template configs live
+under `templates/gates/`. The currently executable project policy is the
+review subset in `manuscript-lab.config.json`: `gates.reviews` plus
+`gates.profiles.<name>.reviews`.
 
 Config loading order should be:
 
@@ -96,6 +97,12 @@ gate:
           severity: block
           sensor: issue_ledger
       warns:
+        - id: reviews.declared_have_run
+          severity: warn
+          sensor: review_coverage
+        - id: reviews.declared_fresh
+          severity: warn
+          sensor: review_freshness
         - id: reviews.latest_clean
           severity: warn
           sensor: review_errors
@@ -234,10 +241,11 @@ Exit codes:
 
 ## Initial Gates
 
-The current v1 branch implementation is deterministic and uses built-in gate
-defaults. Template configs under `templates/gates/` document stable requirement
-IDs for future project overrides; the engine does not require model credentials
-or network access.
+The current engine is deterministic and uses built-in gate defaults. Template
+configs under `templates/gates/` document stable requirement IDs. Since 2.5,
+projects can change the severity of declared-review coverage and freshness
+requirements globally or for a selected profile; the engine still does not
+require model credentials or network access.
 
 ### `section-ready`
 
@@ -269,6 +277,12 @@ Deterministic requirements (as of 2.0):
 - `runtime.fresh`: non-`todo` sections have a fresh runtime packet.
 - `doccheck.static_pass`: static document checks pass for the target.
 - `issues.no_blockers`: no open or deferred blocker issues target the section.
+- `reviews.declared_have_run` (warn by default): every applicable review pass
+  declared by an active section has a successful persisted run.
+- `reviews.declared_fresh` (warn by default): the latest successful run for
+  each applicable declared pass matches the current contract-stripped section
+  body and resolved pass definition. Legacy runs without comparable hashes are
+  `unknown`, not silently fresh.
 - `reviews.latest_clean`: latest required review runs have no persisted errors.
 
 Optional profile requirements:
@@ -339,6 +353,10 @@ Initial deterministic requirements:
 - `runtime.all_fresh`: active sections have fresh runtime packets.
 - `issues.none_open_or_deferred`: no open or deferred issues remain unless the
   profile explicitly allows advisory debt.
+- `reviews.declared_have_run`: manuscript-wide rollup of missing successful
+  runs for applicable declared passes.
+- `reviews.declared_fresh`: manuscript-wide rollup of stale or
+  freshness-unknown successful runs.
 - `reviews.no_latest_errors`: persisted latest review runs have no errors.
 - `doccheck.static_all_pass`: full static document checks pass.
 - `project.filesystem_verified`: the active project workspace verifies.
@@ -352,6 +370,41 @@ Fresh-start projects where every section is still `todo` fail this gate on
 `sections.any_started`: readiness is never vacuous. Once at least one section
 is started, remaining `todo` sections stay out of manuscript scope and the
 gate reports on the active sections only.
+
+Declared-review coverage and error cleanliness answer different questions.
+`reviews.no_latest_errors` remains vacuously satisfied when no run exists, and
+its message says so explicitly. `reviews.declared_have_run` is the coverage
+sensor that prevents zero runs from looking reviewed; `reviews.declared_fresh`
+detects edits after a successful run. Successful `--mock-response` runs count,
+while provider or parse errors do not.
+
+Both new requirements default to `warn`. Use `off`, `warn`, or `block` under
+`gates.reviews`, with an optional named profile override:
+
+```json
+{
+  "gates": {
+    "reviews": {
+      "declared_have_run": "warn",
+      "declared_fresh": "warn"
+    },
+    "profiles": {
+      "release": {
+        "reviews": {
+          "declared_have_run": "block",
+          "declared_fresh": "block"
+        }
+      }
+    }
+  }
+}
+```
+
+Only active non-`todo` sections participate. A declared pass must also apply to
+the section's current `kind` and `stage`, using the same resolution rule as
+`mlab review`; otherwise the gate would demand a run the runner intentionally
+skips. Gate input hashes cover both the merged review registry and persisted
+review JSON state.
 
 ### `export-ready`
 
@@ -449,7 +502,7 @@ Recommended flags:
 
 | Flag | Purpose |
 | --- | --- |
-| `--profile <name>` | Select config profile. |
+| `--profile <name>` | Select named gate policy overrides, including declared-review strictness. |
 | `--config <path>` | Load a specific gate config. |
 | `--json` | Print result JSON to stdout. |
 | `--write` | Persist result artifacts under `state/gates/`. |

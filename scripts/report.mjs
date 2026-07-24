@@ -73,11 +73,13 @@ function buildReport() {
     exists: draft.exists,
   }));
   const blockers = collectBlockers({ status, evidence, gate, commandRuns: [statusRun, evidenceRun, gateRun, reviewRun] });
+  const advisories = collectAdvisories(gate);
   const generatedAt = new Date().toISOString();
 
   const summary = {
     state: blockers.length ? "not_ready" : "ready",
     ready: blockers.length === 0,
+    advisories: advisories.length,
     sections: {
       total: sections.length,
       active: sections.filter((section) => section.status !== "todo").length,
@@ -140,6 +142,7 @@ function buildReport() {
     },
     summary,
     blockers,
+    advisories,
     sections,
     issues: status.issues ?? {},
     evidence: evidence
@@ -205,6 +208,23 @@ function collectBlockers({ status, evidence, gate, commandRuns }) {
     }
   }
   return blockers;
+}
+
+function collectAdvisories(gate) {
+  if (!gate) return [];
+  return (gate.requirements ?? [])
+    .filter((requirement) => requirement.status === "warn")
+    .map((requirement) => ({
+      type: requirement.id,
+      target: "gate",
+      message: requirement.message,
+      fix: fixForGateRequirement(requirement),
+      evidence: {
+        gate: gate.gate_id,
+        requirement: requirement.id,
+        evidence: requirement.evidence,
+      },
+    }));
 }
 
 function blocker(type, target, message, evidence = {}, fix = "") {
@@ -279,6 +299,9 @@ function fixForGateRequirement(req) {
   if (id === "citations.ready" || id.startsWith("evidence.citations") || id.startsWith("evidence.sources")) return "mlab citations check";
   if (id.startsWith("evidence.claims")) return "mlab claims list --unsupported";
   if (id === "issues.none_open_or_deferred") return "mlab issues list --status open";
+  if (id === "reviews.declared_have_run" || id === "reviews.declared_fresh") {
+    return reviewFixCommands(req);
+  }
   if (id === "reviews.no_latest_errors") return "mlab review draft/<section>.md";
   if (id === "project.required_files_present") return "mlab check --fix";
   if (id === "outline.sections_resolve") return "update File: references in outline.md (manual edit)";
@@ -288,6 +311,26 @@ function fixForGateRequirement(req) {
   if (id === "manuscript.ready") return "mlab gate manuscript";
   if (id.startsWith("export.")) return "mlab export";
   return "mlab gate manuscript --json";
+}
+
+function reviewFixCommands(req) {
+  const entries = [
+    ...(Array.isArray(req.evidence?.missing) ? req.evidence.missing : []),
+    ...(Array.isArray(req.evidence?.stale) ? req.evidence.stale : []),
+    ...(Array.isArray(req.evidence?.unknown) ? req.evidence.unknown : []),
+  ];
+  const byFile = new Map();
+  for (const entry of entries) {
+    if (!entry?.file || !entry?.pass) continue;
+    const passes = byFile.get(entry.file) ?? new Set();
+    passes.add(entry.pass);
+    byFile.set(entry.file, passes);
+  }
+  if (!byFile.size) return "mlab review run draft/<section>.md";
+  return Array.from(byFile.entries())
+    .slice(0, 3)
+    .map(([file, passes]) => `mlab review run ${file} --passes ${Array.from(passes).sort().join(",")}`)
+    .join(" && ");
 }
 
 function hasMissingScaffoldingOutput(req) {
@@ -728,6 +771,18 @@ function printText(report) {
   }
 
   console.log("");
+  console.log("Advisories:");
+  if (report.advisories.length) {
+    for (const item of report.advisories.slice(0, 12)) {
+      console.log(`- ${item.type}: ${item.message}`);
+      if (item.fix) console.log(`  fix: ${item.fix}`);
+    }
+    if (report.advisories.length > 12) console.log(`- ... ${report.advisories.length - 12} more`);
+  } else {
+    console.log("- none");
+  }
+
+  console.log("");
   console.log("Creative Labs:");
   if (report.room_runs.length || report.chorus_runs.length) {
     for (const run of report.room_runs.slice(0, 5)) {
@@ -768,6 +823,14 @@ function renderHtml(report) {
   const title = `${escapeHtml(report.project.title)} Manuscript Lab Report`;
   const blockerRows = report.blockers.length
     ? report.blockers
+        .map(
+          (item) =>
+            `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.target)}</td><td>${escapeHtml(item.message)}</td><td>${item.fix ? `<code>${escapeHtml(item.fix)}</code>` : ""}</td></tr>`,
+        )
+        .join("\n")
+    : `<tr><td colspan="4">None</td></tr>`;
+  const advisoryRows = report.advisories.length
+    ? report.advisories
         .map(
           (item) =>
             `<tr><td>${escapeHtml(item.type)}</td><td>${escapeHtml(item.target)}</td><td>${escapeHtml(item.message)}</td><td>${item.fix ? `<code>${escapeHtml(item.fix)}</code>` : ""}</td></tr>`,
@@ -882,6 +945,12 @@ ${renderNarrativeHtml(report.narrative)}
     <table>
       <thead><tr><th>Type</th><th>Target</th><th>Message</th><th>Fix</th></tr></thead>
       <tbody>${blockerRows}</tbody>
+    </table>
+
+    <h2>Advisories</h2>
+    <table>
+      <thead><tr><th>Type</th><th>Target</th><th>Message</th><th>Fix</th></tr></thead>
+      <tbody>${advisoryRows}</tbody>
     </table>
 
     <h2>Sections</h2>

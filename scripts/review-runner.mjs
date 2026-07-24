@@ -7,7 +7,13 @@ import { lockPathFor, writeFileAtomic, writeJsonAtomic, withFileLock } from "./l
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
-import { loadReviewRegistry, resolveReviewContextPath } from "./lib/review-registry.mjs";
+import {
+  loadReviewRegistry,
+  resolveReviewContextPath,
+  reviewPassApplies,
+  reviewPassDefinitionSha256,
+  reviewRegistrySha256,
+} from "./lib/review-registry.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -34,6 +40,7 @@ if (registry.errors.length) {
   process.exit(1);
 }
 const suite = registry.suite;
+const registryFingerprint = reviewRegistrySha256(registry);
 if (options.target === "list") {
   printReviewList();
   process.exit(0);
@@ -117,11 +124,11 @@ function buildReviewQueue({ requestedPasses, sectionKind, sectionStage }) {
         if (!pass) throw new Error(`Unknown review pass: ${id}`);
         return pass;
       })
-    : passes.filter((pass) => passApplies(pass, sectionKind, sectionStage));
+    : passes.filter((pass) => reviewPassApplies(pass, sectionKind, sectionStage));
 
   const jobs = [];
   for (const pass of selected) {
-    if (!passApplies(pass, sectionKind, sectionStage) && !options.force) {
+    if (!reviewPassApplies(pass, sectionKind, sectionStage) && !options.force) {
       continue;
     }
 
@@ -144,18 +151,14 @@ function modelsForPass(pass) {
   return panelModels.length ? panelModels : pass.models ?? suite.default_models ?? [];
 }
 
-function passApplies(pass, sectionKind, sectionStage) {
-  const stages = pass.stage ?? [];
-  const kinds = pass.applies_to ?? [];
-  const stageMatch = stages.includes("*") || stages.includes(sectionStage);
-  const kindMatch = kinds.includes("*") || kinds.includes(sectionKind);
-  return stageMatch && kindMatch;
-}
-
 async function runReviewJob({ job }) {
   const timestamp = new Date().toISOString();
   const runId = `review_${timestamp.replace(/[^0-9]/g, "").slice(0, 14)}_${job.pass.id.replace(/[^a-z0-9]+/gi, "_")}_${slugModel(job.model)}`;
   const context = resolveContextPack(job.pass.context_pack);
+  const promptPath = registry.promptPathForPass(job.pass.id);
+  if (!promptPath) throw new Error(`Review pass "${job.pass.id}" has no readable prompt`);
+  const promptText = read(promptPath);
+  const definitionSha256 = reviewPassDefinitionSha256(registry, job.pass.id, { promptText });
 
   let raw_output = "";
   let parsed = null;
@@ -166,7 +169,7 @@ async function runReviewJob({ job }) {
   let modelCallPath = "";
 
   if (options.mockResponse) {
-    const prompt = buildPrompt({ pass: job.pass, model: job.model, context, runId, retry: false });
+    const prompt = buildPrompt({ pass: job.pass, model: job.model, context, runId, retry: false, promptText });
     raw_output = read(resolveInputPath(options.mockResponse));
     const parseResult = parseModelJson(raw_output);
     if (!parseResult.ok) {
@@ -186,7 +189,7 @@ async function runReviewJob({ job }) {
     }
   } else {
     for (let attempt = 1; attempt <= options.retries + 1; attempt += 1) {
-      const prompt = buildPrompt({ pass: job.pass, model: job.model, context, runId, retry: attempt > 1 });
+      const prompt = buildPrompt({ pass: job.pass, model: job.model, context, runId, retry: attempt > 1, promptText });
 
       try {
         const response = await callChatModel({
@@ -252,6 +255,8 @@ async function runReviewJob({ job }) {
       section_id: sectionId,
       kind: sectionKind,
       stage: sectionStage,
+      sha256: sha256(targetText),
+      body_sha256: sha256(stripContract(targetText)),
     },
     pass: {
       id: job.pass.id,
@@ -261,7 +266,9 @@ async function runReviewJob({ job }) {
       max_issues: job.pass.max_issues ?? null,
       context_pack: job.pass.context_pack,
       prompt: job.pass.prompt,
+      definition_sha256: definitionSha256,
     },
+    registry_sha256: registryFingerprint,
     model: job.model,
     provider: runtime.provider,
     resolved_model: runtime.model,
@@ -285,10 +292,7 @@ async function runReviewJob({ job }) {
   };
 }
 
-function buildPrompt({ pass, model, context, runId, retry }) {
-  const promptPath = registry.promptPathForPass(pass.id);
-  if (!promptPath) throw new Error(`Review pass "${pass.id}" has no readable prompt`);
-  const promptText = read(promptPath);
+function buildPrompt({ pass, model, context, runId, retry, promptText }) {
   const isPatternSaturation = pass.output_schema === "pattern_saturation_v1";
   const fileBlocks = context.files
     .map((file) => `<file path="${file.path}">\n${file.content}\n</file>`)

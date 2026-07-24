@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.4.0.
+This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.5.0.
 `mlab --help` shows the same six groups with one line per command;
 `mlab help <command>` (or `mlab <command> --help`) prints per-command detail;
 `mlab help admin` prints template-clone admin commands.
@@ -29,8 +29,8 @@ Every command name that worked before v2 still works — see
 | `mlab revise <target>` | Generate candidate revisions for an accepted issue. | `--issue <id>`, `--candidates <n>`, `--dry-run` |
 | `mlab compare <target>` | Blind pairwise comparison of a candidate run. | `--run <candidate-run-id>`, `--dry-run` |
 | `mlab merge <target>` | Preview or apply the comparison winner, with audit trail. | `--run <candidate-run-id>`, `--apply`, `--audit` |
-| `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. | `--json`, `--write`, `--static-only`, `--profile <name>` |
-| `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. Includes an advisory Narrative Observations block when `state/observations/` artifacts exist (never affects PASS/FAIL). | `--write`, `--json` |
+| `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. Applicable declared reviews that have never completed or are stale warn by default; `gates.reviews` and named `gates.profiles` can set `off`, `warn`, or `block`. | `--json`, `--write`, `--static-only`, `--profile <name>` |
+| `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker and advisory carries a `fix:` command; failing sections are listed individually with reasons. Includes an advisory Narrative Observations block when `state/observations/` artifacts exist (never affects PASS/FAIL). | `--write`, `--json` |
 | `mlab narrative [sub]` | Bare command builds the manuscript convergence `profile`. Subcommands: `extract` (one cached model call per changed section builds a structural template), `features` (derive observations, no model), `check` (contract `narrative_*` intents vs observations), and `diff <a> <b>` (different choices or the same choices reworded?). Advisory only; see `docs/NARRATIVE.md`. | `--json`, `--force`, `--strict`, `--model <id>`, `--mock-response <file>` |
 
 ### Project-local reviews
@@ -54,6 +54,36 @@ or context-pack IDs are validation errors rather than silent overrides. Run
 `mlab review list` to inspect the merged registry and see each pass's
 `built-in` or `project` origin. The full schema and path rules are in
 `docs/FILE_PROTOCOL.md`.
+
+Review run records fingerprint the section body, complete target file, resolved
+pass definition, and merged registry. `reviews.declared_have_run` warns when an
+applicable declared pass has no successful persisted run;
+`reviews.declared_fresh` warns when the latest successful run no longer matches
+the section body or pass definition. `todo` sections and passes that do not
+apply to the section's current `kind` / `stage` are excluded. Successful
+`--mock-response` runs count; errored attempts do not.
+
+Configure default or profile-specific policy in
+`manuscript-lab.config.json`:
+
+```json
+{
+  "gates": {
+    "reviews": {
+      "declared_have_run": "warn",
+      "declared_fresh": "warn"
+    },
+    "profiles": {
+      "release": {
+        "reviews": {
+          "declared_have_run": "block",
+          "declared_fresh": "block"
+        }
+      }
+    }
+  }
+}
+```
 
 ## Evidence
 

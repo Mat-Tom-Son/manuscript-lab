@@ -1,5 +1,32 @@
 # Changelog
 
+## 2.5.0 - 2026-07-24
+
+- Added deterministic declared-review coverage to section and manuscript
+  readiness. `reviews.declared_have_run` now warns when an active section has
+  an applicable contract-declared pass with no successful persisted run, so
+  zero reviews can no longer look indistinguishable from reviewed-green.
+  `reviews.no_latest_errors` remains a separate error sensor and now says
+  explicitly when it passes vacuously because no runs exist.
+- Added `reviews.declared_fresh`, which warns when the latest successful run is
+  older than the current contract-stripped section body or resolved review
+  definition. New run records persist target-file, target-body, pass-definition,
+  and merged-registry SHA-256 fingerprints; successful `--mock-response` runs
+  count, provider/parse failures do not, and legacy records without comparable
+  fingerprints report freshness as unknown instead of silently fresh.
+- Added executable review gate policy under `gates.reviews` and
+  `gates.profiles.<name>.reviews` in `manuscript-lab.config.json`. Both
+  requirements default to `warn` and accept `off`, `warn`, or `block`, allowing
+  `mlab gate manuscript --profile release` to enforce completed, current
+  reviews without making provider-backed work mandatory for every project.
+  `todo` sections and passes inapplicable to the current section kind/stage are
+  excluded using the same applicability rule as the review runner.
+- Added gate review-state fingerprints and report advisories. Section and
+  manuscript result hashes now include the merged review registry and persisted
+  review JSON state; terminal, JSON, and HTML reports list review coverage and
+  freshness advisories separately from blockers with exact per-section
+  `mlab review run ... --passes ...` fixes.
+
 ## 2.4.0 - 2026-07-24
 
 - Added project-local review registration. Set `reviews.suite` in

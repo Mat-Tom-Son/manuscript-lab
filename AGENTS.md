@@ -72,15 +72,18 @@ config). Section paths are project-relative: `draft/01-opening.md`.
    instead of issuing one process call per mutation.
    Project-specific sensors can be registered with `reviews.suite` in
    `manuscript-lab.config.json`; use `mlab review list` to confirm built-in and
-   project pass IDs before adding them to contracts.
+   project pass IDs before adding them to contracts. Gates warn when an
+   applicable declared pass has never completed successfully or its latest
+   successful run is stale; `mlab report` supplies the exact rerun command.
 8. For contested revisions use the candidate arena: `mlab revise`,
    `mlab compare`, `mlab merge`. `mlab merge --apply` refuses stale candidate
    runs unless a human passes `--force`. Run `mlab lab taste` after comparisons
    that affect voice, structure, subtext, or reader effect; do not apply a
    winner the taste gate blocks unless a human overrides.
 9. `mlab gate` (defaults to the manuscript gate) or `mlab report` to verify
-   readiness. Do not mark a section `done` until checks pass and state files
-   are current.
+   readiness. Declared-review coverage/freshness is advisory by default and can
+   be set to `block` through `gates.reviews` or a named gate profile. Do not
+   mark a section `done` until checks pass and state files are current.
 10. `mlab export` packages non-todo chapters (default `md,html`; EPUB/PDF are
     opt-in). Export warns and marks the manifest when the manuscript gate is
     failing — in automation, pass `--require-ready` so a red project refuses to

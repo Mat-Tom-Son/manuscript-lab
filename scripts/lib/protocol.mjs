@@ -290,7 +290,64 @@ export function validateProtocolConfig(config, { configDir }) {
     }
   }
 
+  if (isPlainObject(config.gates)) {
+    validateGatesConfig(config.gates, errors, warnings);
+  }
+
   return { errors, warnings, projectRoot };
+}
+
+function validateGatesConfig(gates, errors, warnings) {
+  const knownGateFields = new Set(["section", "reviews", "profiles"]);
+  for (const key of Object.keys(gates)) {
+    if (!knownGateFields.has(key)) warnings.push(`Unknown config gates field ignored: ${key}`);
+  }
+
+  if ("section" in gates && !isPlainObject(gates.section)) {
+    errors.push("Config gates.section must be an object when present.");
+  }
+  if (isPlainObject(gates.section) && "words_floor_ratio" in gates.section) {
+    const ratio = Number(gates.section.words_floor_ratio);
+    if (!Number.isFinite(ratio) || ratio <= 0 || ratio > 1) {
+      errors.push("Config gates.section.words_floor_ratio must be a number greater than 0 and at most 1.");
+    }
+  }
+
+  if ("reviews" in gates) validateReviewGatePolicy(gates.reviews, "Config gates.reviews", errors, warnings);
+  if ("profiles" in gates) {
+    if (!isPlainObject(gates.profiles)) {
+      errors.push("Config gates.profiles must be an object when present.");
+    } else {
+      for (const [profile, policy] of Object.entries(gates.profiles)) {
+        const label = `Config gates.profiles.${profile}`;
+        if (!isPlainObject(policy)) {
+          errors.push(`${label} must be an object.`);
+          continue;
+        }
+        for (const key of Object.keys(policy)) {
+          if (key !== "reviews") warnings.push(`Unknown ${label} field ignored: ${key}`);
+        }
+        if ("reviews" in policy) validateReviewGatePolicy(policy.reviews, `${label}.reviews`, errors, warnings);
+      }
+    }
+  }
+}
+
+function validateReviewGatePolicy(policy, label, errors, warnings) {
+  if (!isPlainObject(policy)) {
+    errors.push(`${label} must be an object when present.`);
+    return;
+  }
+  const known = new Set(["declared_have_run", "declared_fresh"]);
+  for (const [key, value] of Object.entries(policy)) {
+    if (!known.has(key)) {
+      warnings.push(`Unknown ${label} field ignored: ${key}`);
+      continue;
+    }
+    if (!["off", "warn", "block"].includes(value)) {
+      errors.push(`${label}.${key} must be one of: off, warn, block.`);
+    }
+  }
 }
 
 export function listDrafts(discovery) {

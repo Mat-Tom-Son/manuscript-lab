@@ -77,6 +77,7 @@ The v1 config file is JSON.
 | `tasteDir` | string | Optional directory for project taste files, relative to the project root. The baseline value is `taste`. |
 | `checks` | object | Optional check-suite selection or profile defaults. Unknown object keys are profile- or command-owned until this document defines a stable schema. |
 | `reviews` | object | Optional review defaults and project-local registry. `default` is an array of registered pass IDs; `suite` is a project-relative JSON suite path. See [Project-local review registry](#project-local-review-registry). |
+| `gates` | object | Optional deterministic gate policy. `reviews.declared_have_run` and `reviews.declared_fresh` accept `off`, `warn`, or `block`; named `profiles.<name>.reviews` entries override them when `mlab gate --profile <name>` is selected. |
 | `model` | object | Optional model preference metadata. Secrets must stay in environment variables or `.env`, not in config. |
 
 Additional top-level fields are reserved. Current v0.x tools warn and ignore
@@ -152,6 +153,45 @@ executable code. The registry rules are:
 One shared registry feeds `mlab validate`, `mlab check`, `mlab compose`,
 `mlab gate`, `mlab review list`, and `mlab review`. `mlab review list --json`
 is the machine-readable way to inspect the merged pass catalog and origin.
+
+### Declared-review gate policy
+
+For each active non-`todo` section, gates resolve the contract's declared
+review IDs through the merged registry and apply the same `kind` / `stage`
+filters as the review runner. Two deterministic requirements are advisory by
+default:
+
+- `reviews.declared_have_run`: every applicable declared pass has at least one
+  successful persisted run.
+- `reviews.declared_fresh`: the latest successful run matches the section body
+  and the current resolved pass definition.
+
+Successful runs persist SHA-256 fingerprints for the complete target, the
+contract-stripped section body, the pass definition (pass, context pack, and
+prompt), and the merged registry. A successful `--mock-response` run counts;
+provider and parse failures do not. Pre-2.5 run records without comparable
+fingerprints are reported as freshness `unknown`, never silently fresh.
+
+Policy is project-wide unless a selected profile overrides it:
+
+```json
+{
+  "gates": {
+    "reviews": {
+      "declared_have_run": "warn",
+      "declared_fresh": "warn"
+    },
+    "profiles": {
+      "release": {
+        "reviews": {
+          "declared_have_run": "block",
+          "declared_fresh": "block"
+        }
+      }
+    }
+  }
+}
+```
 
 ## Project Root Layout
 

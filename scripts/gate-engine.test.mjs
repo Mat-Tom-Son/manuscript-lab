@@ -6,12 +6,20 @@ import crypto from "node:crypto";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
+import { discoverProtocol } from "./lib/protocol.mjs";
+import {
+  loadReviewRegistry,
+  reviewPassDefinitionSha256,
+  reviewRegistrySha256,
+} from "./lib/review-registry.mjs";
+import { stripContract } from "./lib/section-contract.mjs";
 
 const repoRoot = process.cwd();
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-gate-"));
 
 try {
   testSectionReadyPassesAndWritesArtifacts();
+  testDeclaredReviewCoverageAndFreshness();
   testSectionReadyFailsOnStaleRuntime();
   testSectionReadyBlocksNotStartedStatus();
   testSectionWordsFloorAndNearTarget();
@@ -38,15 +46,99 @@ function testSectionReadyPassesAndWritesArtifacts() {
   const parsed = JSON.parse(result.stdout);
   assert.equal(parsed.gate_id, "section-ready");
   assert.equal(parsed.ready, true);
-  assert.equal(parsed.status, "pass");
+  assert.equal(parsed.status, "pass_with_warnings");
   assert.equal(requirement(parsed, "runtime.fresh").status, "pass");
   assert.equal(requirement(parsed, "issues.no_blockers").status, "pass");
+  assert.equal(requirement(parsed, "reviews.declared_have_run").status, "warn");
+  assert.equal(requirement(parsed, "reviews.declared_fresh").status, "skip");
+  assert.match(requirement(parsed, "reviews.latest_clean").message, /vacuously satisfied/);
+  assert.equal(typeof parsed.input_hashes.reviews_registry, "string");
+  assert.equal(typeof parsed.input_hashes.review_runs, "string");
 
   const runFile = path.join(project, parsed.artifacts.run);
   const latestFile = path.join(project, parsed.artifacts.latest);
   assert(fs.existsSync(runFile), "run artifact should be written");
   assert(fs.existsSync(latestFile), "latest artifact should be written");
   assert.equal(JSON.parse(fs.readFileSync(latestFile, "utf8")).run_id, parsed.run_id);
+}
+
+function testDeclaredReviewCoverageAndFreshness() {
+  const workspace = path.join(tmp, "declared-review-coverage");
+  const project = writeProject(workspace, {
+    config: {
+      gates: {
+        profiles: {
+          release: {
+            reviews: {
+              declared_have_run: "block",
+              declared_fresh: "block",
+            },
+          },
+        },
+      },
+    },
+  });
+
+  const defaultMissing = runGate(["draft/01-opening.md", "--json"], { cwd: workspace });
+  assert.equal(defaultMissing.status, 0, defaultMissing.stderr || defaultMissing.stdout);
+  const defaultMissingGate = JSON.parse(defaultMissing.stdout);
+  assert.equal(requirement(defaultMissingGate, "reviews.declared_have_run").status, "warn");
+  assert.equal(requirement(defaultMissingGate, "reviews.declared_fresh").status, "skip");
+
+  const strictMissing = runGate(["draft/01-opening.md", "--profile", "release", "--json"], { cwd: workspace });
+  assert.equal(strictMissing.status, 1, strictMissing.stderr || strictMissing.stdout);
+  assert.equal(requirement(JSON.parse(strictMissing.stdout), "reviews.declared_have_run").status, "fail");
+
+  const runFile = writeReviewRun(workspace, { pass: "cold.reader" });
+  const run = JSON.parse(fs.readFileSync(runFile, "utf8"));
+  assert.equal(typeof run.target.body_sha256, "string");
+  assert.equal(typeof run.pass.definition_sha256, "string");
+  assert.equal(typeof run.registry_sha256, "string");
+  assert.equal(run.attempts[0].status, "mock");
+
+  const strictFresh = runGate(["draft/01-opening.md", "--profile", "release", "--json"], { cwd: workspace });
+  assert.equal(strictFresh.status, 0, strictFresh.stderr || strictFresh.stdout);
+  const strictFreshGate = JSON.parse(strictFresh.stdout);
+  assert.equal(requirement(strictFreshGate, "reviews.declared_have_run").status, "pass");
+  assert.equal(requirement(strictFreshGate, "reviews.declared_fresh").status, "pass");
+
+  const draftFile = path.join(project, "draft/01-opening.md");
+  write(draftFile, fs.readFileSync(draftFile, "utf8").replace("Exercise gate readiness.", "Exercise review gate readiness."));
+  writeRuntime(project, "draft/01-opening.md", "01-opening");
+  const contractOnly = runGate(["draft/01-opening.md", "--profile", "release", "--json"], { cwd: workspace });
+  assert.equal(contractOnly.status, 0, contractOnly.stderr || contractOnly.stdout);
+  assert.equal(requirement(JSON.parse(contractOnly.stdout), "reviews.declared_fresh").status, "pass");
+
+  fs.appendFileSync(draftFile, "\nA body edit after the review invalidates its observation.\n", "utf8");
+  writeRuntime(project, "draft/01-opening.md", "01-opening");
+  const staleDefault = runGate(["draft/01-opening.md", "--json"], { cwd: workspace });
+  assert.equal(staleDefault.status, 0, staleDefault.stderr || staleDefault.stdout);
+  const staleDefaultGate = JSON.parse(staleDefault.stdout);
+  assert.equal(requirement(staleDefaultGate, "reviews.declared_have_run").status, "pass");
+  assert.equal(requirement(staleDefaultGate, "reviews.declared_fresh").status, "warn");
+  assert.match(requirement(staleDefaultGate, "reviews.declared_fresh").message, /section body changed/);
+
+  const staleStrict = runGate(["draft/01-opening.md", "--profile", "release", "--json"], { cwd: workspace });
+  assert.equal(staleStrict.status, 1, staleStrict.stderr || staleStrict.stdout);
+  assert.equal(requirement(JSON.parse(staleStrict.stdout), "reviews.declared_fresh").status, "fail");
+
+  const legacyWorkspace = path.join(tmp, "declared-review-legacy");
+  writeProject(legacyWorkspace);
+  writeReviewRun(legacyWorkspace, { pass: "cold.reader", legacy: true });
+  const legacy = runGate(["draft/01-opening.md", "--json"], { cwd: legacyWorkspace });
+  assert.equal(legacy.status, 0, legacy.stderr || legacy.stdout);
+  const legacyFreshness = requirement(JSON.parse(legacy.stdout), "reviews.declared_fresh");
+  assert.equal(legacyFreshness.status, "warn");
+  assert.match(legacyFreshness.message, /target-content fingerprint/);
+
+  const errorWorkspace = path.join(tmp, "declared-review-error");
+  writeProject(errorWorkspace);
+  writeReviewRun(errorWorkspace, { pass: "cold.reader", error: "provider unavailable" });
+  const errored = runGate(["draft/01-opening.md", "--json"], { cwd: errorWorkspace });
+  assert.equal(errored.status, 0, errored.stderr || errored.stdout);
+  const erroredGate = JSON.parse(errored.stdout);
+  assert.equal(requirement(erroredGate, "reviews.declared_have_run").status, "warn");
+  assert.equal(requirement(erroredGate, "reviews.latest_clean").status, "warn");
 }
 
 function testSectionReadyFailsOnStaleRuntime() {
@@ -451,6 +543,48 @@ function writeRuntime(project, draftRel, sectionId) {
   write(path.join(runtimeDir, "trace.json"), "{}\n");
 }
 
+function writeReviewRun(workspace, { pass, legacy = false, error = "" }) {
+  const discovery = discoverProtocol({ cwd: workspace });
+  const registry = loadReviewRegistry(discovery);
+  assert.deepEqual(registry.errors, []);
+  const targetRel = "draft/01-opening.md";
+  const targetFile = path.join(discovery.manuscriptRoot, targetRel);
+  const targetText = fs.readFileSync(targetFile, "utf8");
+  const createdAt = "2026-07-24T12:00:00.000Z";
+  const runId = `review_20260724120000_${pass.replaceAll(".", "_")}_mock`;
+  const runFile = path.join(discovery.manuscriptRoot, "state/reviews/01-opening/runs", `${pass}__mock.json`);
+  const target = {
+    file: targetRel,
+    section_id: "01-opening",
+    kind: "document.section",
+    stage: "draft",
+    ...(!legacy
+      ? {
+          sha256: sha256Text(targetText),
+          body_sha256: sha256Text(stripContract(targetText)),
+        }
+      : {}),
+  };
+  const passRecord = {
+    id: pass,
+    ...(!legacy ? { definition_sha256: reviewPassDefinitionSha256(registry, pass) } : {}),
+  };
+  writeJson(runFile, {
+    version: 1,
+    run_id: runId,
+    created_at: createdAt,
+    target,
+    pass: passRecord,
+    ...(!legacy ? { registry_sha256: reviewRegistrySha256(registry) } : {}),
+    model: "mock:test",
+    attempts: [{ attempt: 1, status: error ? "error" : "mock" }],
+    manifest: { context_pack: "blind.section_only", visible_files: [] },
+    normalized: { issues: [], strengths: [], discarded_issues: [] },
+    error,
+  });
+  return runFile;
+}
+
 function writeExport(project, { formats, slug }) {
   const outDir = path.join(project, "exports");
   mkdir(outDir);
@@ -539,4 +673,8 @@ function mkdir(dir) {
 
 function sha256File(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
+}
+
+function sha256Text(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }

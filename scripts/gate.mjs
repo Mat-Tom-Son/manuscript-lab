@@ -7,14 +7,19 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { writeJsonAtomic } from "./lib/files.mjs";
 import { citationsCheckCommand } from "./lib/evidence-spine.mjs";
-import { scanReviewErrors } from "./lib/review-errors.mjs";
+import { assessDeclaredReviewRuns, scanReviewErrors } from "./lib/review-errors.mjs";
 import {
   discoverProtocol,
   listDrafts,
   loadKnownCheckIds,
   loadStatusByFile,
 } from "./lib/protocol.mjs";
-import { loadReviewRegistry } from "./lib/review-registry.mjs";
+import {
+  loadReviewRegistry,
+  reviewPassApplies,
+  reviewPassDefinitionSha256,
+  reviewRegistrySha256,
+} from "./lib/review-registry.mjs";
 import {
   ALLOWED_SECTION_STATUSES,
   isShortFormDraftContract,
@@ -402,7 +407,26 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
     evidence: sectionBlockers.error ? { error: sectionBlockers.error } : { count: sectionBlockers.issues.length, issues: sectionBlockers.issues },
   }));
 
-  const reviewFailures = findReviewFailuresForSection(discovery, targetId, relPath);
+  const reviewState = declaredReviewState({
+    discovery,
+    drafts: [{
+      path: relPath,
+      text,
+      contract,
+      sectionId: targetId,
+      status,
+      sha256: target.sha256,
+    }],
+    registry: reviewRegistry,
+  });
+  requirements.push(...declaredReviewRequirements({
+    discovery,
+    options,
+    registry: reviewRegistry,
+    state: reviewState,
+  }));
+
+  const reviewFailures = findReviewFailuresForSection(discovery, targetId, relPath, reviewState.scanned);
   requirements.push(requirement({
     id: "reviews.latest_clean",
     severity: "warn",
@@ -412,8 +436,12 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
       ? reviewFailures.error
       : reviewFailures.failures.length
         ? `Latest review run errors remain for ${relPath}.`
-        : "No latest review run errors target this section.",
-    evidence: reviewFailures.error ? { error: reviewFailures.error } : { count: reviewFailures.failures.length, failures: reviewFailures.failures },
+        : reviewFailures.run_count
+          ? `No latest review run errors target this section (${reviewFailures.run_count} persisted run(s)).`
+          : "No persisted review runs target this section; error cleanliness is vacuously satisfied.",
+    evidence: reviewFailures.error
+      ? { error: reviewFailures.error }
+      : { count: reviewFailures.failures.length, run_count: reviewFailures.run_count, failures: reviewFailures.failures },
   }));
 
   return finalizeResult({
@@ -432,7 +460,8 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
       status: hashFileIfExists(statusFile),
       checks_suite: hashFileIfExists(path.join(discovery.packageRoot, "checks/suite.json")),
       reviews_suite: hashFileIfExists(path.join(discovery.packageRoot, "reviews/suite.json")),
-      reviews_registry: hashReviewRegistryInputs(reviewRegistry.inputFiles),
+      reviews_registry: reviewRegistrySha256(reviewRegistry),
+      review_runs: hashReviewState(discovery),
       issue_ledger: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "issues/issue-ledger.json")),
       runtime_context: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "runtime", targetId, "context.json")),
     },
@@ -522,7 +551,8 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
   const allDrafts = draftRecords(discovery);
   const activeDrafts = allDrafts.filter((draft) => draft.status !== "todo");
   const requirements = [];
-  const warnings = [...(discovery.warnings ?? [])];
+  const reviewRegistry = loadReviewRegistry(discovery);
+  const warnings = [...(discovery.warnings ?? []), ...reviewRegistry.warnings];
 
   const requiredProject = requiredProjectFiles(discovery);
   requirements.push(requirement({
@@ -645,7 +675,19 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
     evidence: issueState.error ? { error: issueState.error } : { count: issueState.issues.length, issues: issueState.issues },
   }));
 
-  const reviews = scanProjectReviewErrors(discovery);
+  const reviewState = declaredReviewState({
+    discovery,
+    drafts: activeDrafts,
+    registry: reviewRegistry,
+  });
+  requirements.push(...declaredReviewRequirements({
+    discovery,
+    options,
+    registry: reviewRegistry,
+    state: reviewState,
+  }));
+
+  const reviews = reviewState.scanned;
   requirements.push(requirement({
     id: "reviews.no_latest_errors",
     sensor: "review_errors",
@@ -654,8 +696,12 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
       ? reviews.error
       : reviews.failures.length
         ? "Latest review run errors remain."
-        : "No latest review run errors remain.",
-    evidence: reviews.error ? { error: reviews.error } : { count: reviews.failures.length, failures: reviews.failures },
+        : reviews.runs.length
+          ? `No latest review run errors remain (${reviews.runs.length} persisted run(s)).`
+          : "No persisted review runs exist; error cleanliness is vacuously satisfied.",
+    evidence: reviews.error
+      ? { error: reviews.error }
+      : { count: reviews.failures.length, run_count: reviews.runs.length, failures: reviews.failures },
   }));
 
   const staticCheck = runPackageNode(discovery, "scripts/doccheck.mjs", ["--static-only"], { cwd: discovery.manuscriptRoot });
@@ -725,6 +771,8 @@ function evaluateManuscriptReady({ discovery, options = {}, command = "", starte
       claims: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "claims.md")),
       sources: hashFileIfExists(path.join(discovery.manuscriptRoot, sourcesDirFor(discovery), "index.md")),
       issue_ledger: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "issues/issue-ledger.json")),
+      reviews_registry: reviewRegistrySha256(reviewRegistry),
+      review_runs: hashReviewState(discovery),
     },
   });
 }
@@ -1550,11 +1598,14 @@ function loadIssueLedger(discovery) {
   }
 }
 
-function findReviewFailuresForSection(discovery, sectionId, relPath) {
-  const scanned = scanProjectReviewErrors(discovery);
+function findReviewFailuresForSection(discovery, sectionId, relPath, scannedState = null) {
+  const scanned = scannedState ?? scanProjectReviewErrors(discovery);
   if (scanned.error) return scanned;
+  const targetsSection = (record) =>
+    record.section === sectionId || record.target_file === relPath || record.file.includes(sectionId) || record.file.includes(relPath);
   return {
-    failures: scanned.failures.filter((failure) => failure.section === sectionId || failure.file.includes(sectionId) || failure.file.includes(relPath)),
+    failures: scanned.failures.filter(targetsSection),
+    run_count: scanned.runs.filter(targetsSection).length,
   };
 }
 
@@ -1562,8 +1613,150 @@ function scanProjectReviewErrors(discovery) {
   try {
     return scanReviewErrors(stateRel(discovery, "reviews"), { cwd: discovery.manuscriptRoot });
   } catch (error) {
-    return { failures: [], error: `Could not scan review errors: ${error.message}` };
+    return { failures: [], runs: [], error: `Could not scan review errors: ${error.message}` };
   }
+}
+
+function declaredReviewState({ discovery, drafts, registry }) {
+  const scanned = scanProjectReviewErrors(discovery);
+  const expectations = registry.errors.length ? [] : declaredReviewExpectations(drafts, registry);
+  return {
+    scanned,
+    expectations,
+    assessment: assessDeclaredReviewRuns(expectations, scanned.runs ?? []),
+  };
+}
+
+function declaredReviewExpectations(drafts, registry) {
+  return drafts.flatMap((draft) => {
+    if (!draft.contract || draft.status === "todo") return [];
+    const kind = draft.contract.get("kind") || "fiction.chapter";
+    const stage = draft.contract.get("stage") || draft.status || "draft";
+    return parseContractList(draft.text, "reviews").flatMap((id) => {
+      const pass = registry.passById.get(id);
+      if (!pass || !reviewPassApplies(pass, kind, stage)) return [];
+      return [{
+        section: draft.sectionId,
+        file: draft.path,
+        pass: id,
+        kind,
+        stage,
+        sha256: draft.sha256,
+        body_sha256: sha256Text(stripContract(draft.text)),
+        definition_sha256: reviewPassDefinitionSha256(registry, id),
+      }];
+    });
+  });
+}
+
+function declaredReviewRequirements({ discovery, options, registry, state }) {
+  const coverageMode = reviewGateMode(discovery, options.profile, "declared_have_run");
+  const freshnessMode = reviewGateMode(discovery, options.profile, "declared_fresh");
+  const registryInvalid = registry.errors.length > 0;
+  const scanError = state.scanned.error ?? "";
+  const assessment = state.assessment;
+
+  const coverage = requirement({
+    id: "reviews.declared_have_run",
+    severity: reviewGateSeverity(coverageMode),
+    sensor: "review_coverage",
+    status: reviewCoverageStatus({ mode: coverageMode, registryInvalid, scanError, assessment }),
+    message: reviewCoverageMessage({ mode: coverageMode, registry, scanError, assessment }),
+    evidence: {
+      policy: coverageMode,
+      expected_count: assessment.expected,
+      missing_count: assessment.missing.length,
+      missing: assessment.missing,
+      registry_errors: registry.errors,
+      ...(scanError ? { error: scanError } : {}),
+    },
+  });
+
+  const freshness = requirement({
+    id: "reviews.declared_fresh",
+    severity: reviewGateSeverity(freshnessMode),
+    sensor: "review_freshness",
+    status: reviewFreshnessStatus({ mode: freshnessMode, registryInvalid, scanError, assessment }),
+    message: reviewFreshnessMessage({ mode: freshnessMode, registry, scanError, assessment }),
+    evidence: {
+      policy: freshnessMode,
+      expected_count: assessment.expected,
+      fresh_count: assessment.fresh.length,
+      stale_count: assessment.stale.length,
+      unknown_count: assessment.unknown.length,
+      not_run_count: assessment.missing.length,
+      fresh: assessment.fresh,
+      stale: assessment.stale,
+      unknown: assessment.unknown,
+      not_run: assessment.missing,
+      registry_errors: registry.errors,
+      ...(scanError ? { error: scanError } : {}),
+    },
+  });
+
+  return [coverage, freshness];
+}
+
+function reviewCoverageStatus({ mode, registryInvalid, scanError, assessment }) {
+  if (mode === "off" || registryInvalid || assessment.expected === 0) return "skip";
+  if (scanError) return "error";
+  if (!assessment.missing.length) return "pass";
+  return mode === "block" ? "fail" : "warn";
+}
+
+function reviewFreshnessStatus({ mode, registryInvalid, scanError, assessment }) {
+  if (mode === "off" || registryInvalid || assessment.expected === 0) return "skip";
+  if (scanError) return "error";
+  if (assessment.stale.length || assessment.unknown.length) return mode === "block" ? "fail" : "warn";
+  if (assessment.missing.length) return "skip";
+  return "pass";
+}
+
+function reviewCoverageMessage({ mode, registry, scanError, assessment }) {
+  if (mode === "off") return "Declared-review coverage is disabled by gate policy.";
+  if (registry.errors.length) return "Skipped because the review registry is invalid.";
+  if (scanError) return scanError;
+  if (!assessment.expected) return "No applicable declared review passes target active sections.";
+  if (!assessment.missing.length) return `Every applicable declared review pass has a successful persisted run (${assessment.expected}/${assessment.expected}).`;
+  return `Missing successful declared review runs: ${formatReviewEntries(assessment.missing)}.`;
+}
+
+function reviewFreshnessMessage({ mode, registry, scanError, assessment }) {
+  if (mode === "off") return "Declared-review freshness is disabled by gate policy.";
+  if (registry.errors.length) return "Skipped because the review registry is invalid.";
+  if (scanError) return scanError;
+  if (!assessment.expected) return "No applicable declared review passes target active sections.";
+  if (assessment.stale.length || assessment.unknown.length) {
+    const parts = [];
+    if (assessment.stale.length) parts.push(`stale: ${formatReviewEntries(assessment.stale, { includeReason: true })}`);
+    if (assessment.unknown.length) parts.push(`unknown: ${formatReviewEntries(assessment.unknown, { includeReason: true })}`);
+    return `Declared review freshness needs attention — ${parts.join("; ")}.`;
+  }
+  if (assessment.missing.length) {
+    return "Skipped until the missing declared review runs have completed successfully.";
+  }
+  return `Every applicable declared review pass is fresh (${assessment.fresh.length}/${assessment.expected}).`;
+}
+
+function formatReviewEntries(entries, { includeReason = false } = {}) {
+  return entries
+    .slice(0, 8)
+    .map((entry) => `${entry.file} → ${entry.pass}${includeReason && entry.reason ? ` (${entry.reason})` : ""}`)
+    .concat(entries.length > 8 ? [`…and ${entries.length - 8} more`] : [])
+    .join(", ");
+}
+
+function reviewGateMode(discovery, profile, requirementId) {
+  const gates = discovery.config?.gates;
+  const base = gates?.reviews?.[requirementId];
+  const selectedProfile = profile || DEFAULT_PROFILE;
+  const profileValue = gates?.profiles?.[selectedProfile]?.reviews?.[requirementId];
+  const value = profileValue ?? base ?? "warn";
+  return ["off", "warn", "block"].includes(value) ? value : "warn";
+}
+
+function reviewGateSeverity(mode) {
+  return mode === "block" ? "block" : "warn";
 }
 
 function issueEvidence(issue) {
@@ -1620,16 +1813,37 @@ function hashFileIfExists(file) {
   return fs.existsSync(file) && fs.statSync(file).isFile() ? sha256File(file) : null;
 }
 
-function hashReviewRegistryInputs(files) {
-  return hashJson(files.map((file) => hashFileIfExists(file)).sort());
+function hashReviewState(discovery) {
+  const root = path.join(discovery.manuscriptRoot, stateRel(discovery, "reviews"));
+  if (!fs.existsSync(root)) return hashJson([]);
+  const files = walkFiles(root)
+    .filter((file) => file.endsWith(".json"))
+    .map((file) => ({
+      path: normalizeRel(path.relative(root, file)),
+      sha256: sha256File(file),
+    }));
+  return hashJson(files);
 }
 
 function sha256File(file) {
   return crypto.createHash("sha256").update(fs.readFileSync(file)).digest("hex");
 }
 
+function sha256Text(value) {
+  return crypto.createHash("sha256").update(String(value)).digest("hex");
+}
+
 function hashJson(value) {
   return crypto.createHash("sha256").update(JSON.stringify(value)).digest("hex");
+}
+
+function walkFiles(dir) {
+  return fs.readdirSync(dir, { withFileTypes: true })
+    .flatMap((entry) => {
+      const full = path.join(dir, entry.name);
+      return entry.isDirectory() ? walkFiles(full) : [full];
+    })
+    .sort();
 }
 
 function passFail(value) {
@@ -1699,7 +1913,7 @@ Usage:
 Options:
   --json              Print the full gate result JSON.
   --write             Persist result artifacts under state/gates/.
-  --profile <name>    Record the selected profile name. The first slice uses deterministic defaults.
+  --profile <name>    Select gate policy overrides (including declared-review strictness).
   --config <path>     Discover a config-first project from this config path.
   --workspace <path>  Discover a project from this workspace.
   --formats <list>    Required export formats for export-ready. Default: md,html (epub/pdf are opt-in).

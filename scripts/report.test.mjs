@@ -30,6 +30,10 @@ function testReadyProjectHasNoBlockers() {
   assert.equal(parsed.ok, true, JSON.stringify(parsed.blockers, null, 2));
   assert.equal(parsed.summary.state, "ready");
   assert.deepEqual(parsed.blockers, []);
+  const reviewAdvisory = parsed.advisories.find((item) => item.type === "reviews.declared_have_run");
+  assert(reviewAdvisory, JSON.stringify(parsed.advisories, null, 2));
+  assert.equal(reviewAdvisory.fix, "mlab review run draft/01-opening.md --passes cold.reader");
+  assert.equal(parsed.summary.advisories, parsed.advisories.length);
 }
 
 function testFreshAllTodoProjectIsNotReady() {
@@ -100,12 +104,16 @@ function testTerminalAndHtmlRenderFixes() {
   assert.equal(text.status, 0, text.stderr || text.stdout);
   assert.match(text.stdout, /\n  fix: mlab compose draft\/02-body\.md\n/);
   assert.match(text.stdout, /\n  fix: mlab check --fix\n/);
+  assert.match(text.stdout, /Advisories:/);
+  assert.match(text.stdout, /mlab review run draft\/01-opening\.md --passes cold\.reader/);
 
   const html = runReport(["--html"], { cwd: workspace });
   assert.equal(html.status, 0, html.stderr || html.stdout);
   assert.match(html.stdout, /<th>Fix<\/th>/);
   assert.match(html.stdout, /<code>mlab compose draft\/02-body\.md<\/code>/);
   assert.match(html.stdout, /<code>mlab check --fix<\/code>/);
+  assert.match(html.stdout, /<h2>Advisories<\/h2>/);
+  assert.match(html.stdout, /mlab review run draft\/01-opening\.md --passes cold\.reader/);
 }
 
 function breakProject(project) {

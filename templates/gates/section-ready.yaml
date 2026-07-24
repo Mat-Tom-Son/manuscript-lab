@@ -1,5 +1,5 @@
-# Example gate config shape. The current deterministic engine has built-in
-# defaults; this template documents stable requirement IDs for future overrides.
+# Example gate config shape. The deterministic engine has built-in defaults;
+# this template documents stable requirement IDs and review-policy defaults.
 gate:
   schema_version: manuscript-lab.gate-config.v1
   id: section-ready
@@ -33,6 +33,12 @@ gate:
         - id: words.near_target
           severity: warn
           sensor: section_content
+        - id: reviews.declared_have_run
+          severity: warn
+          sensor: review_coverage
+        - id: reviews.declared_fresh
+          severity: warn
+          sensor: review_freshness
         - id: reviews.latest_clean
           severity: warn
           sensor: review_errors

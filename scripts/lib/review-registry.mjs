@@ -1,3 +1,4 @@
+import crypto from "node:crypto";
 import fs from "node:fs";
 import path from "node:path";
 
@@ -159,6 +160,39 @@ export function resolveReviewContextPath(discovery, rel) {
     throw new Error(`Review context path "${rel}" resolves outside the project root`);
   }
   return realFile;
+}
+
+export function reviewPassApplies(pass, sectionKind, sectionStage) {
+  const stages = Array.isArray(pass?.stage) ? pass.stage : [];
+  const kinds = Array.isArray(pass?.applies_to) ? pass.applies_to : [];
+  return (stages.includes("*") || stages.includes(sectionStage))
+    && (kinds.includes("*") || kinds.includes(sectionKind));
+}
+
+export function reviewPassDefinitionSha256(registry, id, { promptText } = {}) {
+  const pass = registry.passById.get(id);
+  if (!pass) return null;
+  const promptPath = registry.promptPathForPass(id);
+  const promptSha256 = promptText !== undefined
+    ? sha256(promptText)
+    : promptPath && fs.existsSync(promptPath)
+      ? sha256(fs.readFileSync(promptPath))
+      : null;
+  return sha256(stableJson({
+    pass,
+    context_pack: registry.contextPacks[pass.context_pack] ?? null,
+    prompt_sha256: promptSha256,
+  }));
+}
+
+export function reviewRegistrySha256(registry) {
+  return sha256(stableJson({
+    passes: registry.passes.map((pass) => ({
+      id: pass.id,
+      definition_sha256: reviewPassDefinitionSha256(registry, pass.id),
+    })),
+    context_packs: registry.contextPacks,
+  }));
 }
 
 function loadSuiteSource({ file, root, label, origin, required, errors, declaredPath = "" }) {
@@ -365,4 +399,22 @@ function normalizeRel(value) {
 
 function isPlainObject(value) {
   return Boolean(value) && typeof value === "object" && !Array.isArray(value);
+}
+
+function stableJson(value) {
+  return JSON.stringify(sortValue(value));
+}
+
+function sortValue(value) {
+  if (Array.isArray(value)) return value.map(sortValue);
+  if (!isPlainObject(value)) return value;
+  return Object.fromEntries(
+    Object.keys(value)
+      .sort()
+      .map((key) => [key, sortValue(value[key])]),
+  );
+}
+
+function sha256(value) {
+  return crypto.createHash("sha256").update(value).digest("hex");
 }
