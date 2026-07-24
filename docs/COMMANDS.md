@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.2.0.
+This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.3.0.
 `mlab --help` shows the same six groups with one line per command;
 `mlab help <command>` (or `mlab <command> --help`) prints per-command detail;
 `mlab help admin` prints template-clone admin commands.
@@ -23,24 +23,25 @@ Every command name that worked before v2 still works — see
 | --- | --- | --- |
 | `mlab status` | Cockpit view: sections, issues, runs, artifacts, next steps. | `--json` |
 | `mlab compose draft/<section>.md` | Build the runtime context packet for one section under `state/runtime/`. | |
-| `mlab check [target]` | Run document checks. `--fix` creates every missing required scaffolding path (state dirs, README stubs, `state/truth/*.json`) and syncs `state/status.md` / `outline.md` statuses from the section contracts (contracts are the source of truth), then re-runs the static checks. | `--static-only`, `--fix`, `--model-checks`, `--model <provider/model>` |
+| `mlab check [target]` | Run document checks. `--fix` creates missing required scaffolding and reconciles `state/status.md` / `outline.md` membership and statuses from current contracted draft files: stale draft entries are removed and new ones are added without overwriting unrelated table rows, outline regions, or richer existing notes. | `--static-only`, `--fix`, `--model-checks`, `--model <provider/model>` |
 | `mlab review <target>` | Run typed review passes; findings land as issues in the ledger. `mlab review report <target>` summarizes latest runs. | `--panel <id>`, `--passes <ids>`, `--dry-run` |
-| `mlab issues` | List, file, and triage typed issues. `add` is the manual entry point for what a human editor spots; model reviews file the rest. | `add --target <path> --note "..."`, `list --status open`, `decide <id> --decision accept`, `--target <path>`, `--json` |
+| `mlab issues` | List, file, and triage typed issues. `add` files a manual finding; `batch` validates and applies many `decide`/`close` operations from a JSON array/object or JSONL under one ledger lock (stdin by default, or `--file`; exact retries are skipped). | `list --status open`, `decide <id> --decision accept`, `batch --file operations.jsonl --dry-run`, `--target <path>` |
 | `mlab revise <target>` | Generate candidate revisions for an accepted issue. | `--issue <id>`, `--candidates <n>`, `--dry-run` |
 | `mlab compare <target>` | Blind pairwise comparison of a candidate run. | `--run <candidate-run-id>`, `--dry-run` |
 | `mlab merge <target>` | Preview or apply the comparison winner, with audit trail. | `--run <candidate-run-id>`, `--apply`, `--audit` |
 | `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. | `--json`, `--write`, `--static-only`, `--profile <name>` |
 | `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. Includes an advisory Narrative Observations block when `state/observations/` artifacts exist (never affects PASS/FAIL). | `--write`, `--json` |
-| `mlab narrative <sub>` | Narrative observation pipeline: `extract` (one cached model call per changed section builds a structural template), `features` (derive observations, no model), `check` (contract `narrative_*` intents vs observations), `diff <a> <b>` (are two drafts different choices or the same choices reworded?), `profile` (manuscript convergence report; `--model` adds drafting-model watch notes). Advisory only; see `docs/NARRATIVE.md`. | `--json`, `--force`, `--strict`, `--model <id>`, `--mock-response <file>` |
+| `mlab narrative [sub]` | Bare command builds the manuscript convergence `profile`. Subcommands: `extract` (one cached model call per changed section builds a structural template), `features` (derive observations, no model), `check` (contract `narrative_*` intents vs observations), and `diff <a> <b>` (different choices or the same choices reworded?). Advisory only; see `docs/NARRATIVE.md`. | `--json`, `--force`, `--strict`, `--model <id>`, `--mock-response <file>` |
 
 ## Evidence
 
 | Command | Does | Key flags |
 | --- | --- | --- |
-| `mlab claims` | Inspect the claim register. | `list --unsupported`, `--section <path>`, `--json` |
-| `mlab citations check [target]` | Check citation markers, placeholders, and source resolution. Shares one implementation with the citation gate, so the two can never disagree. | `--json` |
-| `mlab sources add <path>` | Register a local source file in `sources/index.md`. | |
-| `mlab evidence report` | Combined claims/citations/sources report with `evidence.*` requirement rollups. | `--json` |
+| `mlab claims [list]` | Inspect the claim register; bare command defaults to `list`. | `--unsupported`, `--section <path>`, `--json` |
+| `mlab citations [check] [target]` | Check citation markers, placeholders, and source resolution; bare command defaults to `check`. Shares one implementation with the citation gate. | `--json` |
+| `mlab sources [list]` | List registered sources, their statuses, and manifest issues. Bare command defaults to `list`; allowed statuses are `candidate`, `usable`, `needs-review`, `rejected`, and `unavailable`. | `--status <status>`, `--json`, `--gate` |
+| `mlab sources add <path>` | Register a local source file in `sources/index.md`. | `--json` |
+| `mlab evidence [report] [target]` | Combined claims/citations/sources report with `evidence.*` requirement rollups; bare command defaults to `report`. | `--json`, `--gate` |
 
 ## Ship
 

@@ -308,6 +308,14 @@ write only when asked to apply changes, and preserve human edits.
 - Returns a non-zero exit code with `--gate` when blocker claims match the
   filter.
 
+### `mlab sources [list]`
+
+- Bare `mlab sources` lists registered records, accepted statuses, and
+  manifest issues.
+- Supports `--status`, `--json`, and `--gate`.
+- Accepted statuses are `candidate`, `usable`, `needs-review`, `rejected`, and
+  `unavailable`; diagnostics for any other value repeat this list.
+
 ### `mlab sources add <path-or-url>`
 
 - Creates or updates a source manifest entry.
@@ -330,10 +338,11 @@ write only when asked to apply changes, and preserve human edits.
   citations.
 - Supports `--json` and `--gate`.
 
-### `mlab evidence report`
+### `mlab evidence [report]`
 
 - Produces a section or manuscript-level report with counts by status, risk,
   source, and citation state.
+- Bare `mlab evidence` defaults to this report.
 - Shows stale support links and missing bibliography entries.
 - Links each blocker to the draft section and claim/source record.
 - Supports `--json` for CI and gate integration.

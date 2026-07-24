@@ -54,10 +54,12 @@ closes it, so "not ready" is a work list instead of a shrug.
 - Section contracts: each `draft/*.md` opens with a machine-checked contract
   (status, target words, purpose, acceptance, checks, reviews).
 - Checks: `mlab check` runs deterministic document checks;
-  `mlab check --fix` creates any missing required scaffolding and syncs
-  `state/status.md` / `outline.md` from the section contracts, then re-checks.
+  `mlab check --fix` creates any missing required scaffolding and rebuilds
+  `state/status.md` / `outline.md` from the section contracts — statuses
+  restated, deleted sections dropped, new sections added — then re-checks.
 - Typed issues: reviews write durable work items to an issue ledger instead of
-  advice that disappears in chat.
+  advice that disappears in chat; `mlab issues batch` applies many
+  decisions/closures from JSON or JSONL in one validated, locked transaction.
 - Candidate trails: high-stakes revisions run as candidates, blind comparison,
   taste gate, merge winner, diff audit — never a silent rewrite.
 - Evidence spine: claims, sources, and citation markers share one
@@ -81,7 +83,8 @@ closes it, so "not ready" is a work list instead of a shrug.
   `exports/manifest.json` with input/output hashes. EPUB and PDF are explicit
   opt-ins (`--formats md,html,epub,pdf`); EPUB needs `zip`, PDF needs
   `python3` with the `reportlab` package.
-- Narrative observations: `mlab narrative` extracts a cached structural
+- Narrative observations: bare `mlab narrative` builds the manuscript
+  convergence profile; its subcommands extract a cached structural
   template per section, derives discourse-level observations (how meaning,
   emotion, time, and resolution are handled), checks them against declared
   `narrative_*` contract intents, diffs candidates structurally, and reports

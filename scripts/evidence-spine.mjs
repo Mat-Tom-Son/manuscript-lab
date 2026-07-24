@@ -7,11 +7,13 @@ import {
   addSourceCommand,
   citationsCheckCommand,
   evidenceReportCommand,
+  listSourcesCommand,
   listClaimsCommand,
   renderCitationsText,
   renderClaimsText,
   renderEvidenceReportText,
   renderSourceAddText,
+  renderSourcesText,
 } from "./lib/evidence-spine.mjs";
 
 if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.meta.url)) {
@@ -27,10 +29,12 @@ export function executeEvidenceCommand(argv, options = {}) {
       return { exitCode: 0, stdout: helpText(), stderr: "" };
     }
 
-    const [domain, verb, ...rest] = argv;
+    const [domain, rawVerb, ...rawRest] = argv;
+    const { verb, rest } = withDefaultVerb(domain, rawVerb, rawRest);
     if (domain === "claims" && verb === "list") return executeClaimsList(rest, options);
     if (domain === "citations" && verb === "check") return executeCitationsCheck(rest, options);
     if (domain === "evidence" && verb === "report") return executeEvidenceReport(rest, options);
+    if (domain === "sources" && verb === "list") return executeSourcesList(rest, options);
     if (domain === "sources" && verb === "add") return executeSourcesAdd(rest, options);
 
     throw new EvidenceSpineError(`Unknown evidence-spine command: ${argv.join(" ")}`, { exitCode: 2 });
@@ -40,6 +44,13 @@ export function executeEvidenceCommand(argv, options = {}) {
     }
     throw error;
   }
+}
+
+function withDefaultVerb(domain, rawVerb, rawRest) {
+  const defaults = { claims: "list", citations: "check", evidence: "report", sources: "list" };
+  const defaultVerb = defaults[domain];
+  if (!defaultVerb || (rawVerb && !rawVerb.startsWith("--"))) return { verb: rawVerb, rest: rawRest };
+  return { verb: defaultVerb, rest: rawVerb ? [rawVerb, ...rawRest] : rawRest };
 }
 
 function executeClaimsList(args, options) {
@@ -82,6 +93,21 @@ function executeEvidenceReport(args, options) {
   if (parsed.positionals.length > 1) throw new EvidenceSpineError("evidence report accepts at most one target.", { exitCode: 2 });
   const result = evidenceReportCommand({ cwd: options.cwd, target: parsed.positionals[0] });
   const stdout = parsed.flags.json ? `${JSON.stringify(result, null, 2)}\n` : renderEvidenceReportText(result);
+  const exitCode = parsed.flags.gate && !result.ok ? 1 : 0;
+  return { exitCode, stdout, stderr: "" };
+}
+
+function executeSourcesList(args, options) {
+  const parsed = parseFlags(args, {
+    booleans: new Set(["json", "gate"]),
+    values: new Set(["status"]),
+  });
+  rejectPositionals(parsed.positionals, "sources list does not accept positional arguments.");
+  const result = listSourcesCommand({
+    cwd: options.cwd,
+    statuses: parsed.flags.status,
+  });
+  const stdout = parsed.flags.json ? `${JSON.stringify(result, null, 2)}\n` : renderSourcesText(result);
   const exitCode = parsed.flags.gate && !result.ok ? 1 : 0;
   return { exitCode, stdout, stderr: "" };
 }
@@ -138,6 +164,9 @@ function helpText() {
   node scripts/evidence-spine.mjs claims list [--unsupported] [--section <id-or-path>] [--status <status>] [--risk <risk>] [--kind <kind>] [--json] [--gate]
   node scripts/evidence-spine.mjs citations check [target] [--json] [--gate]
   node scripts/evidence-spine.mjs evidence report [target] [--json] [--gate]
+  node scripts/evidence-spine.mjs sources list [--status <status>] [--json] [--gate]
   node scripts/evidence-spine.mjs sources add <local-file> [--json]
+
+Bare claims, citations, evidence, and sources use list/check/report/list respectively.
 `;
 }

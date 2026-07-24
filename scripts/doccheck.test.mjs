@@ -15,11 +15,15 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-doccheck-"));
 try {
   testPlaceholderFindings();
   testStatusSyncFromContracts();
+  testStatusSyncReconcilesMembership();
+  testStatusSyncHandlesEscapedPipes();
+  testOutlineMembershipPreservesGlobalContent();
   testPlainCheckHintsAtFix();
   testFixCreatesMissingScaffoldingIdempotently();
   testFixReportsScaffoldingConflictsCleanly();
   testFixRefusesWithoutProject();
   testInstallInitSatisfiesRequiredScaffolding();
+  testFixReconcilesRenamedSectionsAfterInit();
   console.log("doccheck tests passed");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -107,6 +111,172 @@ function testStatusSyncFromContracts() {
   assert.match(outline, /### Unlinked\n\nStatus: todo\n/, "blocks without File: stay untouched");
 
   assert.deepEqual(syncSectionStatusesFromContracts(project), [], "second sync is a no-op");
+}
+
+function testStatusSyncReconcilesMembership() {
+  // Contracts (the draft files themselves) decide membership, not just
+  // status: rows and outline blocks for deleted files go away — todo rows
+  // included — and contracted files missing from a view are appended to it.
+  const project = path.join(tmp, "membership-sync");
+  fs.mkdirSync(path.join(project, "draft"), { recursive: true });
+  fs.mkdirSync(path.join(project, "state"), { recursive: true });
+
+  const contract = ({ id, status, purpose, heading }) =>
+    `<!--\nid: ${id}\nstatus: ${status}\ntarget_words: 300\npurpose: ${purpose}\nacceptance:\n  - A.\n-->\n# ${heading}\n\nProse.\n`;
+
+  fs.writeFileSync(path.join(project, "draft/01-a.md"), contract({ id: "01-a", status: "review", purpose: "P.", heading: "A" }), "utf8");
+  fs.writeFileSync(path.join(project, "draft/02-new.md"), contract({ id: "02-new", status: "todo", purpose: "Cover the new ground.", heading: "New Ground" }), "utf8");
+  fs.writeFileSync(path.join(project, "draft/_scratch.md"), contract({ id: "scratch", status: "draft", purpose: "Hidden.", heading: "Scratch" }), "utf8");
+  fs.writeFileSync(path.join(project, "draft/03-raw.md"), "# Raw\n\nNo contract here.\n", "utf8");
+
+  fs.writeFileSync(
+    path.join(project, "state/status.md"),
+    [
+      "# Status",
+      "",
+      "| Section | File | Status | Notes |",
+      "|---|---|---|---|",
+      "| A | `draft/01-a.md` | todo | Keeps notes |",
+      "| Gone | `draft/09-gone.md` | draft | Stale row |",
+      "| Planned | `draft/07-planned.md` | todo | Never created |",
+      "| Raw | `draft/03-raw.md` | draft | No contract |",
+      "| Meta | n/a | done | Not a draft row |",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "outline.md"),
+    [
+      "# Outline",
+      "",
+      "### A",
+      "",
+      "Status: todo",
+      "File: `draft/01-a.md`",
+      "",
+      "### Gone",
+      "",
+      "Status: draft",
+      "File: `draft/09-gone.md`",
+      "",
+      "### External",
+      "",
+      "Status: todo",
+      "File: `notes/plan.md`",
+      "",
+      "### Unlinked",
+      "",
+      "Status: todo",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  const changed = syncSectionStatusesFromContracts(project);
+  assert.deepEqual(changed.sort(), ["outline.md", "state/status.md"]);
+
+  const table = fs.readFileSync(path.join(project, "state/status.md"), "utf8");
+  assert.match(table, /\| A \| `draft\/01-a\.md` \| review \| Keeps notes \|/);
+  assert.doesNotMatch(table, /09-gone/, "rows for deleted files are dropped");
+  assert.doesNotMatch(table, /07-planned/, "todo rows for files that do not exist are dropped too");
+  assert.match(table, /\| Raw \| `draft\/03-raw\.md` \| draft \| No contract \|/, "rows for contractless files stay untouched");
+  assert.match(table, /\| Meta \| n\/a \| done \| Not a draft row \|/, "non-draft rows stay untouched");
+  assert.match(table, /\| New Ground \| `draft\/02-new\.md` \| todo \| Cover the new ground\. \|/, "unlisted contracted files gain a row");
+  assert.doesNotMatch(table, /_scratch/, "underscore-prefixed drafts stay out of the table");
+
+  const outline = fs.readFileSync(path.join(project, "outline.md"), "utf8");
+  assert.match(outline, /### A\n\nStatus: review\nFile: `draft\/01-a\.md`/);
+  assert.doesNotMatch(outline, /### Gone|09-gone/, "blocks for deleted files are dropped");
+  assert.match(outline, /### External\n\nStatus: todo\nFile: `notes\/plan\.md`/, "blocks naming non-draft files stay untouched");
+  assert.match(outline, /### Unlinked\n\nStatus: todo\n/, "blocks without File: stay untouched");
+  assert.match(outline, /### New Ground\n\nStatus: todo\nFile: `draft\/02-new\.md`\n\nPurpose: Cover the new ground\.\n/, "unlisted contracted files gain a block");
+  assert.doesNotMatch(outline, /_scratch/);
+
+  assert.deepEqual(syncSectionStatusesFromContracts(project), [], "second sync is a no-op");
+}
+
+function testStatusSyncHandlesEscapedPipes() {
+  const project = path.join(tmp, "membership-pipes");
+  fs.mkdirSync(path.join(project, "draft"), { recursive: true });
+  fs.mkdirSync(path.join(project, "state"), { recursive: true });
+  fs.writeFileSync(
+    path.join(project, "draft/01-pipe.md"),
+    "<!--\nid: 01-pipe\nstatus: todo\ntarget_words: 100\npurpose: Compare A | B safely.\nacceptance:\n  - A.\n-->\n# Alpha | Beta\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "draft/02-escaped-pipe.md"),
+    "<!--\nid: 02-escaped-pipe\nstatus: todo\ntarget_words: 100\npurpose: Already escaped A \\| B.\nacceptance:\n  - A.\n-->\n# Gamma \\| Delta\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "state/status.md"),
+    "# Status\n\n| Section | File | Status | Notes |\n|---|---|---|---|\n",
+    "utf8",
+  );
+  fs.writeFileSync(path.join(project, "outline.md"), "# Outline\n\n## Sections\n", "utf8");
+
+  assert.deepEqual(syncSectionStatusesFromContracts(project).sort(), ["outline.md", "state/status.md"]);
+  const table = fs.readFileSync(path.join(project, "state/status.md"), "utf8");
+  assert.match(table, /\| Alpha \\\| Beta \| `draft\/01-pipe\.md` \| todo \| Compare A \\\| B safely\. \|/);
+  assert.match(table, /\| Gamma \\\| Delta \| `draft\/02-escaped-pipe\.md` \| todo \| Already escaped A \\\| B\. \|/);
+  assert.deepEqual(syncSectionStatusesFromContracts(project), [], "escaped pipes must not make the next sync append a duplicate");
+  assert.equal((fs.readFileSync(path.join(project, "state/status.md"), "utf8").match(/draft\/01-pipe\.md/g) ?? []).length, 1);
+  assert.equal((fs.readFileSync(path.join(project, "state/status.md"), "utf8").match(/draft\/02-escaped-pipe\.md/g) ?? []).length, 1);
+}
+
+function testOutlineMembershipPreservesGlobalContent() {
+  const project = path.join(tmp, "membership-outline-boundaries");
+  fs.mkdirSync(path.join(project, "draft"), { recursive: true });
+  fs.mkdirSync(path.join(project, "state"), { recursive: true });
+  const contract = ({ id, heading, status = "todo" }) =>
+    `<!--\nid: ${id}\nstatus: ${status}\ntarget_words: 100\npurpose: ${heading} purpose.\nacceptance:\n  - A.\n-->\n# ${heading}\n`;
+  fs.writeFileSync(path.join(project, "draft/01-keep.md"), contract({ id: "01-keep", heading: "Keep", status: "review" }), "utf8");
+  fs.writeFileSync(path.join(project, "draft/02-new.md"), contract({ id: "02-new", heading: "New" }), "utf8");
+  fs.writeFileSync(
+    path.join(project, "state/status.md"),
+    "# Status\n\n| Section | File | Status | Notes |\n|---|---|---|---|\n| Keep | `draft/01-keep.md` | todo | Existing. |\n| Gone | `draft/99-gone.md` | todo | Remove. |\n",
+    "utf8",
+  );
+  fs.writeFileSync(
+    path.join(project, "outline.md"),
+    [
+      "# Outline",
+      "",
+      "## Sections",
+      "",
+      "### Keep",
+      "",
+      "Status: todo",
+      "File: `draft/01-keep.md`",
+      "",
+      "---",
+      "",
+      "### Gone",
+      "",
+      "Status: todo",
+      "File: `draft/99-gone.md`",
+      "",
+      "## Editorial Notes",
+      "",
+      "This global note must survive membership repair.",
+      "",
+    ].join("\n"),
+    "utf8",
+  );
+
+  syncSectionStatusesFromContracts(project);
+  const outline = fs.readFileSync(path.join(project, "outline.md"), "utf8");
+  assert.doesNotMatch(outline, /### Gone|99-gone/);
+  assert.match(outline, /### Keep\n\nStatus: review/);
+  assert.match(outline, /### New\n\nStatus: todo\nFile: `draft\/02-new\.md`/);
+  assert.match(outline, /## Editorial Notes\n\nThis global note must survive membership repair\./);
+  assert(
+    outline.indexOf("### New") < outline.indexOf("## Editorial Notes"),
+    "new section blocks must stay inside ## Sections instead of appending under a later heading",
+  );
+  assert.deepEqual(syncSectionStatusesFromContracts(project), [], "outline boundary repair must be idempotent");
 }
 
 function testPlainCheckHintsAtFix() {
@@ -203,6 +373,82 @@ function testInstallInitSatisfiesRequiredScaffolding() {
   const check = runDoccheck(["--static-only"], { cwd: workspace });
   assert.equal(check.status, 0, check.stderr || check.stdout);
   assert.doesNotMatch(check.stderr, /Missing required project/);
+}
+
+function testFixReconcilesRenamedSectionsAfterInit() {
+  // Regression: after init, deleting the generated sections and creating new
+  // ones with different ids/filenames must not leave state/status.md and
+  // outline.md describing files that no longer exist, and the new sections
+  // must be adopted into both views instead of warning forever.
+  const workspace = path.join(tmp, "membership-e2e");
+  fs.mkdirSync(workspace, { recursive: true });
+
+  const init = spawnSync(
+    process.execPath,
+    [path.join(repoRoot, "scripts/install-init.mjs"), "--json", "--title", "Membership Repro", "--sections", "5"],
+    { cwd: workspace, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] },
+  );
+  assert.equal(init.status, 0, init.stderr || init.stdout);
+
+  const project = path.join(workspace, "manuscript");
+  const generated = ["01-opening", "02-problem", "03-evidence", "04-approach", "05-risks"];
+  for (const stale of generated) {
+    fs.rmSync(path.join(project, `draft/${stale}.md`));
+  }
+  write(path.join(project, "draft/01-thesis.md"), `<!--
+id: 01-thesis
+kind: document.section
+status: draft
+target_words: 120
+purpose: State the core thesis and stakes.
+acceptance:
+  - Exists.
+-->
+# Thesis
+
+${Array.from({ length: 60 }, (_, index) => `word${index + 1}`).join(" ")}
+`);
+  write(path.join(project, "draft/02-method.md"), `<!--
+id: 02-method
+kind: document.section
+status: todo
+target_words: 500
+purpose: Explain the method.
+acceptance:
+  - Exists.
+-->
+# Method
+`);
+
+  const fixed = runDoccheck(["--fix", "--static-only", "--json"], { cwd: workspace });
+  assert.equal(fixed.status, 0, fixed.stderr || fixed.stdout);
+  const parsed = JSON.parse(fixed.stdout);
+  assert.equal(parsed.pass, true, JSON.stringify(parsed.errors, null, 2));
+  assert.deepEqual(parsed.synced.sort(), ["outline.md", "state/status.md"]);
+  assert.deepEqual(
+    parsed.warnings.filter((warning) => warning.includes("not listed in state/status.md")),
+    [],
+    "new sections must be listed after --fix",
+  );
+
+  const table = fs.readFileSync(path.join(project, "state/status.md"), "utf8");
+  for (const stale of generated) {
+    assert.doesNotMatch(table, new RegExp(stale), `stale status row survived --fix: ${stale}`);
+  }
+  assert.match(table, /\| Title \| `draft\/00-title\.md` \| todo \|/);
+  assert.match(table, /\| Thesis \| `draft\/01-thesis\.md` \| draft \| State the core thesis and stakes\. \|/);
+  assert.match(table, /\| Method \| `draft\/02-method\.md` \| todo \| Explain the method\. \|/);
+
+  const outline = fs.readFileSync(path.join(project, "outline.md"), "utf8");
+  for (const stale of generated) {
+    assert.doesNotMatch(outline, new RegExp(stale), `stale outline block survived --fix: ${stale}`);
+  }
+  assert.match(outline, /### Thesis\n\nStatus: draft\nFile: `draft\/01-thesis\.md`\n\nPurpose: State the core thesis and stakes\.\n/);
+  assert.match(outline, /### Method\n\nStatus: todo\nFile: `draft\/02-method\.md`\n\nPurpose: Explain the method\.\n/);
+
+  const again = runDoccheck(["--fix", "--static-only", "--json"], { cwd: workspace });
+  assert.equal(again.status, 0, again.stderr || again.stdout);
+  assert.deepEqual(JSON.parse(again.stdout).synced, [], "membership sync must be idempotent");
 }
 
 function writeSparseProject(workspace) {

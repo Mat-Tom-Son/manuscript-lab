@@ -420,19 +420,19 @@ Daily loop:
   compose      — compile the auditable runtime packet for a section
   check        — static and model document checks (--fix creates missing scaffolding)
   review       — run typed editorial review passes (review run, review report)
-  issues       — manage the durable issue ledger
+  issues       — manage the durable issue ledger (batch supports JSON/JSONL)
   revise       — generate competing revision candidates for accepted issues
   compare      — blind pairwise comparison of revision candidates
   merge        — materialize or apply the candidate arena winner
   gate         — evaluate readiness gates (section, citation, manuscript, export)
   report       — project readiness report with blockers and fix commands
-  narrative    — advisory narrative-structure observations and intent checks
+  narrative    — build the advisory profile; extract/check/diff observations
 
 Evidence:
   claims       — list and audit tracked claims
   citations    — check citation coverage for active sections
-  sources      — inspect the source index
-  evidence     — full evidence spine report
+  sources      — list or register source-index records
+  evidence     — full evidence spine report (bare command runs it)
 
 Ship:
   export       — export reader files (default formats: md,html)

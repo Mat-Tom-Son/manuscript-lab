@@ -24,7 +24,8 @@ Read:
 - `state/open-questions.md`
 - `docs/PROJECT_HANDOFF.md`, if present
 
-For a new chapter, create the draft file and matching `state/status.md` row before drafting.
+For a new chapter, create a contracted `status: todo` draft stub, then run
+`mlab check --fix` to add its `outline.md` block and `state/status.md` row.
 
 ## 2. Update Core Stores First
 

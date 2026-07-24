@@ -116,9 +116,12 @@ files, README stubs), let it repair itself:
 npx mlab check --fix
 ```
 
-`--fix` creates every missing required path with minimal valid content, prints
-what it created, then re-runs the static checks so only real content failures
-remain.
+`--fix` creates every missing required path with minimal valid content and
+rebuilds the `state/status.md` / `outline.md` section entries from the draft
+contracts (covering sections you added, renamed, or deleted), prints what it
+repaired, then re-runs the static checks so only real content failures remain.
+Keep future sections as small contracted `status: todo` draft stubs; the
+current contracted draft set defines membership.
 
 ## 6. Gate And Report
 
@@ -149,6 +152,16 @@ npx mlab issues list --status open
 Reviews create typed issues. Triage them before revising; for high-stakes
 revisions use the candidate loop (`revise`, `compare`, `merge`) described in
 `docs/COMMANDS.md`.
+
+For a large triage pass, send all decisions and closures in one validated call:
+
+```bash
+npx mlab issues batch --file issue-operations.jsonl --dry-run
+npx mlab issues batch --file issue-operations.jsonl
+```
+
+Batch input accepts JSON, `{"operations":[...]}`, or one JSON operation per
+line. It validates the complete set before writing and skips exact retries.
 
 ## 8. Export
 

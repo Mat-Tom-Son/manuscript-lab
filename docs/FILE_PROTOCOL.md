@@ -131,9 +131,16 @@ Agent and tool read order should start with `PROJECT.md`, then `brief.md`,
 Required source files:
 
 - `brief.md`: goal, audience, constraints, and success criteria.
-- `outline.md`: source of truth for document structure.
+- `outline.md`: human-readable document structure view. Membership and status
+  come from current contracted files under `draft/`; existing outline purpose,
+  sequencing, and acceptance notes remain human-owned.
 - `style.md`: voice, formatting, terminology, and citation rules.
 - `draft/`: section Markdown files matched by `draftGlob`.
+
+A planned section should exist as a small contracted `status: todo` draft
+stub. `mlab check --fix` treats the current contracted draft set as membership,
+so a draft entry whose file was deleted is removed from `outline.md` and
+`state/status.md`.
 
 Recommended source files:
 

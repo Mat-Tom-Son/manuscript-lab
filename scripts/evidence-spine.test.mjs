@@ -18,6 +18,7 @@ try {
   testMissingLocalSourceFileSeverity();
   testRiskAwareUnsupportedClaims();
   testSourceManifestValidationAndResolution();
+  testBareCommandDefaults();
   testSourcesAddIsIdempotent();
   console.log("evidence-spine tests passed");
 } finally {
@@ -249,11 +250,12 @@ function testSourceManifestValidationAndResolution() {
   const project = writeProject(workspace);
   write(
     path.join(project, "sources/index.md"),
-    "# Source Index\n\n| Key | Type | Title | Location | Accessed | Status | Citation | Notes |\n|---|---|---|---|---|---|---|---|\n| `alpha` | notes | Alpha Notes | `sources/alpha.md` | 2026-06-16 | usable | Alpha Notes. | Fixture. |\n| `beta` | notes | Beta Notes | `sources/beta.md` | 2026-06-16 | needs-review | Beta Notes. | Review. |\n| `gamma` | notes | Gamma Notes | `sources/gamma.md` | 2026-06-16 | rejected | Gamma Notes. | Rejected. |\n| `delta` | notes | Delta Notes | `sources/delta.md` | 2026-06-16 | usable | | Missing bibliography. |\n| `dupe` | notes | First Dupe | `sources/dupe-a.md` | 2026-06-16 | usable | First Dupe. | Duplicate. |\n| `dupe` | notes | Second Dupe | `sources/dupe-b.md` | 2026-06-16 | usable | Second Dupe. | Duplicate. |\n\n- legacy-key: Legacy source note.\n",
+    "# Source Index\n\n| Key | Type | Title | Location | Accessed | Status | Citation | Notes |\n|---|---|---|---|---|---|---|---|\n| `alpha` | notes | Alpha Notes | `sources/alpha.md` | 2026-06-16 | usable | Alpha Notes. | Fixture. |\n| `beta` | notes | Beta Notes | `sources/beta.md` | 2026-06-16 | needs-review | Beta Notes. | Review. |\n| `gamma` | notes | Gamma Notes | `sources/gamma.md` | 2026-06-16 | rejected | Gamma Notes. | Rejected. |\n| `delta` | notes | Delta Notes | `sources/delta.md` | 2026-06-16 | usable | | Missing bibliography. |\n| `epsilon` | notes | Epsilon Notes | `sources/epsilon.md` | 2026-06-16 | trusted | Epsilon Notes. | Invalid status. |\n| `dupe` | notes | First Dupe | `sources/dupe-a.md` | 2026-06-16 | usable | First Dupe. | Duplicate. |\n| `dupe` | notes | Second Dupe | `sources/dupe-b.md` | 2026-06-16 | usable | Second Dupe. | Duplicate. |\n\n- legacy-key: Legacy source note.\n",
   );
   write(path.join(project, "sources/beta.md"), "# Beta\n");
   write(path.join(project, "sources/gamma.md"), "# Gamma\n");
   write(path.join(project, "sources/delta.md"), "# Delta\n");
+  write(path.join(project, "sources/epsilon.md"), "# Epsilon\n");
   write(path.join(project, "sources/dupe-a.md"), "# Dupe A\n");
   write(path.join(project, "sources/dupe-b.md"), "# Dupe B\n");
   write(
@@ -274,7 +276,8 @@ acceptance:
 # Intro
 
 Good source [cite:alpha], review source [cite:beta], rejected source [cite:gamma],
-missing bibliography [cite:delta], duplicate key [cite:dupe], and legacy key [cite:legacy-key].
+missing bibliography [cite:delta], invalid status [cite:epsilon], duplicate key
+[cite:dupe], and legacy key [cite:legacy-key].
 `,
   );
 
@@ -287,7 +290,38 @@ missing bibliography [cite:delta], duplicate key [cite:dupe], and legacy key [ci
   assert(parsed.issues.some((issue) => issue.kind === "missing_bibliography" && issue.source === "delta"));
   assert(parsed.issues.some((issue) => issue.kind === "source_key_duplicate" && issue.source === "dupe"));
   assert(parsed.issues.some((issue) => issue.kind === "source_legacy_metadata" && issue.source === "legacy-key"));
+  assert(
+    parsed.issues.some(
+      (issue) =>
+        issue.kind === "source_status_unknown" &&
+        issue.source === "epsilon" &&
+        /Allowed statuses: candidate, usable, needs-review, rejected, unavailable/.test(issue.message),
+    ),
+  );
   assert(parsed.requirements.some((requirement) => requirement.id === "evidence.sources.cited_usable" && requirement.status === "fail"));
+}
+
+function testBareCommandDefaults() {
+  const workspace = path.join(tmp, "bare-defaults");
+  writeProject(workspace);
+
+  const evidence = runEvidence(["evidence", "--json"], { cwd: workspace });
+  assert.equal(evidence.status, 0, evidence.stderr || evidence.stdout);
+  assert.equal(JSON.parse(evidence.stdout).command, "evidence report");
+
+  const claims = runEvidence(["claims", "--json"], { cwd: workspace });
+  assert.equal(claims.status, 0, claims.stderr || claims.stdout);
+  assert.equal(JSON.parse(claims.stdout).command, "claims list");
+
+  const citations = runEvidence(["citations", "--json"], { cwd: workspace });
+  assert.equal(citations.status, 0, citations.stderr || citations.stdout);
+  assert.equal(JSON.parse(citations.stdout).command, "citations check");
+
+  const sources = runEvidence(["sources", "--json"], { cwd: workspace });
+  assert.equal(sources.status, 0, sources.stderr || sources.stdout);
+  const sourceResult = JSON.parse(sources.stdout);
+  assert.equal(sourceResult.command, "sources list");
+  assert.deepEqual(sourceResult.allowed_statuses, ["candidate", "usable", "needs-review", "rejected", "unavailable"]);
 }
 
 function testSourcesAddIsIdempotent() {

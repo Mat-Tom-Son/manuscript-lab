@@ -168,6 +168,26 @@ try {
   }
 
   {
+    const workspace = path.join(tmp, "bare-command-defaults");
+    fs.mkdirSync(workspace, { recursive: true });
+    const init = run([cli, "init"], { cwd: workspace });
+    assert.equal(init.status, 0, init.stderr || init.stdout);
+
+    const evidence = run([cli, "evidence", "--json"], { cwd: workspace });
+    assert.equal(evidence.status, 0, evidence.stderr || evidence.stdout);
+    assert.equal(JSON.parse(evidence.stdout).command, "evidence report");
+
+    const narrative = run([cli, "narrative", "--json"], { cwd: workspace });
+    assert.equal(narrative.status, 0, narrative.stderr || narrative.stdout);
+    const profile = JSON.parse(narrative.stdout);
+    assert(Array.isArray(profile.sections));
+    assert(
+      fs.existsSync(path.join(workspace, "manuscript/state/observations/manuscript-narrative-profile.json")),
+      "bare narrative should build the overview profile instead of printing usage",
+    );
+  }
+
+  {
     const result = run([cli, "drive", "--help"]);
     assert.equal(result.status, 0, result.stderr);
     assert.match(result.stdout, /model-driver - bounded Manuscript Lab driver loop/);

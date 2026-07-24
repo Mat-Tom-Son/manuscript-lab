@@ -6,6 +6,10 @@ common storytelling moves: meaning explained after it has been dramatized,
 emotion routed through the same bodily formula, settings that always mirror
 feelings, tidy single-track causality, climaxes that resolve into realization.
 
+Bare `mlab narrative` builds the manuscript convergence profile. Use the
+explicit `extract`, `features`, `check`, and `diff` subcommands for the other
+pipeline stages.
+
 It is a craft diagnostic, not an authorship detector.
 
 - It never outputs an "AI probability" and never claims who or what wrote a passage.

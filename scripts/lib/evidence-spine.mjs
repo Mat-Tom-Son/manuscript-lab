@@ -8,6 +8,7 @@ import {
   parseSectionContract,
   safeId,
   sectionIdForFile,
+  splitMarkdownTableRow,
   splitSourceKeys,
   stripCode,
 } from "./section-contract.mjs";
@@ -183,6 +184,30 @@ export function evidenceReportCommand(options = {}) {
   };
 }
 
+export function listSourcesCommand(options = {}) {
+  const context = options.context ?? getEvidenceContext(options);
+  const sources = loadSources(context);
+  const statuses = normalizeStatusFilters(options.statuses);
+  const records = [...sources.recordsByKey.values()]
+    .filter((source) => !statuses.length || statuses.includes(source.status || "unspecified"))
+    .sort((a, b) => a.key.localeCompare(b.key));
+  const issues = sortIssues(
+    sources.issues.filter((issue) => !statuses.length || records.some((source) => source.key === issue.source)),
+  );
+  return {
+    schema_version: "manuscript-lab.evidence-spine.v1",
+    ok: issues.every((issue) => issue.severity !== "blocking"),
+    command: "sources list",
+    source_index: displayProjectPath(context, sources.file),
+    allowed_statuses: [...SOURCE_STATUSES],
+    filters: { statuses },
+    count: records.length,
+    issue_counts: issueCounts(issues),
+    sources: records.map((source) => sourceResolution(source, source.key)),
+    issues,
+  };
+}
+
 export function addSourceCommand(options = {}) {
   const context = options.context ?? getEvidenceContext(options);
   const input = options.path;
@@ -270,8 +295,9 @@ export function loadSources(context) {
         kind: "source_status_unknown",
         severity: "warning",
         requirement_id: "evidence.sources.manifest_valid",
-        message: `Source "${key}" has unknown status "${row.status}".`,
+        message: `Source "${key}" has unknown status "${row.status}". Allowed statuses: ${[...SOURCE_STATUSES].join(", ")}.`,
         source: key,
+        remediation: `Use one of: ${[...SOURCE_STATUSES].join(", ")}.`,
       }));
     }
     if (!row.status && row.has_status_column) {
@@ -279,8 +305,9 @@ export function loadSources(context) {
         kind: "source_status_missing",
         severity: "warning",
         requirement_id: "evidence.sources.manifest_valid",
-        message: `Source "${key}" has an empty status.`,
+        message: `Source "${key}" has an empty status. Allowed statuses: ${[...SOURCE_STATUSES].join(", ")}.`,
         source: key,
+        remediation: `Use one of: ${[...SOURCE_STATUSES].join(", ")}.`,
       }));
     }
     if (!row.location) {
@@ -531,6 +558,17 @@ export function renderEvidenceReportText(result) {
     `Sources: ${result.sources.total_registered} registered`,
   ];
   if (result.issues.length) lines.push(`Issues: ${result.issues.length} (${result.issue_counts.by_severity.blocking ?? 0} blocking, ${result.issue_counts.by_severity.warning ?? 0} warning)`);
+  return `${lines.join("\n")}\n`;
+}
+
+export function renderSourcesText(result) {
+  const lines = [`Sources (${result.count}) — allowed statuses: ${result.allowed_statuses.join(", ")}`];
+  for (const source of result.sources) {
+    lines.push(`- ${source.id} [${source.status}] ${source.title || source.location || "(no title or location)"}`);
+  }
+  for (const issue of result.issues) {
+    lines.push(`- ${issue.severity.toUpperCase()}: ${issue.message}`);
+  }
   return `${lines.join("\n")}\n`;
 }
 
@@ -1365,9 +1403,9 @@ function findMarkdownTable(text) {
     if (!lines[index].includes("|") || !isTableSeparator(lines[index + 1])) continue;
     let end = index + 2;
     while (end < lines.length && lines[end].includes("|") && lines[end].trim()) end += 1;
-    const headers = splitTableRow(lines[index]);
+    const headers = splitMarkdownTableRow(lines[index]);
     const rows = [];
-    for (let rowIndex = index + 2; rowIndex < end; rowIndex += 1) rows.push({ cells: splitTableRow(lines[rowIndex]) });
+    for (let rowIndex = index + 2; rowIndex < end; rowIndex += 1) rows.push({ cells: splitMarkdownTableRow(lines[rowIndex]) });
     return { start: index, end, headers, rows };
   }
   return null;
@@ -1396,10 +1434,6 @@ function headerIndex(table, names) {
   return table.headers.findIndex((header) => normalized.has(normalizeHeaderName(header)));
 }
 
-function splitTableRow(line) {
-  return line.trim().replace(/^\|/, "").replace(/\|$/, "").split("|").map((cell) => cell.trim());
-}
-
 function isTableSeparator(line) {
   return /^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$/.test(line);
 }
@@ -1413,7 +1447,15 @@ function codeCell(value) {
 }
 
 function escapeTableCell(value) {
-  return String(value ?? "").replace(/\|/g, "\\|");
+  let result = "";
+  let backslashes = 0;
+  for (const character of String(value ?? "")) {
+    if (character === "|" && backslashes % 2 === 0) result += "\\";
+    result += character;
+    if (character === "\\") backslashes += 1;
+    else backslashes = 0;
+  }
+  return result;
 }
 
 function ensureChecksumNote(value, checksum) {

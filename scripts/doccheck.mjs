@@ -110,7 +110,7 @@ if (options.fix) {
       console.log("No missing scaffolding to create.\n");
     }
     if (syncedStatusFiles.length) {
-      console.log("Synced section statuses from contracts:");
+      console.log("Synced section statuses and membership from contracts:");
       for (const rel of syncedStatusFiles) console.log(`- ${rel}`);
       console.log("");
     }
@@ -432,7 +432,7 @@ function checkStatusTable() {
   for (const file of draftFiles) {
     const rel = normalizeRel(displayPath(file));
     if (!knownStatusFiles.has(rel)) {
-      warnings.push(`${rel}: draft file is not listed in state/status.md`);
+      warnings.push(`${rel}: draft file is not listed in state/status.md; run mlab check --fix to add it`);
     }
   }
 }
@@ -1574,7 +1574,9 @@ function hasMissingScaffoldingErrors(errorList) {
 }
 
 function hasStatusSyncErrors(errorList) {
-  return errorList.some((error) => /is marked \S+, but (?:its section contract is|state\/status\.md says)/.test(error));
+  return errorList.some((error) =>
+    /is marked \S+, but (?:its section contract is|state\/status\.md says)/.test(error) ||
+    /is marked \S+ but the file does not exist/.test(error));
 }
 
 function shadowingScaffoldFile(rel) {
@@ -1657,9 +1659,11 @@ Paths:
 Options:
   --static-only          Run static checks only.
   --fix                  Create missing required scaffolding (state dirs, README
-                         stubs, state/truth/*.json) and sync state/status.md and
-                         outline.md statuses from the section contracts before
-                         running checks.
+                         stubs, state/truth/*.json) and rebuild state/status.md
+                         and outline.md from the section contracts before
+                         running checks: statuses are restated, entries for
+                         deleted draft files are dropped, and contracted draft
+                         files missing from either view are added.
   --model-checks         Run model-backed checks referenced by section contracts.
   --model <id>           Override configured model IDs for this run.
   --list-model-checks    Print configured model-backed checks and exit.

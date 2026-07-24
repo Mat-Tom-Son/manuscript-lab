@@ -26,7 +26,9 @@ config). Section paths are project-relative: `draft/01-opening.md`.
 - `PROJECT.md` — compact project-specific supplement, read before the generic
   docs.
 - `brief.md` — goal, audience, constraints, success criteria.
-- `outline.md` — document structure (a generated view of section contracts).
+- `outline.md` — document structure view; section membership and statuses are
+  generated from the current draft contracts while richer planning notes remain
+  human-owned.
 - `style.md` — voice, formatting, terminology, citation rules.
 - `draft/*.md` — sections; each opens with a contract comment (`id`, `status`,
   `target_words`, `purpose`, `acceptance`, `checks`, `reviews`). The contract is
@@ -56,14 +58,18 @@ config). Section paths are project-relative: `draft/01-opening.md`.
    `[citation-needed]` for unsupported factual claims rather than inventing
    support.
 6. `mlab check` after drafting or revising. If it reports missing scaffolding
-   or status drift, `mlab check --fix` creates the scaffolding and syncs
-   `state/status.md` / `outline.md` from the contracts.
+   or status drift, `mlab check --fix` creates the scaffolding and rebuilds
+   `state/status.md` / `outline.md` from the contracts: statuses are restated,
+   entries for deleted or renamed sections are dropped, and new contracted
+   sections are added to both views.
 7. Reviews are sensors, not edits: `mlab review run draft/<section>.md` files
    typed issues into the ledger. A human editor (or you, when you spot a real
    problem) can file one directly: `mlab issues add --target draft/<section>.md
    --note "..." --category structure --severity major`. Triage with
    `mlab issues decide <id> --decision accept|reject|defer`, then revise from
-   accepted decisions only — never from raw review output.
+   accepted decisions only — never from raw review output. For many decisions
+   or closures, use `mlab issues batch` with JSON/JSONL on stdin or `--file`
+   instead of issuing one process call per mutation.
 8. For contested revisions use the candidate arena: `mlab revise`,
    `mlab compare`, `mlab merge`. `mlab merge --apply` refuses stale candidate
    runs unless a human passes `--force`. Run `mlab lab taste` after comparisons

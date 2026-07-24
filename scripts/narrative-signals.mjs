@@ -28,8 +28,9 @@ import { fingerprintForModel } from "./lib/model-fingerprints.mjs";
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
 const args = process.argv.slice(2);
-const command = args[0] ?? "help";
-const rest = args.slice(1);
+const defaultCommand = !args[0] || args[0].startsWith("-");
+const command = defaultCommand ? "profile" : args[0];
+const rest = defaultCommand ? args : args.slice(1);
 const BOOLEAN_OPTIONS = new Set(["json", "force", "strict", "dry-run"]);
 
 if (command === "help" || args.includes("--help") || args.includes("-h")) {
@@ -550,6 +551,7 @@ function printHelp() {
   console.log(`narrative-signals - structured narrative observation pipeline
 
 Usage:
+  mlab narrative                                      Build the manuscript convergence profile (same as profile).
   mlab narrative extract <draft-section.md> [...]   Extract a narrative template (one model call per changed section).
   mlab narrative features [sections...]             Derive feature observations from stored templates (no model calls).
   mlab narrative profile                            Aggregate observations into a manuscript convergence profile (no model calls).

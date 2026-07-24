@@ -179,12 +179,12 @@ export function parseMarkdownTable(text) {
 
   if (headerIndex === -1) return [];
 
-  const headers = splitTableRow(lines[headerIndex]).map(normalizeHeader);
+  const headers = splitMarkdownTableRow(lines[headerIndex]).map(normalizeHeader);
   const rows = [];
   for (let index = headerIndex + 2; index < lines.length; index += 1) {
     const line = lines[index];
     if (!line.includes("|") || !line.trim()) break;
-    const cells = splitTableRow(line);
+    const cells = splitMarkdownTableRow(line);
     const row = {};
     headers.forEach((header, cellIndex) => {
       row[header] = stripCode(cells[cellIndex] ?? "").trim();
@@ -210,6 +210,33 @@ export function normalizeRel(value) {
   return String(value ?? "").replace(/\\/g, "/").replace(/^\.\//, "");
 }
 
+// Markdown table cells escape literal pipes as `\|`. Keep the escape in the
+// returned cell so callers that rewrite a row can preserve its exact Markdown,
+// but do not treat the escaped pipe as a column boundary.
+export function splitMarkdownTableRow(line) {
+  const trimmed = String(line ?? "").trim().replace(/^\|/, "").replace(/\|$/, "");
+  return splitMarkdownTableCells(trimmed).map((cell) => cell.trim());
+}
+
+export function splitMarkdownTableCells(value) {
+  const cells = [];
+  let cell = "";
+  let backslashes = 0;
+  for (const character of String(value ?? "")) {
+    if (character === "|" && backslashes % 2 === 0) {
+      cells.push(cell);
+      cell = "";
+      backslashes = 0;
+      continue;
+    }
+    cell += character;
+    if (character === "\\") backslashes += 1;
+    else backslashes = 0;
+  }
+  cells.push(cell);
+  return cells;
+}
+
 function splitInlineList(value) {
   return value
     .replace(/^\[/, "")
@@ -217,11 +244,6 @@ function splitInlineList(value) {
     .split(",")
     .map((item) => item.trim())
     .filter(Boolean);
-}
-
-function splitTableRow(line) {
-  const trimmed = line.trim().replace(/^\|/, "").replace(/\|$/, "");
-  return trimmed.split("|").map((cell) => cell.trim());
 }
 
 function normalizeHeader(value) {

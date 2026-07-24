@@ -217,7 +217,7 @@ function testPipelineEndToEnd() {
   const manuscriptRoot = path.join(workspace, "manuscript");
   const topLevelHelp = runMlab(["--help"], { cwd: manuscriptRoot });
   assert.equal(topLevelHelp.status, 0, topLevelHelp.stderr || topLevelHelp.stdout);
-  assert.match(topLevelHelp.stdout, /narrative\s+— advisory narrative-structure observations/);
+  assert.match(topLevelHelp.stdout, /narrative\s+— build the advisory profile/);
 
   const sectionFile = path.join(manuscriptRoot, "draft", "02-lighthouse.md");
   fs.writeFileSync(

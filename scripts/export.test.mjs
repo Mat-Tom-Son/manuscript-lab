@@ -85,7 +85,7 @@ function startSection(workspace, { compose }) {
 
   const synced = run(["check", "--fix", "--static-only"], workspace);
   assert.equal(synced.status, 0, synced.stderr || synced.stdout);
-  assert.match(synced.stdout, /Synced section statuses from contracts:/);
+  assert.match(synced.stdout, /Synced section statuses and membership from contracts:/);
 
   if (compose) {
     const composed = run(["compose", "draft/01-opening.md"], workspace);

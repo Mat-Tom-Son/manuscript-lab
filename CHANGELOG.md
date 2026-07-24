@@ -1,5 +1,31 @@
 # Changelog
 
+## 2.3.0 - 2026-07-24
+
+- `mlab check --fix` now reconciles section membership, not just statuses:
+  `state/status.md` rows and `outline.md` blocks whose draft file no longer
+  exists are dropped (including `todo` rows), and contracted draft files
+  missing from either view are appended with their contract status, heading,
+  and purpose. Previously, deleting or renaming sections after `mlab init`
+  left both views describing the old files forever, `mlab status` kept
+  reporting the deleted sections' runtime dirs as missing, and every new
+  section warned "draft file is not listed in state/status.md" with no
+  command that could repair it. The unlisted-draft warning now points at
+  `mlab check --fix`. Reconciliation is bounded to real `###` section blocks,
+  preserves later `##` outline regions and richer existing notes, inserts new
+  blocks inside `## Sections`, understands escaped Markdown table pipes, and
+  is idempotent for headings and purposes containing `|`.
+- Bare evidence commands now do useful work: `mlab evidence`, `mlab claims`,
+  `mlab citations`, and `mlab sources` default to report, list, check, and list
+  respectively; bare `mlab narrative` builds the manuscript convergence
+  profile. `sources list` exposes the accepted source statuses, and unknown or
+  empty source-status diagnostics now name all allowed values.
+- Added `mlab issues batch`, which accepts a JSON array/object or JSONL from
+  stdin or `--file`, validates the complete set before writing, applies
+  decisions and closures under one ledger lock, supports `--dry-run`/`--json`,
+  and skips exact retries. Large review triage no longer needs two process
+  launches per issue.
+
 ## 2.2.0 - 2026-07-23
 
 - Added the narrative observation pipeline (`mlab narrative`): `extract`

@@ -13,6 +13,7 @@ const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "manuscript-lab-issues-"));
 try {
   testManualIssueLifecycle();
   testAddValidation();
+  testBatchLifecycle();
   console.log("issue-ledger tests passed");
 } finally {
   fs.rmSync(tmp, { recursive: true, force: true });
@@ -64,6 +65,56 @@ function testAddValidation() {
   assert.match(badSeverity.stderr, /--severity must be/);
 }
 
+function testBatchLifecycle() {
+  const workspace = initWorkspace("batch");
+  for (const note of ["First issue", "Second issue"]) {
+    const added = run(["issues", "add", "--target", "draft/01-opening.md", "--note", note], workspace);
+    assert.equal(added.status, 0, added.stderr || added.stdout);
+  }
+  const ledgerFile = path.join(workspace, "manuscript/state/issues/issue-ledger.json");
+  const decisionsFile = path.join(workspace, "manuscript/state/issues/decisions.json");
+  const closedFile = path.join(workspace, "manuscript/state/issues/closed.json");
+  const ids = JSON.parse(fs.readFileSync(ledgerFile, "utf8")).issues.map((issue) => issue.id);
+  const operations = ids.flatMap((id) => [
+    { action: "decide", id, decision: "accept", reason: "Confirmed in batch." },
+    { action: "close", id, reason: "Verified in batch." },
+  ]);
+  const input = operations.map((operation) => JSON.stringify(operation)).join("\n");
+
+  const dryRun = run(["issues", "batch", "--dry-run", "--json"], workspace, input);
+  assert.equal(dryRun.status, 0, dryRun.stderr || dryRun.stdout);
+  assert.equal(JSON.parse(dryRun.stdout).operation_count, 4);
+  assert(JSON.parse(dryRun.stdout).dry_run);
+  assert(JSON.parse(fs.readFileSync(ledgerFile, "utf8")).issues.every((issue) => issue.status === "open"));
+
+  const applied = run(["issues", "batch", "--json"], workspace, input);
+  assert.equal(applied.status, 0, applied.stderr || applied.stdout);
+  const result = JSON.parse(applied.stdout);
+  assert.equal(result.operation_count, 4);
+  assert.equal(result.decision_count, 2);
+  assert.equal(result.close_count, 2);
+  assert.equal(result.skipped_count, 0);
+  assert(JSON.parse(fs.readFileSync(ledgerFile, "utf8")).issues.every((issue) => issue.status === "closed"));
+  assert.equal(JSON.parse(fs.readFileSync(decisionsFile, "utf8")).decisions.length, 2);
+  assert.equal(JSON.parse(fs.readFileSync(closedFile, "utf8")).closed.length, 2);
+
+  const retried = run(["issues", "batch", "--json"], workspace, input);
+  assert.equal(retried.status, 0, retried.stderr || retried.stdout);
+  assert.equal(JSON.parse(retried.stdout).skipped_count, 4, "exact batch retries should be idempotent");
+  assert.equal(JSON.parse(fs.readFileSync(decisionsFile, "utf8")).decisions.length, 2);
+  assert.equal(JSON.parse(fs.readFileSync(closedFile, "utf8")).closed.length, 2);
+
+  const invalid = JSON.stringify([
+    { action: "decide", id: ids[0], decision: "reject", reason: "Must not partially apply." },
+    { action: "close", id: "issue_missing", reason: "Invalid." },
+  ]);
+  const rejected = run(["issues", "batch", "--json"], workspace, invalid);
+  assert.equal(rejected.status, 1);
+  assert.match(rejected.stderr, /Issue not found: issue_missing/);
+  const afterRejected = JSON.parse(fs.readFileSync(ledgerFile, "utf8"));
+  assert.equal(afterRejected.issues[0].decision.decision, "accept", "invalid batches must not partially mutate earlier operations");
+}
+
 function initWorkspace(name) {
   const workspace = path.join(tmp, name);
   fs.mkdirSync(workspace, { recursive: true });
@@ -72,6 +123,6 @@ function initWorkspace(name) {
   return workspace;
 }
 
-function run(args, cwd) {
-  return spawnSync(process.execPath, [bin, ...args], { cwd, encoding: "utf8" });
+function run(args, cwd, input = undefined) {
+  return spawnSync(process.execPath, [bin, ...args], { cwd, encoding: "utf8", input });
 }
