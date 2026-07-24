@@ -25,7 +25,8 @@ Credentials may live in `.env`. Model choices should not.
 Keep swappable model choices in:
 
 - `reviews/model-panels.json`
-- `reviews/suite.json`
+- package `reviews/suite.json` plus an optional project suite registered as
+  `reviews.suite` in `manuscript-lab.config.json`
 - `checks/suite.json`
 - command flags such as `--models`, `--model`, and `DOCHECK_MODEL`
 - task-specific config files added later

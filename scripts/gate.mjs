@@ -12,9 +12,9 @@ import {
   discoverProtocol,
   listDrafts,
   loadKnownCheckIds,
-  loadKnownReviewIds,
   loadStatusByFile,
 } from "./lib/protocol.mjs";
+import { loadReviewRegistry } from "./lib/review-registry.mjs";
 import {
   ALLOWED_SECTION_STATUSES,
   isShortFormDraftContract,
@@ -211,11 +211,12 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
 
   const stateDir = stateDirFor(discovery);
   const knownCheckIds = loadKnownCheckIds(discovery.packageRoot);
-  const knownReviewIds = loadKnownReviewIds(discovery.packageRoot);
+  const reviewRegistry = loadReviewRegistry(discovery);
+  const knownReviewIds = reviewRegistry.knownReviewIds;
   const statusFile = path.join(discovery.manuscriptRoot, stateDir, "status.md");
   const statusByFile = loadStatusByFile(statusFile);
   const requirements = [];
-  const warnings = [...(discovery.warnings ?? [])];
+  const warnings = [...(discovery.warnings ?? []), ...reviewRegistry.warnings];
   const status = contract?.get("status") ?? "";
   const targetWords = Number(contract?.get("target_words"));
   const proseWords = wordCount(stripContract(text));
@@ -279,12 +280,19 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
 
   const reviewIds = contract ? parseContractList(text, "reviews") : [];
   const unknownReviews = reviewIds.filter((id) => !knownReviewIds.has(id));
+  const reviewRegistryValid = reviewRegistry.errors.length === 0;
   requirements.push(requirement({
     id: "contract.review_ids_exist",
     sensor: "section_contract",
-    status: contract ? passFail(unknownReviews.length === 0) : "skip",
-    message: unknownReviews.length ? `Unknown review pass IDs: ${unknownReviews.join(", ")}` : contract ? "All listed review pass IDs exist." : "Skipped because the section contract is missing.",
-    evidence: { reviews: reviewIds, unknown: unknownReviews },
+    status: contract ? passFail(reviewRegistryValid && unknownReviews.length === 0) : "skip",
+    message: !reviewRegistryValid
+      ? `Review registry is invalid: ${reviewRegistry.errors.join("; ")}`
+      : unknownReviews.length
+        ? `Unknown review pass IDs: ${unknownReviews.join(", ")}`
+        : contract
+          ? "All listed review pass IDs exist."
+          : "Skipped because the section contract is missing.",
+    evidence: { reviews: reviewIds, unknown: unknownReviews, registry_errors: reviewRegistry.errors },
   }));
 
   const tableStatus = statusByFile.get(relPath);
@@ -424,6 +432,7 @@ function evaluateSectionReady({ discovery, targetArg, options = {}, command = ""
       status: hashFileIfExists(statusFile),
       checks_suite: hashFileIfExists(path.join(discovery.packageRoot, "checks/suite.json")),
       reviews_suite: hashFileIfExists(path.join(discovery.packageRoot, "reviews/suite.json")),
+      reviews_registry: hashReviewRegistryInputs(reviewRegistry.inputFiles),
       issue_ledger: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "issues/issue-ledger.json")),
       runtime_context: hashFileIfExists(path.join(discovery.manuscriptRoot, stateDir, "runtime", targetId, "context.json")),
     },
@@ -1609,6 +1618,10 @@ function hashDiscoveryConfig(discovery) {
 
 function hashFileIfExists(file) {
   return fs.existsSync(file) && fs.statSync(file).isFile() ? sha256File(file) : null;
+}
+
+function hashReviewRegistryInputs(files) {
+  return hashJson(files.map((file) => hashFileIfExists(file)).sort());
 }
 
 function sha256File(file) {

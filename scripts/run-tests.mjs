@@ -11,6 +11,7 @@ const alwaysRun = [
   "scripts/product-coherence.test.mjs",
   "scripts/doctor.test.mjs",
   "scripts/protocol.test.mjs",
+  "scripts/review-registry.test.mjs",
   "scripts/chorus-runner.test.mjs",
   "scripts/room-runner.test.mjs",
   "scripts/evidence-spine.test.mjs",

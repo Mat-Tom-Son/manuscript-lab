@@ -145,6 +145,7 @@ then:
 ```bash
 npx mlab review draft/01-opening.md --dry-run --panel prose.clean
 npx mlab review draft/01-opening.md --panel prose.clean
+npx mlab review list
 npx mlab review report draft/01-opening.md
 npx mlab issues list --status open
 ```
@@ -152,6 +153,23 @@ npx mlab issues list --status open
 Reviews create typed issues. Triage them before revising; for high-stakes
 revisions use the candidate loop (`revise`, `compare`, `merge`) described in
 `docs/COMMANDS.md`.
+
+To add a project-specific lens, put a suite and its prompt files under the
+manuscript root, then register it in `manuscript-lab.config.json`:
+
+```json
+{
+  "reviews": {
+    "default": ["cold.reader", "loose.thread"],
+    "suite": "reviews/suite.json"
+  }
+}
+```
+
+The local suite uses the same `context_packs` / `passes` JSON shape as the
+built-in suite. Its IDs may be used directly in section contracts. Built-in
+collisions and paths outside the manuscript root are rejected; the complete
+schema is in `docs/FILE_PROTOCOL.md`.
 
 For a large triage pass, send all decisions and closures in one validated call:
 

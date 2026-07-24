@@ -1,6 +1,6 @@
 # Command Reference
 
-This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.3.0.
+This is the full reference for the `mlab` / `manuscript-lab` CLI as of v2.4.0.
 `mlab --help` shows the same six groups with one line per command;
 `mlab help <command>` (or `mlab <command> --help`) prints per-command detail;
 `mlab help admin` prints template-clone admin commands.
@@ -24,7 +24,7 @@ Every command name that worked before v2 still works — see
 | `mlab status` | Cockpit view: sections, issues, runs, artifacts, next steps. | `--json` |
 | `mlab compose draft/<section>.md` | Build the runtime context packet for one section under `state/runtime/`. | |
 | `mlab check [target]` | Run document checks. `--fix` creates missing required scaffolding and reconciles `state/status.md` / `outline.md` membership and statuses from current contracted draft files: stale draft entries are removed and new ones are added without overwriting unrelated table rows, outline regions, or richer existing notes. | `--static-only`, `--fix`, `--model-checks`, `--model <provider/model>` |
-| `mlab review <target>` | Run typed review passes; findings land as issues in the ledger. `mlab review report <target>` summarizes latest runs. | `--panel <id>`, `--passes <ids>`, `--dry-run` |
+| `mlab review <target>` | Run typed review passes; findings land as issues in the ledger. Contract review IDs take precedence, then `reviews.default`; without either, applicable passes are selected automatically. `mlab review list` shows registered pass origins, and `mlab review report <target>` summarizes latest runs. | `--panel <id>`, `--passes <ids>`, `--dry-run`, `list --json` |
 | `mlab issues` | List, file, and triage typed issues. `add` files a manual finding; `batch` validates and applies many `decide`/`close` operations from a JSON array/object or JSONL under one ledger lock (stdin by default, or `--file`; exact retries are skipped). | `list --status open`, `decide <id> --decision accept`, `batch --file operations.jsonl --dry-run`, `--target <path>` |
 | `mlab revise <target>` | Generate candidate revisions for an accepted issue. | `--issue <id>`, `--candidates <n>`, `--dry-run` |
 | `mlab compare <target>` | Blind pairwise comparison of a candidate run. | `--run <candidate-run-id>`, `--dry-run` |
@@ -32,6 +32,28 @@ Every command name that worked before v2 still works — see
 | `mlab gate [target]` | Evaluate a readiness gate: bare `gate` runs the manuscript gate; `draft/*.md` infers `section-ready`; `citation`, `manuscript`, and `export` name the gates explicitly. | `--json`, `--write`, `--static-only`, `--profile <name>` |
 | `mlab report` | One-page readiness report (terminal, JSON, HTML). Every blocker carries a `fix:` command; failing sections are listed individually with reasons. Includes an advisory Narrative Observations block when `state/observations/` artifacts exist (never affects PASS/FAIL). | `--write`, `--json` |
 | `mlab narrative [sub]` | Bare command builds the manuscript convergence `profile`. Subcommands: `extract` (one cached model call per changed section builds a structural template), `features` (derive observations, no model), `check` (contract `narrative_*` intents vs observations), and `diff <a> <b>` (different choices or the same choices reworded?). Advisory only; see `docs/NARRATIVE.md`. | `--json`, `--force`, `--strict`, `--model <id>`, `--mock-response <file>` |
+
+### Project-local reviews
+
+A project can register its own typed review passes without modifying the npm
+package. Add a project-relative suite path to `manuscript-lab.config.json`:
+
+```json
+{
+  "reviews": {
+    "default": ["cold.reader", "loose.thread"],
+    "suite": "reviews/suite.json"
+  }
+}
+```
+
+The suite lives under the configured manuscript root and reuses the package
+suite's JSON schema for `context_packs` and `passes`; prompt paths are also
+project-relative. Project IDs merge additively with built-ins. Duplicate pass
+or context-pack IDs are validation errors rather than silent overrides. Run
+`mlab review list` to inspect the merged registry and see each pass's
+`built-in` or `project` origin. The full schema and path rules are in
+`docs/FILE_PROTOCOL.md`.
 
 ## Evidence
 

@@ -76,7 +76,7 @@ The v1 config file is JSON.
 | `sourcesDir` | string | Optional directory for the source manifest, relative to the project root. The baseline value is `sources`. |
 | `tasteDir` | string | Optional directory for project taste files, relative to the project root. The baseline value is `taste`. |
 | `checks` | object | Optional check-suite selection or profile defaults. Unknown object keys are profile- or command-owned until this document defines a stable schema. |
-| `reviews` | object | Optional review-suite selection or profile defaults. Unknown object keys are profile- or command-owned until this document defines a stable schema. |
+| `reviews` | object | Optional review defaults and project-local registry. `default` is an array of registered pass IDs; `suite` is a project-relative JSON suite path. See [Project-local review registry](#project-local-review-registry). |
 | `model` | object | Optional model preference metadata. Secrets must stay in environment variables or `.env`, not in config. |
 
 Additional top-level fields are reserved. Current v0.x tools warn and ignore
@@ -84,6 +84,74 @@ unknown top-level fields. Stable v1 may make reserved top-level fields blocking
 errors once compatibility policy is finalized. Tools may preserve unknown fields
 when rewriting the config, but they should not depend on them unless this
 document is updated.
+
+### Project-local review registry
+
+Projects may add typed editorial sensors without modifying the installed
+package. Registration is explicit in the config:
+
+```json
+{
+  "reviews": {
+    "default": ["cold.reader", "loose.thread"],
+    "suite": "reviews/suite.json"
+  }
+}
+```
+
+`reviews.default` is used when a section contract does not name any review
+passes. A contract's own `reviews` list and an explicit CLI `--passes` selection
+still take precedence. `reviews.suite` is relative to the project root and
+must remain inside it.
+
+The project suite reuses the package `reviews/suite.json` shape:
+
+```json
+{
+  "version": 1,
+  "context_packs": {
+    "local.anti_tidiness": {
+      "description": "Show the style guide and target section.",
+      "include": ["style.md", "draft/{section}"],
+      "exclude": ["state/", "taste/"],
+      "strip_contract": false
+    }
+  },
+  "passes": [
+    {
+      "id": "loose.thread",
+      "label": "Loose Thread",
+      "stage": ["draft", "review", "revision", "polish"],
+      "applies_to": ["*"],
+      "context_pack": "local.anti_tidiness",
+      "models": ["openai/gpt-4.1-mini"],
+      "prompt": "reviews/prompts/loose-thread.md",
+      "blocking": false,
+      "min_confidence": 0.5,
+      "max_issues": 6
+    }
+  ]
+}
+```
+
+Pass IDs, context-pack IDs, prompt paths, and context paths are data, never
+executable code. The registry rules are:
+
+- project passes and context packs merge additively with package built-ins
+- duplicate IDs, including collisions with built-ins, are errors; project
+  suites never silently override package behavior
+- `id` values use letters, numbers, dots, colons, underscores, or hyphens
+- `stage`, `applies_to`, and `models` are non-empty string arrays
+- `context_pack` names a registered built-in or project context pack
+- `prompt` names an existing Markdown or text file under the project root
+- context `include` / `exclude` paths are project-relative and may use
+  `{section}`, `{section_id}`, and `{previous_sections}` placeholders
+- absolute paths, Windows drive or UNC paths, backslashes, `..` escapes, and
+  symlinks resolving outside the project root are rejected
+
+One shared registry feeds `mlab validate`, `mlab check`, `mlab compose`,
+`mlab gate`, `mlab review list`, and `mlab review`. `mlab review list --json`
+is the machine-readable way to inspect the merged pass catalog and origin.
 
 ## Project Root Layout
 
@@ -302,8 +370,9 @@ Validation should:
    contracts when they contain contracts.
 10. Verify that section contract `checks` IDs exist in `checks/suite.json` or in
    the selected profile's check registry.
-11. Verify that section contract `reviews` IDs exist in `reviews/suite.json` or
-   in the selected profile's review registry.
+11. Load the package review suite plus the configured project-local review
+   suite; verify the registry, `reviews.default`, and every section contract
+   review ID against that same merged catalog.
 12. Treat generated artifact directories as derived state, not source text.
 13. In template-first mode, verify that the active project registry, workspace
     manifest, and root mounts agree.

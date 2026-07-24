@@ -1,5 +1,29 @@
 # Changelog
 
+## 2.4.0 - 2026-07-24
+
+- Added project-local review registration. Set `reviews.suite` in
+  `manuscript-lab.config.json` to a JSON suite under the manuscript root, then
+  use its pass IDs in section contracts or `reviews.default`. Local suites
+  reuse the built-in `context_packs` / `passes` schema, keep prompts as
+  project-owned Markdown, and merge additively with the package registry.
+  `mlab validate`, `mlab check`, `mlab compose`, readiness gates, and
+  `mlab review` now resolve the same shared registry, so a pass cannot validate
+  on one surface and fail as unknown on another.
+- Added `mlab review list` (`--json`) with `built-in` / `project` origin
+  labels. Review dry-runs and persisted run records also expose pass origin,
+  and a contract without an explicit review list now falls back to the
+  configured `reviews.default` selection before using automatic applicability.
+- Project registries fail closed on duplicate built-in pass or context-pack
+  IDs, malformed suites, unknown default IDs, missing prompts, and paths that
+  escape the manuscript root. Prompt and expanded context paths also reject
+  symlink escapes. Gate fingerprints now include the complete review registry
+  and prompt inputs.
+- Added source-tree and packed-install dogfood coverage for registering,
+  validating, listing, composing, dry-running, and executing a project-owned
+  `loose.thread` pass through mock issue-ledger import, plus collision,
+  unknown-ID, missing-file, path-escape, and symlink-escape regressions.
+
 ## 2.3.0 - 2026-07-24
 
 - `mlab check --fix` now reconciles section membership, not just statuses:

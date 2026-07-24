@@ -5,6 +5,7 @@ import path from "node:path";
 import crypto from "node:crypto";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
 import { describeNarrativeIntent, parseNarrativeIntents } from "./lib/narrative-schema.mjs";
+import { loadReviewRegistry, resolveReviewContextPath } from "./lib/review-registry.mjs";
 
 const discovery = discoverProtocol({ cwd: process.cwd() });
 const paths = protocolPaths(discovery, { cwd: process.cwd() });
@@ -51,7 +52,13 @@ const runtimeDir = path.join(runtimeBaseDir, sectionId);
 const runtimeDirRel = displayPath(runtimeDir);
 const generatedAt = new Date().toISOString();
 const runId = `compose_${generatedAt.replace(/\D/g, "").slice(0, 14)}_${sectionId}`;
-const reviewSuite = loadJson(packageAbs("reviews/suite.json"), {});
+const reviewRegistry = loadReviewRegistry(discovery);
+if (reviewRegistry.errors.length) {
+  console.error("Review registry is invalid:");
+  for (const error of reviewRegistry.errors) console.error(`- ${error}`);
+  process.exit(1);
+}
+const reviewSuite = reviewRegistry.suite;
 let contextPack;
 try {
   contextPack = resolveContextPack(options.contextPack, reviewSuite);
@@ -189,7 +196,7 @@ function selectContextFiles({ contextPack, contract, sectionId, targetRel }) {
 
   const visibleFiles = [...reasons.entries()]
     .map(([rel, fileReasons]) => {
-      const full = abs(rel);
+      const full = resolveReviewContextPath(discovery, rel);
       const content = read(full);
       return {
         path: rel,
@@ -333,7 +340,7 @@ function addContextCandidate(relInput, reason, reasons, missingFiles, skippedFil
     return;
   }
 
-  const full = abs(rel);
+  const full = resolveReviewContextPath(discovery, rel);
   if (!fs.existsSync(full)) {
     missingFiles.push(rel);
     return;
@@ -742,14 +749,6 @@ function yamlString(value) {
   return JSON.stringify(String(value ?? ""));
 }
 
-function loadJson(file, fallback) {
-  try {
-    return JSON.parse(read(file));
-  } catch {
-    return fallback;
-  }
-}
-
 function sha256(value) {
   return crypto.createHash("sha256").update(value).digest("hex");
 }
@@ -773,10 +772,6 @@ function read(file) {
 
 function abs(rel) {
   return paths.projectAbs(rel);
-}
-
-function packageAbs(rel) {
-  return paths.packageAbs(rel);
 }
 
 function normalizeRel(file) {

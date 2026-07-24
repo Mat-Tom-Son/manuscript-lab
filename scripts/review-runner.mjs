@@ -7,6 +7,7 @@ import { lockPathFor, writeFileAtomic, writeJsonAtomic, withFileLock } from "./l
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { ensureProtocolReady, prepareModelProviderEnvironment } from "./lib/cli-runtime.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { loadReviewRegistry, resolveReviewContextPath } from "./lib/review-registry.mjs";
 
 const options = parseArgs(process.argv.slice(2));
 
@@ -22,7 +23,21 @@ prepareModelProviderEnvironment(discovery, paths);
 
 const { callChatModel, describeModelRuntime, hasAnyApiKeyForModels, providerMissingKeyMessage } = await import("./lib/model-provider.mjs");
 
-const suite = loadJson(packageAbs("reviews/suite.json"));
+const registry = loadReviewRegistry(discovery);
+if (registry.errors.length) {
+  if (options.json) {
+    console.log(JSON.stringify({ ok: false, errors: registry.errors, warnings: registry.warnings }, null, 2));
+  } else {
+    console.error("Review registry is invalid:\n");
+    for (const error of registry.errors) console.error(`- ${error}`);
+  }
+  process.exit(1);
+}
+const suite = registry.suite;
+if (options.target === "list") {
+  printReviewList();
+  process.exit(0);
+}
 const target = resolveInputPath(options.target);
 if (!fs.existsSync(target)) {
   console.error(`Target file does not exist: ${displayPath(target)}`);
@@ -34,7 +49,14 @@ const contract = parseSectionContract(targetText);
 const sectionId = contract?.get("id") || path.basename(target, path.extname(target));
 const sectionKind = contract?.get("kind") || "fiction.chapter";
 const sectionStage = contract?.get("stage") || contract?.get("status") || "draft";
-const requestedPasses = options.passes.length ? options.passes : parseContractList(targetText, "reviews");
+const contractPasses = parseContractList(targetText, "reviews");
+const requestedPasses = options.passes.length
+  ? options.passes
+  : contractPasses.length
+    ? contractPasses
+    : Array.isArray(discovery.config?.reviews?.default)
+      ? discovery.config.reviews.default
+      : [];
 const queue = buildReviewQueue({ requestedPasses, sectionKind, sectionStage });
 
 if (!queue.length) {
@@ -234,6 +256,7 @@ async function runReviewJob({ job }) {
     pass: {
       id: job.pass.id,
       label: job.pass.label ?? job.pass.id,
+      origin: registry.originForPass(job.pass.id),
       blocking: Boolean(job.pass.blocking),
       max_issues: job.pass.max_issues ?? null,
       context_pack: job.pass.context_pack,
@@ -263,7 +286,9 @@ async function runReviewJob({ job }) {
 }
 
 function buildPrompt({ pass, model, context, runId, retry }) {
-  const promptText = read(packageAbs(pass.prompt));
+  const promptPath = registry.promptPathForPass(pass.id);
+  if (!promptPath) throw new Error(`Review pass "${pass.id}" has no readable prompt`);
+  const promptText = read(promptPath);
   const isPatternSaturation = pass.output_schema === "pattern_saturation_v1";
   const fileBlocks = context.files
     .map((file) => `<file path="${file.path}">\n${file.content}\n</file>`)
@@ -406,7 +431,7 @@ function resolveContextPack(contextPackId) {
   for (const entry of pack.include ?? []) {
     const paths = expandContextEntry(entry, targetDisplay, previousSections);
     for (const filePath of paths) {
-      const full = resolveInputPath(filePath);
+      const full = resolveReviewContextPath(discovery, filePath);
       if (!fs.existsSync(full) || fs.statSync(full).isDirectory()) continue;
       let content = read(full);
       const strippedContract = pack.strip_contract && normalizeRel(filePath) === targetDisplay;
@@ -998,6 +1023,7 @@ function printDryRun(queue) {
       label: job.pass.label ?? job.pass.id,
       model: job.model,
       blocking: Boolean(job.pass.blocking),
+      origin: registry.originForPass(job.pass.id),
       context_pack: job.pass.context_pack,
       visible_files: context.manifest.visible_files,
       hidden_files: context.manifest.hidden_files,
@@ -1011,11 +1037,34 @@ function printDryRun(queue) {
 
   console.log(`Review queue for ${displayPath(target)} (${sectionKind}, ${sectionStage}):\n`);
   for (const job of jobs) {
-    console.log(`- ${job.pass} / ${job.model} [${job.context_pack}]`);
+    console.log(`- ${job.pass} / ${job.model} [${job.context_pack}; ${job.origin}]`);
     for (const file of job.visible_files) {
       console.log(`  visible: ${file.path}${file.stripped_contract ? " (contract stripped)" : ""}`);
     }
     if (job.hidden_files.length) console.log(`  hidden: ${job.hidden_files.join(", ")}`);
+  }
+}
+
+function printReviewList() {
+  const passes = registry.passes.map((pass) => ({
+    id: pass.id,
+    label: pass.label ?? pass.id,
+    origin: registry.originForPass(pass.id),
+    context_pack: pass.context_pack,
+    stages: pass.stage ?? [],
+    applies_to: pass.applies_to ?? [],
+    models: pass.models ?? [],
+    blocking: Boolean(pass.blocking),
+  }));
+
+  if (options.json) {
+    console.log(JSON.stringify({ ok: true, count: passes.length, passes }, null, 2));
+    return;
+  }
+
+  console.log("Registered review passes:\n");
+  for (const pass of passes) {
+    console.log(`- ${pass.id} — ${pass.label} (${pass.origin}; ${pass.context_pack})`);
   }
 }
 
@@ -1122,6 +1171,8 @@ function printHelp() {
   console.log(`review-runner - typed editorial sensors with issue-ledger import
 
 Usage:
+  mlab review <draft-section.md> [options]
+  mlab review list [--json]
   node scripts/review-runner.mjs [options] <draft-section.md>
 
 Options:

@@ -55,7 +55,11 @@ npm run compose -- draft/<section>.md --context-pack style.editor
 npm run compose -- draft/<section>.md --operation revise
 ```
 
-Review context packs from `reviews/suite.json` can also be used. The compiler expands placeholders such as `{section}`, `{section_id}`, and `{previous_sections}`.
+Review context packs from the merged review registry can also be used: package
+packs from `reviews/suite.json` plus a project suite registered through
+`reviews.suite` in `manuscript-lab.config.json`. The compiler expands
+placeholders such as `{section}`, `{section_id}`, and `{previous_sections}` and
+rejects expanded paths outside the project root.
 
 ## Freshness
 

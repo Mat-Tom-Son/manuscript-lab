@@ -254,7 +254,8 @@ Deterministic requirements (as of 2.0):
   writing begins.` There is no fix command; flipping the status is a
   deliberate manual edit.
 - `contract.check_ids_exist`: every listed check ID exists in `checks/suite.json`.
-- `contract.review_ids_exist`: every listed review ID exists in `reviews/suite.json`.
+- `contract.review_ids_exist`: the package and configured project review
+  suites form one valid registry, and every listed review ID exists in it.
 - `status.synced`: section contract status matches `state/status.md` when that
   file is present.
 - `content.nonempty_when_active`: non-`todo` sections contain real prose.

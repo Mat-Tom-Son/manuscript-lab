@@ -70,6 +70,9 @@ config). Section paths are project-relative: `draft/01-opening.md`.
    accepted decisions only — never from raw review output. For many decisions
    or closures, use `mlab issues batch` with JSON/JSONL on stdin or `--file`
    instead of issuing one process call per mutation.
+   Project-specific sensors can be registered with `reviews.suite` in
+   `manuscript-lab.config.json`; use `mlab review list` to confirm built-in and
+   project pass IDs before adding them to contracts.
 8. For contested revisions use the candidate arena: `mlab revise`,
    `mlab compare`, `mlab merge`. `mlab merge --apply` refuses stale candidate
    runs unless a human passes `--force`. Run `mlab lab taste` after comparisons

@@ -6,6 +6,7 @@ import crypto from "node:crypto";
 import { JSON_OBJECT_RESPONSE_FORMAT, parseModelJsonObject } from "./lib/model-json.mjs";
 import { callChatModel, describeModelRuntime, hasApiKeyForModel, providerMissingKeyMessage } from "./lib/model-provider.mjs";
 import { discoverProtocol, protocolPaths } from "./lib/protocol.mjs";
+import { loadReviewRegistry } from "./lib/review-registry.mjs";
 import { placeholderFindings } from "./lib/section-contract.mjs";
 import { syncSectionStatusesFromContracts } from "./lib/status-sync.mjs";
 import {
@@ -1288,67 +1289,9 @@ function checkReviewSuiteConfig() {
   if (checkReviewSuiteConfig.ran) return;
   checkReviewSuiteConfig.ran = true;
 
-  const suite = loadReviewSuite();
-  if (!suite) return;
-
-  if (!isPlainObject(suite.context_packs)) {
-    errors.push("reviews/suite.json: context_packs must be an object");
-  }
-
-  const contextPackIds = new Set(Object.keys(suite.context_packs ?? {}));
-  const seenIds = new Set();
-  for (const [index, reviewPass] of (suite.passes ?? []).entries()) {
-    const label = `reviews/suite.json: passes[${index}]`;
-    if (!isPlainObject(reviewPass)) {
-      errors.push(`${label} must be an object`);
-      continue;
-    }
-
-    const id = reviewPass.id;
-    const passLabel = isNonEmptyString(id) ? `reviews/suite.json: ${id}` : label;
-    if (!isNonEmptyString(id) || !/^[A-Za-z0-9_.:-]+$/.test(id)) {
-      errors.push(`${label}.id must be a non-empty stable ID using letters, numbers, dots, colons, underscores, or hyphens`);
-    } else if (seenIds.has(id)) {
-      errors.push(`${passLabel} duplicates a review pass ID`);
-    } else {
-      seenIds.add(id);
-    }
-
-    if (!Array.isArray(reviewPass.stage) || reviewPass.stage.length === 0) {
-      errors.push(`${passLabel}.stage must be a non-empty array`);
-    }
-
-    if (!Array.isArray(reviewPass.applies_to) || reviewPass.applies_to.length === 0) {
-      errors.push(`${passLabel}.applies_to must be a non-empty array`);
-    }
-
-    if (!isNonEmptyString(reviewPass.context_pack) || !contextPackIds.has(reviewPass.context_pack)) {
-      errors.push(`${passLabel}.context_pack must reference a context pack in reviews/suite.json`);
-    }
-
-    if (!Array.isArray(reviewPass.models) || reviewPass.models.length === 0) {
-      errors.push(`${passLabel}.models must be a non-empty array`);
-    }
-
-    if (!isNonEmptyString(reviewPass.prompt)) {
-      errors.push(`${passLabel}.prompt must be a non-empty string`);
-    } else if (!fs.existsSync(packageAbs(reviewPass.prompt))) {
-      errors.push(`${passLabel}.prompt points to missing file: ${reviewPass.prompt}`);
-    }
-
-    if (reviewPass.max_issues !== undefined && (!Number.isFinite(Number(reviewPass.max_issues)) || Number(reviewPass.max_issues) < 0)) {
-      errors.push(`${passLabel}.max_issues must be a non-negative number`);
-    }
-
-    if (
-      reviewPass.min_confidence !== undefined &&
-      (!Number.isFinite(Number(reviewPass.min_confidence)) ||
-        Number(reviewPass.min_confidence) < 0 ||
-        Number(reviewPass.min_confidence) > 1)
-    ) {
-      errors.push(`${passLabel}.min_confidence must be a number from 0 to 1`);
-    }
-  }
+  const registry = getReviewRegistry();
+  errors.push(...registry.errors);
+  warnings.push(...registry.warnings);
 }
 
 function checkReviewPanelsConfig() {
@@ -1436,29 +1379,11 @@ function loadCheckSuite() {
   }
 }
 
-function loadReviewSuite() {
-  if (loadReviewSuite.cache !== undefined) return loadReviewSuite.cache;
-
-  const file = packageAbs("reviews/suite.json");
-  if (!fs.existsSync(file)) {
-    loadReviewSuite.cache = null;
-    return null;
+function getReviewRegistry() {
+  if (getReviewRegistry.cache === undefined) {
+    getReviewRegistry.cache = loadReviewRegistry(discovery);
   }
-
-  try {
-    const suite = JSON.parse(read(file));
-    if (!Array.isArray(suite.passes)) {
-      errors.push("reviews/suite.json: passes must be an array");
-      loadReviewSuite.cache = null;
-      return null;
-    }
-    loadReviewSuite.cache = suite;
-    return suite;
-  } catch (error) {
-    errors.push(`reviews/suite.json: ${error.message}`);
-    loadReviewSuite.cache = null;
-    return null;
-  }
+  return getReviewRegistry.cache;
 }
 
 function loadReviewPanels() {
@@ -1487,8 +1412,7 @@ function getKnownModelCheckIds() {
 }
 
 function getKnownReviewPassIds() {
-  const suite = loadReviewSuite();
-  return new Set((suite?.passes ?? []).map((reviewPass) => reviewPass.id).filter(Boolean));
+  return getReviewRegistry().knownReviewIds;
 }
 
 function getPath(value, keyPath) {

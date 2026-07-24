@@ -696,6 +696,7 @@ function assertInstalledCommandSurface(workspace, runner) {
   assert.equal(nestedCompose.section, "draft/01-opening.md");
 
   assertInstalledReviewRun(workspace, runner);
+  assertInstalledProjectReviewRegistration(workspace, runner);
   assertInstalledCandidatePreview(workspace, runner);
 
   const exported = assertJsonCommand(runner, ["export", "--formats", "md,html", "--include-todo", "--slug", "packed", "--json"], { cwd: workspace });
@@ -865,6 +866,118 @@ function assertInstalledReviewRun(workspace, runner) {
   assert(ledger.issues.some((issue) => issue.source?.type === "model_review" && issue.source?.run_file === run.results[0].file));
   assert.equal(fs.existsSync(path.join(draftRoot, "state")), false, "review runs should not write state under draft/");
   assert.equal(fs.existsSync(path.join(workspace, "node_modules", "manuscript-lab", "state")), false, "review runs should not write state under the package");
+}
+
+function assertInstalledProjectReviewRegistration(workspace, runner) {
+  const manuscriptRoot = path.join(workspace, "manuscript");
+  const draftRoot = path.join(manuscriptRoot, "draft");
+  const targetFile = path.join(draftRoot, "01-opening.md");
+  const configFile = path.join(workspace, "manuscript-lab.config.json");
+  const config = JSON.parse(fs.readFileSync(configFile, "utf8"));
+  config.reviews = { ...(config.reviews ?? {}), suite: "reviews/suite.json" };
+  writeJsonFile(configFile, config);
+
+  writeJsonFile(path.join(manuscriptRoot, "reviews/suite.json"), {
+    version: 1,
+    context_packs: {
+      "local.anti_tidiness": {
+        description: "Expose the style guide and target section.",
+        include: ["style.md", "draft/{section}"],
+        exclude: ["state/", "taste/"],
+      },
+    },
+    passes: [
+      {
+        id: "loose.thread",
+        label: "Loose Thread",
+        stage: ["todo", "draft", "review", "revision", "polish"],
+        applies_to: ["*"],
+        context_pack: "local.anti_tidiness",
+        models: ["openai/gpt-4.1-mini"],
+        prompt: "reviews/prompts/loose-thread.md",
+        blocking: false,
+        min_confidence: 0.5,
+        max_issues: 6,
+      },
+    ],
+  });
+  writeText(
+    path.join(manuscriptRoot, "reviews/prompts/loose-thread.md"),
+    "# Loose Thread\n\nReport only places where tidying erased useful friction or implication.\n",
+  );
+
+  const targetText = fs.readFileSync(targetFile, "utf8");
+  const updatedTarget = targetText.replace(
+    /reviews:[ \t]*\n(?:[ \t]+-[ \t]*[A-Za-z0-9_.:-]+[ \t]*\n)*/,
+    "reviews:\n  - contract.editor\n  - loose.thread\n",
+  );
+  assert.notEqual(updatedTarget, targetText);
+  writeText(targetFile, updatedTarget);
+
+  const validate = assertJsonCommand(runner, ["validate", "--json"], { cwd: draftRoot });
+  assert.equal(validate.ok, true);
+
+  const list = assertJsonCommand(runner, ["review", "list", "--json"], { cwd: workspace });
+  const localPass = list.passes.find((pass) => pass.id === "loose.thread");
+  assert.equal(localPass?.origin, "project");
+
+  const dryRun = assertJsonCommand(
+    runner,
+    ["review", "01-opening.md", "--passes", "loose.thread", "--force", "--dry-run", "--json"],
+    { cwd: draftRoot },
+  );
+  assert.equal(dryRun.jobs.length, 1);
+  assert.equal(dryRun.jobs[0].origin, "project");
+  assert(dryRun.jobs[0].visible_files.some((file) => file.path === "style.md"));
+
+  const quote = "Use this section for the first owned draft once the brief, outline, style guide,\nand source index are ready.";
+  const mockResponseRel = "state/reviews/mock-loose-thread-response.json";
+  writeJsonFile(path.join(manuscriptRoot, mockResponseRel), {
+    pass: "loose.thread",
+    section: "draft/01-opening.md",
+    summary: "Mock project-local review response.",
+    issues: [
+      {
+        category: "style",
+        severity: "minor",
+        confidence: 0.92,
+        target_quote: quote,
+        claim: "The setup sentence over-explains the section's job.",
+        evidence: "Its instruction-like framing removes implication before the draft begins.",
+        reader_effect: "The opening feels administratively tidy instead of alive.",
+        recommended_action: "Replace the instruction with prose that leaves useful pressure unresolved.",
+      },
+    ],
+    strengths: [],
+  });
+
+  const run = parseJsonFromMixedOutput(
+    runner(
+      [
+        "review",
+        "01-opening.md",
+        "--passes",
+        "loose.thread",
+        "--force",
+        "--mock-response",
+        mockResponseRel,
+        "--json",
+      ],
+      { cwd: draftRoot },
+    ),
+  );
+  assert.equal(run.results.length, 1);
+  assert.equal(run.results[0].pass, "loose.thread");
+  assert.equal(run.results[0].imported_issue_ids.length, 1);
+  const runRecord = JSON.parse(fs.readFileSync(path.join(manuscriptRoot, run.results[0].file), "utf8"));
+  assert.equal(runRecord.pass.origin, "project");
+
+  const gateResult = runner(["gate", "draft/01-opening.md", "--json"], { cwd: workspace });
+  assert.notEqual(gateResult.status, 2, gateResult.stderr || gateResult.stdout);
+  const gate = JSON.parse(gateResult.stdout);
+  const reviewIds = gate.requirements.find((requirement) => requirement.id === "contract.review_ids_exist");
+  assert.equal(reviewIds?.status, "pass", JSON.stringify(reviewIds, null, 2));
+  assert.equal(typeof gate.input_hashes.reviews_registry, "string");
 }
 
 function assertInstalledCandidatePreview(workspace, runner) {

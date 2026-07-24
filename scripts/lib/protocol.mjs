@@ -14,6 +14,7 @@ import {
   validateSectionContract,
   wordCount,
 } from "./section-contract.mjs";
+import { loadReviewRegistry } from "./review-registry.mjs";
 
 export const CONFIG_FILE = "manuscript-lab.config.json";
 
@@ -143,7 +144,10 @@ export function validateProtocolProject(discovery) {
   }
 
   const knownCheckIds = loadKnownCheckIds(discovery.packageRoot);
-  const knownReviewIds = loadKnownReviewIds(discovery.packageRoot);
+  const reviewRegistry = loadReviewRegistry(discovery);
+  errors.push(...reviewRegistry.errors);
+  warnings.push(...reviewRegistry.warnings);
+  const knownReviewIds = reviewRegistry.knownReviewIds;
   const statusByFile = loadStatusByFile(path.join(projectRoot, discovery.config.stateDir ?? "state", "status.md"));
   const drafts = listDrafts(discovery);
 
@@ -257,6 +261,35 @@ export function validateProtocolConfig(config, { configDir }) {
     }
   }
 
+  if (isPlainObject(config.reviews)) {
+    const knownReviewFields = new Set(["default", "suite"]);
+    for (const key of Object.keys(config.reviews)) {
+      if (!knownReviewFields.has(key)) warnings.push(`Unknown config reviews field ignored: ${key}`);
+    }
+
+    if ("default" in config.reviews) {
+      if (!Array.isArray(config.reviews.default)) {
+        errors.push("Config reviews.default must be an array when present.");
+      } else {
+        for (const id of config.reviews.default) {
+          if (typeof id !== "string" || !/^[A-Za-z0-9_.:-]+$/.test(id)) {
+            errors.push("Config reviews.default must contain only stable review IDs.");
+            break;
+          }
+        }
+      }
+    }
+
+    if ("suite" in config.reviews) {
+      if (typeof config.reviews.suite !== "string") {
+        errors.push("Config reviews.suite must be a project-relative string path.");
+      } else {
+        const message = validatePortableRelativePath(config.reviews.suite);
+        if (message) errors.push(`Config reviews.suite is invalid: ${message}`);
+      }
+    }
+  }
+
   return { errors, warnings, projectRoot };
 }
 
@@ -285,9 +318,12 @@ export function loadKnownCheckIds(packageRoot) {
   return new Set((suite.model_checks ?? []).map((check) => check.id).filter(Boolean));
 }
 
-export function loadKnownReviewIds(packageRoot) {
-  const suite = safeReadJson(path.join(packageRoot, "reviews/suite.json"), { passes: [] });
-  return new Set((suite.passes ?? []).map((review) => review.id).filter(Boolean));
+export function loadKnownReviewIds(discoveryOrPackageRoot) {
+  if (typeof discoveryOrPackageRoot === "string") {
+    const suite = safeReadJson(path.join(discoveryOrPackageRoot, "reviews/suite.json"), { passes: [] });
+    return new Set((suite.passes ?? []).map((review) => review.id).filter(Boolean));
+  }
+  return loadReviewRegistry(discoveryOrPackageRoot).knownReviewIds;
 }
 
 export function loadStatusByFile(statusFile) {

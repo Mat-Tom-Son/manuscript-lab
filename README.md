@@ -58,7 +58,9 @@ closes it, so "not ready" is a work list instead of a shrug.
   `state/status.md` / `outline.md` from the section contracts — statuses
   restated, deleted sections dropped, new sections added — then re-checks.
 - Typed issues: reviews write durable work items to an issue ledger instead of
-  advice that disappears in chat; `mlab issues batch` applies many
+  advice that disappears in chat. Projects can register their own typed review
+  lenses and prompts under the manuscript root; `mlab review list` shows the
+  merged built-in/project catalog. `mlab issues batch` applies many
   decisions/closures from JSON or JSONL in one validated, locked transaction.
 - Candidate trails: high-stakes revisions run as candidates, blind comparison,
   taste gate, merge winner, diff audit — never a silent rewrite.
@@ -164,6 +166,12 @@ reviews, and lab commands route through `scripts/lib/model-provider.mjs`,
 which supports OpenRouter, Lightning AI, and custom OpenAI-compatible
 endpoints. Copy `.env.example` to `.env` for keys and never commit `.env`.
 See `docs/MODEL_PROVIDERS.md`.
+
+Project-specific review charters do not need to be added to the package. Point
+`reviews.suite` in `manuscript-lab.config.json` at a suite under the manuscript
+root, keep its prompts there, then use those IDs in section contracts. The
+suite merges with built-ins; collisions and path escapes fail validation. See
+`docs/FILE_PROTOCOL.md` and inspect the result with `mlab review list`.
 
 ## Docs
 
